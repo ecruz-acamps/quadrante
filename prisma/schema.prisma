@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id    Int    @id @default(autoincrement())
+  nome  String
+  email String @unique
+  senha String // hash bcrypt
+  role  String @default("ADMIN") // SUPER | ADMIN
+
+  missoes UsuarioMissao[]
+}
+
+model Missao {
+  id            Int    @id @default(autoincrement())
+  nome          String
+  tipo          String // MIRIM | FAC | JUVENIL | SENIOR | CASAIS
+  ano           Int
+  cercoSlug     String @unique
+  valorInterna  Float  @default(160)
+  valorExterna  Float  @default(80)
+  valorCampista Float  @default(300)
+
+  servos       Servo[]
+  neocampistas Neocampista[]
+  tribos       Tribo[]
+  usuarios     UsuarioMissao[]
+}
+
+// vínculo de acesso: quais missões um usuário ADMIN pode ver/editar (SUPER não usa isso)
+model UsuarioMissao {
+  usuarioId Int
+  missaoId  Int
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  missao  Missao  @relation(fields: [missaoId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, missaoId])
+}
+
+model Pessoa {
+  id       Int     @id @default(autoincrement())
+  nome     String
+  cpf      String?
+  celular  String?
+  endereco String?
+  bairro   String?
+  cidade   String?
+  paroquia String?
+  sexo        String?
+  camiseta    String?
+  email       String?
+  aniversario String?
+
+  servos Servo[]
+}
+
+model Servo {
+  id       Int @id @default(autoincrement())
+  missaoId Int
+  pessoaId Int
+
+  setor          String
+  funcao         String  @default("INTEGRANTE") // COORDENADOR | AUXILIAR | APOIO | INTEGRANTE
+  camiseta       String?
+  status         String  @default("ATIVO") // ATIVO | RECUSOU | DESISTIU
+  formacao1      String? // SIM | Não
+  formacao2      String?
+  formacao3      String?
+  motivoFalta    String?
+  pagamentoForma String? // DINHEIRO | PIX | ISENTO | ...
+  pagamentoValor Float?
+  pago           Boolean @default(false)
+  observacoes    String?
+  cercoHorario   String? // "00:00 - 01:00" ... ou null
+
+  missao Missao @relation(fields: [missaoId], references: [id])
+  pessoa Pessoa @relation(fields: [pessoaId], references: [id])
+
+  tribosLideradas TriboLider[]
+
+  @@unique([missaoId, pessoaId])
+  @@index([missaoId, setor])
+}
+
+model Neocampista {
+  id       Int @id @default(autoincrement())
+  missaoId Int
+  numero   Int // número da ficha
+
+  nucleo      String
+  nome        String
+  endereco    String?
+  bairro      String?
+  cidade      String?
+  celular     String?
+  idade       Int?
+  altura      Float?
+  peso        Float?
+  sexo        String?
+  camiseta    String?
+  pagamento   String?
+  situacao    String  @default("OK")
+  observacao  String?
+  cpf         String?
+  triboId     Int?
+
+  missao  Missao  @relation(fields: [missaoId], references: [id])
+  tribo   Tribo?  @relation(fields: [triboId], references: [id])
+  alertas FichaAlerta[] @relation("alertaOrigem")
+  alvos   FichaAlerta[] @relation("alertaAlvo")
+
+  @@unique([missaoId, numero])
+}
+
+// par de fichas que não podem ficar na mesma tribo (parentesco/amizade)
+model FichaAlerta {
+  id       Int @id @default(autoincrement())
+  origemId Int
+  alvoId   Int
+
+  origem Neocampista @relation("alertaOrigem", fields: [origemId], references: [id])
+  alvo   Neocampista @relation("alertaAlvo", fields: [alvoId], references: [id])
+
+  @@unique([origemId, alvoId])
+}
+
+model Tribo {
+  id       Int    @id @default(autoincrement())
+  missaoId Int
+  nome     String // TRIBO AZUL ...
+  cor      String?
+
+  missao       Missao        @relation(fields: [missaoId], references: [id])
+  neocampistas Neocampista[]
+  lideres      TriboLider[]
+
+  @@unique([missaoId, nome])
+}
+
+model TriboLider {
+  id      Int @id @default(autoincrement())
+  triboId Int
+  servoId Int
+
+  tribo Tribo @relation(fields: [triboId], references: [id])
+  servo Servo @relation(fields: [servoId], references: [id])
+
+  @@unique([triboId, servoId])
+}
+
+// par de pessoas marcado como "não é duplicata" na tela de possíveis duplicatas
+model DuplicataIgnorada {
+  id       Int @id @default(autoincrement())
+  pessoa1Id Int
+  pessoa2Id Int
+
+  @@unique([pessoa1Id, pessoa2Id])
+}
+
+// domínios (aba Base de Dados)
+model Setor {
+  id   Int    @id @default(autoincrement())
+  nome String @unique
+}
+
+model Nucleo {
+  id   Int    @id @default(autoincrement())
+  nome String @unique
+}
+
+// aba Procv: cidade+bairro -> paróquia
+model Paroquia {
+  id       Int    @id @default(autoincrement())
+  cidade   String
+  bairro   String
+  paroquia String
+
+  @@unique([cidade, bairro])
+}
