@@ -708,6 +708,34 @@ export async function criarUsuario(_prev: unknown, formData: FormData) {
   return { ok: true };
 }
 
+export async function atualizarUsuario(_prev: unknown, formData: FormData) {
+  await requireRole("SUPER");
+  const id = Number(formData.get("id"));
+  const nome = String(formData.get("nome") || "").trim();
+  const role = String(formData.get("role") || "ADMIN") === "SUPER" ? "SUPER" : "ADMIN";
+  const missaoIds = formData.getAll("missaoIds").map(Number).filter((n) => !Number.isNaN(n));
+
+  if (!id || !nome) return { error: "Preencha o nome." };
+  if (role === "ADMIN" && missaoIds.length === 0) {
+    return { error: "Selecione ao menos uma missão para este usuário." };
+  }
+
+  await db.$transaction([
+    db.usuario.update({ where: { id }, data: { nome, role } }),
+    db.usuarioMissao.deleteMany({ where: { usuarioId: id } }),
+    ...(role === "ADMIN"
+      ? [
+          db.usuarioMissao.createMany({
+            data: missaoIds.map((missaoId) => ({ usuarioId: id, missaoId })),
+          }),
+        ]
+      : []),
+  ]);
+
+  revalidatePath("/usuarios");
+  return { ok: true };
+}
+
 export async function excluirUsuario(formData: FormData) {
   const atual = await requireRole("SUPER");
   const id = Number(formData.get("id"));
