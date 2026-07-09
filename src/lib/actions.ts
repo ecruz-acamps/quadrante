@@ -44,7 +44,7 @@ export async function criarMissao(formData: FormData) {
 }
 
 export async function selecionarMissao(formData: FormData) {
-  await requireRole("SUPER");
+  await requireUser();
   await setMissaoAtiva(Number(formData.get("id")));
   revalidatePath("/");
 }
