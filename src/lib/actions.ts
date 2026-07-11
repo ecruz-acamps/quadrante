@@ -43,6 +43,25 @@ export async function criarMissao(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function excluirMissao(formData: FormData) {
+  await requireRole("SUPER");
+  const id = Number(formData.get("id"));
+  if (!id) return;
+
+  await db.$transaction([
+    db.fichaAlerta.deleteMany({
+      where: { OR: [{ origem: { missaoId: id } }, { alvo: { missaoId: id } }] },
+    }),
+    db.triboLider.deleteMany({ where: { tribo: { missaoId: id } } }),
+    db.neocampista.deleteMany({ where: { missaoId: id } }),
+    db.tribo.deleteMany({ where: { missaoId: id } }),
+    db.servo.deleteMany({ where: { missaoId: id } }),
+    db.missao.delete({ where: { id } }),
+  ]);
+
+  revalidatePath("/missoes");
+}
+
 export async function selecionarMissao(formData: FormData) {
   await requireUser();
   await setMissaoAtiva(Number(formData.get("id")));
@@ -302,7 +321,7 @@ export async function atualizarServo(formData: FormData) {
 
 export async function atualizarServoInline(
   servoId: number,
-  dados: { camiseta?: string | null; pago?: boolean }
+  dados: { camiseta?: string | null; pago?: boolean; funcao?: string }
 ) {
   await requireUser();
   await db.servo.update({ where: { id: servoId }, data: dados });
@@ -359,17 +378,14 @@ export async function inscreverCerco(_prev: unknown, formData: FormData) {
     return { error: "Esse horário já atingiu o limite de 15 pessoas. Escolha outro." };
   }
 
-  if (existente) {
-    await db.servo.update({
-      where: { id: existente.id },
-      data: { setor, cercoHorario: horario },
-    });
-  } else {
-    const pessoa = await db.pessoa.create({ data: { nome: normalizarNome(nome) } });
-    await db.servo.create({
-      data: { missaoId, pessoaId: pessoa.id, setor, status: "ATIVO", cercoHorario: horario },
-    });
+  if (!existente) {
+    return { error: "Nome não encontrado na lista de servos desta missão. Selecione seu nome nas sugestões." };
   }
+
+  await db.servo.update({
+    where: { id: existente.id },
+    data: { setor, cercoHorario: horario },
+  });
 
   revalidatePath(`/cerco/${missao.cercoSlug}`);
   revalidatePath("/cerco-dashboard");
@@ -709,19 +725,25 @@ export async function criarUsuario(_prev: unknown, formData: FormData) {
 }
 
 export async function atualizarUsuario(_prev: unknown, formData: FormData) {
-  await requireRole("SUPER");
+  const atual = await requireRole("SUPER");
   const id = Number(formData.get("id"));
   const nome = String(formData.get("nome") || "").trim();
   const role = String(formData.get("role") || "ADMIN") === "SUPER" ? "SUPER" : "ADMIN";
   const missaoIds = formData.getAll("missaoIds").map(Number).filter((n) => !Number.isNaN(n));
+  const novaSenha = String(formData.get("novaSenha") || "");
 
   if (!id || !nome) return { error: "Preencha o nome." };
   if (role === "ADMIN" && missaoIds.length === 0) {
     return { error: "Selecione ao menos uma missão para este usuário." };
   }
+  if (id === atual.id && novaSenha && novaSenha.length < 4) {
+    return { error: "A nova senha precisa ter pelo menos 4 caracteres." };
+  }
+
+  const senhaHash = id === atual.id && novaSenha ? await bcrypt.hash(novaSenha, 10) : undefined;
 
   await db.$transaction([
-    db.usuario.update({ where: { id }, data: { nome, role } }),
+    db.usuario.update({ where: { id }, data: { nome, role, ...(senhaHash ? { senha: senhaHash } : {}) } }),
     db.usuarioMissao.deleteMany({ where: { usuarioId: id } }),
     ...(role === "ADMIN"
       ? [

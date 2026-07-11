@@ -13,7 +13,7 @@ export default function CriarUsuarioForm({ missoes }: { missoes: { id: number; n
   }, [state]);
 
   return (
-    <form ref={formRef} action={action} className="card p-4 grid grid-cols-2 gap-3">
+    <form ref={formRef} action={action} className="card p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
       <input name="nome" required placeholder="Nome" className="input col-span-2" />
       <input name="email" type="email" required placeholder="E-mail" className="input col-span-2" />
       <input name="senha" type="password" required placeholder="Senha" className="input" />

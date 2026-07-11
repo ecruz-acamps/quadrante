@@ -1,26 +1,137 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* azul-royal do manto de Nossa Senhora — sidebar, superfícies escuras */
+  --ink: #1a3572;
+  --ink-soft: #1c2540;
+  /* branco/pérola do manto imaculado — fundo de página */
+  --paper: #f6f4ee;
+  --card: #fffdf9;
+  /* ouro da coroa/ostensório — acento primário */
+  --brass: #bd8f2e;
+  --brass-bright: #dcb043;
+  /* vermelho das línguas de fogo do Espírito Santo — alerta/cheio e toques pontuais */
+  --signal: #a4291f;
+  --line: #dcd6c4;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-brass: var(--brass);
+  --color-brass-bright: var(--brass-bright);
+  --color-signal: var(--signal);
+  --color-line: var(--line);
+  --color-background: var(--paper);
+  --color-foreground: var(--ink-soft);
+  --font-display: var(--font-spectral);
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer components {
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    position: relative;
+  }
+  .stat-card::before,
+  .stat-card::after {
+    content: "";
+    position: absolute;
+    top: 0.4rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-top: 1.5px solid var(--brass);
+  }
+  .stat-card::before {
+    left: 0.4rem;
+    border-left: 1.5px solid var(--brass);
+  }
+  .stat-card::after {
+    right: 0.4rem;
+    border-right: 1.5px solid var(--brass);
+  }
+  .stat-card .stat-value {
+    font-family: var(--font-plex-mono), monospace;
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .stat-card .stat-label {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    opacity: 0.7;
+  }
+
+  .table-shell {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+  .table-shell thead.head-dark {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .table-shell thead.head-light {
+    background: var(--paper);
+    color: var(--ink-soft);
+    opacity: 0.75;
+  }
+  .table-shell tbody tr {
+    border-top: 1px solid var(--line);
+  }
+
+  .btn-primary {
+    background: var(--brass);
+    color: var(--ink);
+    border-radius: 0.375rem;
+    font-weight: 600;
+    transition: background-color 0.15s ease;
+  }
+  .btn-primary:hover {
+    background: var(--brass-bright);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+  }
+
+  .btn-danger-link {
+    color: var(--signal);
+    text-decoration: underline;
+  }
+  .btn-link {
+    color: var(--brass);
+    text-decoration: underline;
+  }
+
+  .input {
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    width: 100%;
+    background: var(--card);
+    color: var(--ink-soft);
+  }
+  .input:focus {
+    outline: 2px solid var(--brass);
+    outline-offset: 1px;
+  }
 }

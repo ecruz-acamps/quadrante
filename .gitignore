@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# database (contains real personal data — never commit)
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db.bak-*
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

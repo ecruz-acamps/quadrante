@@ -1,0 +1,103 @@
+import { getMissaoAtiva } from "@/lib/auth";
+import { db } from "@/lib/db";
+
+export default async function FinanceiroPage() {
+  const missao = await getMissaoAtiva();
+  if (!missao) return <p>Nenhuma missão ativa.</p>;
+
+  const servos = await db.servo.findMany({
+    where: { missaoId: missao.id, status: "ATIVO" },
+  });
+
+  const porSetor = new Map<
+    string,
+    { dinheiro: number; pix: number; isento: number; qtd: number; pagaram: number }
+  >();
+  for (const s of servos) {
+    if (!porSetor.has(s.setor)) porSetor.set(s.setor, { dinheiro: 0, pix: 0, isento: 0, qtd: 0, pagaram: 0 });
+    const g = porSetor.get(s.setor)!;
+    g.qtd++;
+    if (s.pago) g.pagaram++;
+    const v = s.pagamentoValor || 0;
+    if (s.pagamentoForma === "DINHEIRO") g.dinheiro += v;
+    else if (s.pagamentoForma === "PIX" || s.pagamentoForma === "DÉBITO") g.pix += v;
+    else if (s.pagamentoForma === "ISENTO") g.isento += v;
+  }
+
+  const fichas = await db.neocampista.findMany({ where: { missaoId: missao.id } });
+  const fichasPagas = fichas.filter((f) => f.pagamento && f.pagamento !== "ISENTO").length;
+  const fichasIsentas = fichas.filter((f) => f.pagamento === "ISENTO").length;
+  const fichasDinheiro = fichas.filter((f) => f.pagamento === "DINHEIRO").length;
+  const fichasPix = fichas.filter((f) => f.pagamento === "PIX" || f.pagamento === "DÉBITO").length;
+
+  const totalServos = [...porSetor.values()].reduce((a, g) => a + g.dinheiro + g.pix, 0);
+  const arrecadadoCampistas = fichasPagas * missao.valorCampista;
+  const totalGeral = totalServos + arrecadadoCampistas;
+
+  return (
+    <div>
+      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Financeiro</h1>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="stat-card">
+          <div className="stat-value">R$ {totalServos.toFixed(2)}</div>
+          <div className="stat-label">Arrecadado servos</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">R$ {arrecadadoCampistas.toFixed(2)}</div>
+          <div className="stat-label">Arrecadado campistas</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">R$ {totalGeral.toFixed(2)}</div>
+          <div className="stat-label">Total geral</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">
+            {fichasPagas}/{fichas.length}
+          </div>
+          <div className="stat-label">Neocampistas — pagos</div>
+        </div>
+      </div>
+
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[var(--ink)] text-[var(--paper)]">
+            <tr>
+              <th className="text-left px-4 py-2">Setor</th>
+              <th className="text-left px-4 py-2">Dinheiro</th>
+              <th className="text-left px-4 py-2">PIX/Débito</th>
+              <th className="text-left px-4 py-2">Isento</th>
+              <th className="text-left px-4 py-2">Qtd. servos</th>
+              <th className="text-left px-4 py-2">Pagaram</th>
+              <th className="text-left px-4 py-2">%</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--line)]">
+            {[...porSetor.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([setor, g]) => (
+              <tr key={setor}>
+                <td className="px-4 py-2">{setor}</td>
+                <td className="px-4 py-2">R$ {g.dinheiro.toFixed(2)}</td>
+                <td className="px-4 py-2">R$ {g.pix.toFixed(2)}</td>
+                <td className="px-4 py-2">{g.isento}</td>
+                <td className="px-4 py-2">{g.qtd}</td>
+                <td className="px-4 py-2">{g.pagaram}</td>
+                <td className="px-4 py-2">{g.qtd ? ((g.pagaram / g.qtd) * 100).toFixed(0) : 0}%</td>
+              </tr>
+            ))}
+            <tr className="bg-[var(--paper)] font-medium">
+              <td className="px-4 py-2">NEO-CAMPISTAS</td>
+              <td className="px-4 py-2">R$ {(fichasDinheiro * missao.valorCampista).toFixed(2)}</td>
+              <td className="px-4 py-2">R$ {(fichasPix * missao.valorCampista).toFixed(2)}</td>
+              <td className="px-4 py-2">{fichasIsentas}</td>
+              <td className="px-4 py-2">{fichas.length}</td>
+              <td className="px-4 py-2">{fichasPagas}</td>
+              <td className="px-4 py-2">{fichas.length ? ((fichasPagas / fichas.length) * 100).toFixed(0) : 0}%</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  );
+}

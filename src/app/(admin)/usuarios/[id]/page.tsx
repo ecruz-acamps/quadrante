@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import EditarUsuarioForm from "./EditarUsuarioForm";
 
 export default async function EditarUsuarioPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole("SUPER");
+  const atual = await requireRole("SUPER");
   const { id } = await params;
   const usuario = await db.usuario.findUnique({
     where: { id: Number(id) },
@@ -24,6 +24,7 @@ export default async function EditarUsuarioPage({ params }: { params: Promise<{ 
           missaoIds: usuario.missoes.map((v) => v.missaoId),
         }}
         missoes={missoes}
+        ehVoceMesmo={usuario.id === atual.id}
       />
     </div>
   );
