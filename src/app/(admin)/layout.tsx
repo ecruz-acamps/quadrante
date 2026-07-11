@@ -19,6 +19,7 @@ const NAV = [
   ["/duplicatas", "Possíveis Duplicatas", true],
   ["/missoes", "Missões", true],
   ["/usuarios", "Usuários", true],
+  ["/backup", "Backup", true],
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
