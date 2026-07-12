@@ -29,6 +29,13 @@ const norm = (v: unknown) => {
   const s = String(v).trim();
   return s === "" || s === "N/A" ? null : s;
 };
+// remove prefixo de função/observação colado no nome (ex.: "Coord: Fulano", "Cood.:Ciclana", "Rep. Cood. Geral:Beltrana")
+// a função já vem em coluna própria; nomes reais não têm ":", então tudo antes do primeiro ":" é lixo de digitação
+const PREFIXO_FUNCAO = /^.*?:\s*/;
+const normNome = (v: unknown) => {
+  const s = norm(v);
+  return s === null ? null : s.replace(PREFIXO_FUNCAO, "");
+};
 const numOrNull = (v: unknown) => {
   const s = norm(v);
   if (s === null) return null;
@@ -143,7 +150,7 @@ async function main() {
   let currentSetorFromHeader: string | null = null;
   for (const row of quadrante.slice(headerRowIdx + 1)) {
     if (!row || row.every((c) => c === null)) continue;
-    const nome = norm(row[cNome]);
+    const nome = normNome(row[cNome]);
     if (!nome) continue;
     // linhas de cabeçalho de setor tipo "SECRETARIA - 2 COORDENADORES..." só têm coluna 0 preenchida
     if (row.slice(1).every((c) => c === null)) {
@@ -209,7 +216,7 @@ async function main() {
     const iCel = HN.findIndex((h) => h === "CELULAR");
     let count = 0;
     for (const row of falaramNao.slice(hNaoIdx + 1)) {
-      const nome = norm(row?.[iNome]);
+      const nome = normNome(row?.[iNome]);
       if (!nome) continue;
       const pessoaId = await getOrCreatePessoa({ nome, celular: iCel >= 0 ? norm(row[iCel]) : null });
       await db.servo.upsert({
@@ -237,7 +244,7 @@ async function main() {
     const iCel = HD.findIndex((h) => h === "CELULAR");
     let count = 0;
     for (const row of desistiram.slice(hDesIdx + 1)) {
-      const nome = norm(row?.[iNome]);
+      const nome = normNome(row?.[iNome]);
       if (!nome) continue;
       const pessoaId = await getOrCreatePessoa({ nome, celular: iCel >= 0 ? norm(row[iCel]) : null });
       await db.servo.upsert({
