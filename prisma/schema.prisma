@@ -10,9 +10,9 @@ datasource db {
 model Usuario {
   id    Int    @id @default(autoincrement())
   nome  String
-  email String @unique
-  senha String // hash bcrypt
-  role  String @default("ADMIN") // SUPER | ADMIN
+  email String  @unique
+  senha String? // hash bcrypt; null para contas criadas via login Google
+  role  String  @default("ADMIN") // SUPER | ADMIN
 
   missoes UsuarioMissao[]
 }

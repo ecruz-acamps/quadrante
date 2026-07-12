@@ -13,7 +13,7 @@ export async function loginAction(_prev: unknown, formData: FormData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const senha = String(formData.get("senha") || "");
   const user = await db.usuario.findUnique({ where: { email } });
-  if (!user || !(await bcrypt.compare(senha, user.senha))) {
+  if (!user || !user.senha || !(await bcrypt.compare(senha, user.senha))) {
     return { error: "E-mail ou senha inválidos" };
   }
   await createSession(user.id);
@@ -380,6 +380,10 @@ export async function inscreverCerco(_prev: unknown, formData: FormData) {
 
   if (!existente) {
     return { error: "Nome não encontrado na lista de servos desta missão. Selecione seu nome nas sugestões." };
+  }
+
+  if (existente.setor && existente.setor !== setor) {
+    return { error: `Você está cadastrado no setor "${existente.setor}". Selecione esse setor para se inscrever.` };
   }
 
   await db.servo.update({
