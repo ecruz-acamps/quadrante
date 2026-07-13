@@ -44,3 +44,4 @@ prisma/*.db.bak-*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+logs/

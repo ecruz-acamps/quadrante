@@ -33,7 +33,7 @@ export function buildGoogleAuthUrl(state: string) {
   return `${GOOGLE_AUTH_URL}?${params.toString()}`;
 }
 
-export async function exchangeCodeForToken(code: string) {
+export async function exchangeCodeForToken(code: string, redirectUri: string = getRedirectUri()) {
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -41,12 +41,49 @@ export async function exchangeCodeForToken(code: string) {
       code,
       client_id: requireEnv("GOOGLE_CLIENT_ID"),
       client_secret: requireEnv("GOOGLE_CLIENT_SECRET"),
-      redirect_uri: getRedirectUri(),
+      redirect_uri: redirectUri,
       grant_type: "authorization_code",
     }),
   });
   if (!res.ok) throw new Error(`Falha ao trocar código por token: ${await res.text()}`);
-  return res.json() as Promise<{ access_token: string; id_token: string }>;
+  return res.json() as Promise<{ access_token: string; id_token: string; refresh_token?: string }>;
+}
+
+// ---------- backup automático no Google Drive ----------
+// Escopo "drive.file": o app só enxerga/gerencia arquivos que ele mesmo criou —
+// não dá acesso de leitura ao resto do Drive do usuário que autorizar.
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+
+export function getDriveRedirectUri() {
+  return requireEnv("GOOGLE_DRIVE_REDIRECT_URI");
+}
+
+export function buildDriveAuthUrl(state: string) {
+  const params = new URLSearchParams({
+    client_id: requireEnv("GOOGLE_CLIENT_ID"),
+    redirect_uri: getDriveRedirectUri(),
+    response_type: "code",
+    access_type: "offline",
+    prompt: "consent",
+    scope: DRIVE_SCOPE,
+    state,
+  });
+  return `${GOOGLE_AUTH_URL}?${params.toString()}`;
+}
+
+export async function refreshDriveAccessToken(refreshToken: string) {
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: requireEnv("GOOGLE_CLIENT_ID"),
+      client_secret: requireEnv("GOOGLE_CLIENT_SECRET"),
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+  if (!res.ok) throw new Error(`Falha ao renovar token do Drive: ${await res.text()}`);
+  return res.json() as Promise<{ access_token: string; expires_in: number }>;
 }
 
 export async function getGoogleUserInfo(accessToken: string) {
