@@ -208,12 +208,13 @@ async function main() {
 
   // ---------- aba 3: Falaram NÃO ----------
   const falaramNao = sheet("Falaram NÃO");
-  const hNaoIdx = falaramNao.findIndex((r) => r?.[0] === "NOME" || r?.[1] === "NOME" || r?.[1] === "SERVO");
+  const eq = (h: unknown, ...opts: string[]) => opts.includes(String(norm(h) ?? "").toUpperCase());
+  const hNaoIdx = falaramNao.findIndex((r) => eq(r?.[0], "NOME") || eq(r?.[1], "NOME", "SERVO"));
   if (hNaoIdx >= 0) {
     const HN = falaramNao[hNaoIdx] as any[];
-    const iNome = HN.findIndex((h) => h === "NOME" || h === "SERVO");
-    const iSetor = HN.findIndex((h) => h === "SETOR");
-    const iCel = HN.findIndex((h) => h === "CELULAR");
+    const iNome = HN.findIndex((h) => eq(h, "NOME", "SERVO"));
+    const iSetor = HN.findIndex((h) => eq(h, "SETOR"));
+    const iCel = HN.findIndex((h) => eq(h, "CELULAR", "TELEFONE"));
     let count = 0;
     for (const row of falaramNao.slice(hNaoIdx + 1)) {
       const nome = normNome(row?.[iNome]);
@@ -236,12 +237,12 @@ async function main() {
 
   // ---------- aba 7: Desistiram ----------
   const desistiram = sheet("Ñ part. FormaçãoDesistiram");
-  const hDesIdx = desistiram.findIndex((r) => r?.[1] === "NOME");
+  const hDesIdx = desistiram.findIndex((r) => eq(r?.[1], "NOME"));
   if (hDesIdx >= 0) {
     const HD = desistiram[hDesIdx] as any[];
-    const iNome = HD.findIndex((h) => h === "NOME");
-    const iSetor = HD.findIndex((h) => h === "SETOR");
-    const iCel = HD.findIndex((h) => h === "CELULAR");
+    const iNome = HD.findIndex((h) => eq(h, "NOME"));
+    const iSetor = HD.findIndex((h) => eq(h, "SETOR"));
+    const iCel = HD.findIndex((h) => eq(h, "CELULAR", "TELEFONE"));
     let count = 0;
     for (const row of desistiram.slice(hDesIdx + 1)) {
       const nome = normNome(row?.[iNome]);
