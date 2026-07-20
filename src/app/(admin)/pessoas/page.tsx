@@ -30,8 +30,8 @@ export default async function PessoasPage({
         Busca em todas as missões. Sem busca, mostra os servos com mais participações.
       </p>
 
-      <form className="flex gap-3 mb-6">
-        <input name="q" defaultValue={termo} placeholder="Buscar por nome" className="input text-sm w-72" />
+      <form className="flex flex-wrap gap-3 mb-6">
+        <input name="q" defaultValue={termo} placeholder="Buscar por nome" className="input text-sm w-full sm:w-72" />
         <button className="btn-primary px-4 py-2 text-sm">Buscar</button>
       </form>
 

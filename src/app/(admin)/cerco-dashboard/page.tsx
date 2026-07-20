@@ -34,9 +34,9 @@ export default async function CercoDashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)]">Dashboard — Cerco de Jericó</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <a href="/cerco-dashboard/exportar" className="text-sm btn-link">
             Exportar grade 24h (Excel)
           </a>

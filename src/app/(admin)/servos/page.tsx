@@ -57,16 +57,16 @@ export default async function ServosPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)]">Quadrante de Servos</h1>
         <Link href="/servos/novo" className="btn-primary px-4 py-2 text-sm">
           + Novo servo
         </Link>
       </div>
 
-      <form className="flex gap-3 mb-6">
-        <input name="q" defaultValue={q} placeholder="Buscar por nome" className="input text-sm" />
-        <select name="setor" defaultValue={setor || ""} className="input text-sm">
+      <form className="flex flex-wrap gap-3 mb-6">
+        <input name="q" defaultValue={q} placeholder="Buscar por nome" className="input text-sm w-full sm:w-auto sm:flex-1 sm:max-w-xs" />
+        <select name="setor" defaultValue={setor || ""} className="input text-sm w-full sm:w-auto">
           <option value="">Todos os setores</option>
           {setores.map((s) => (
             <option key={s.id}>{s.nome}</option>

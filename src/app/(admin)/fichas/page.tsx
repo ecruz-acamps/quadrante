@@ -20,7 +20,7 @@ export default async function FichasPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)]">Fichas dos Núcleos (Neocampistas)</h1>
         <Link href="/fichas/novo" className="btn-primary px-4 py-2 text-sm">
           + Nova ficha
