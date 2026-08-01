@@ -115,13 +115,7 @@ export default function AdicionarServoModal({ missaoId, setor }: { missaoId: num
 
   async function solicitarLiberacao() {
     if (!conflito) return;
-    await solicitarLiberacaoConflito(
-      conflito.pessoaId,
-      conflito.missaoId,
-      selecionada?.nome ?? termo,
-      conflito.missaoConflitoNome,
-      "esta missão"
-    );
+    await solicitarLiberacaoConflito(conflito.pessoaId, conflito.missaoId);
     setLiberacaoSolicitada(true);
   }
 

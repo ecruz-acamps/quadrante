@@ -88,6 +88,7 @@ export async function excluirMissao(formData: FormData) {
     db.neocampista.deleteMany({ where: { missaoId: id } }),
     db.tribo.deleteMany({ where: { missaoId: id } }),
     db.servo.deleteMany({ where: { missaoId: id } }),
+    db.liberacaoConflitoServo.deleteMany({ where: { missaoId: id } }),
     db.missao.delete({ where: { id } }),
   ]);
 
@@ -395,7 +396,7 @@ export async function atualizarServo(_prevState: unknown, formData: FormData) {
     return v === null || v === "" ? null : String(v);
   };
 
-  if (status === "ATIVO") {
+  if (status === "ATIVO" && servo.status !== "ATIVO") {
     const conflito = await checarConflitoServo(servo.pessoaId, servo.missaoId);
     if (conflito) {
       const codigo = s("codigoLiberacao");
@@ -433,10 +434,11 @@ export async function atualizarServo(_prevState: unknown, formData: FormData) {
 
 export async function atualizarServoInline(
   servoId: number,
-  dados: { camiseta?: string | null; pago?: boolean; funcao?: string }
+  dados: { camiseta?: string | null; pago?: boolean; funcao?: string; cercoHorario?: string | null }
 ) {
   await requireUser();
-  await db.servo.update({ where: { id: servoId }, data: dados });
+  const { camiseta, pago, funcao, cercoHorario } = dados;
+  await db.servo.update({ where: { id: servoId }, data: { camiseta, pago, funcao, cercoHorario } });
   revalidatePath("/servos");
 }
 
@@ -447,14 +449,14 @@ export async function excluirServo(formData: FormData) {
 }
 
 // ---------- liberação de conflito de servo ----------
-export async function solicitarLiberacaoConflito(
-  pessoaId: number,
-  missaoId: number,
-  pessoaNome: string,
-  missaoOrigemNome: string,
-  missaoDestinoNome: string
-) {
+export async function solicitarLiberacaoConflito(pessoaId: number, missaoId: number) {
   await requireUser();
+  const [pessoa, missaoDestino] = await Promise.all([
+    db.pessoa.findUniqueOrThrow({ where: { id: pessoaId } }),
+    db.missao.findUniqueOrThrow({ where: { id: missaoId } }),
+  ]);
+  const conflito = await checarConflitoServo(pessoaId, missaoId);
+  const missaoOrigemNome = conflito?.missaoConflitoNome ?? "outra missão";
   const codigo = gerarCodigo6Digitos();
   await db.liberacaoConflitoServo.create({
     data: {
@@ -466,7 +468,7 @@ export async function solicitarLiberacaoConflito(
   });
   await notificarPushbird(
     "Liberação de servo pendente",
-    `${pessoaNome} já é servo ativo em "${missaoOrigemNome}" e está sendo cadastrado em "${missaoDestinoNome}". Código de liberação: ${codigo} (válido por 15 min).`
+    `${pessoa.nome} já é servo ativo em "${missaoOrigemNome}" e está sendo cadastrado em "${missaoDestino.nome}". Código de liberação: ${codigo} (válido por 15 min).`
   );
   return { ok: true } as const;
 }

@@ -37,17 +37,17 @@ export default function ServoFormClient({
     if (state?.conflito) setUltimoConflito(state.conflito);
   }
 
+  if (state?.ok && ultimoConflito) {
+    setUltimoConflito(null);
+    setSolicitado(false);
+    setCodigo("");
+  }
+
   const conflitoExibido = ultimoConflito ?? state?.conflito;
 
   async function solicitarLiberacao() {
     if (!conflitoExibido) return;
-    await solicitarLiberacaoConflito(
-      conflitoExibido.pessoaId,
-      conflitoExibido.missaoId,
-      pessoaNome,
-      conflitoExibido.missaoConflitoNome,
-      "esta missão"
-    );
+    await solicitarLiberacaoConflito(conflitoExibido.pessoaId, conflitoExibido.missaoId);
     setSolicitado(true);
   }
 
@@ -81,6 +81,7 @@ export default function ServoFormClient({
         </div>
       )}
       {state?.error && <p className="text-[var(--signal)] text-sm">{state.error}</p>}
+      {state?.ok && <p className="text-sm text-[var(--ink-soft)]/70">Salvo.</p>}
       <button disabled={pending} className="btn-primary px-6 py-2">
         {pending ? "Salvando..." : "Salvar"}
       </button>
