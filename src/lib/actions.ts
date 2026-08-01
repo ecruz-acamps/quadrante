@@ -7,6 +7,8 @@ import { db } from "./db";
 import { createSession, destroySession, requireUser, requireRole, setMissaoAtiva } from "./auth";
 import { normalizarNome } from "./nomes";
 import { edicaoDe } from "./missoes";
+import { gerarCodigo6Digitos } from "./conflitoServo";
+import { notificarPushbird } from "./notificacoes";
 
 // ---------- auth ----------
 export async function loginAction(_prev: unknown, formData: FormData) {
@@ -362,6 +364,31 @@ export async function excluirServo(formData: FormData) {
   await requireUser();
   await db.servo.delete({ where: { id: Number(formData.get("id")) } });
   revalidatePath("/servos");
+}
+
+// ---------- liberação de conflito de servo ----------
+export async function solicitarLiberacaoConflito(
+  pessoaId: number,
+  missaoId: number,
+  pessoaNome: string,
+  missaoOrigemNome: string,
+  missaoDestinoNome: string
+) {
+  await requireUser();
+  const codigo = gerarCodigo6Digitos();
+  await db.liberacaoConflitoServo.create({
+    data: {
+      pessoaId,
+      missaoId,
+      codigo,
+      expiraEm: new Date(Date.now() + 15 * 60 * 1000),
+    },
+  });
+  await notificarPushbird(
+    "Liberação de servo pendente",
+    `${pessoaNome} já é servo ativo em "${missaoOrigemNome}" e está sendo cadastrado em "${missaoDestinoNome}". Código de liberação: ${codigo} (válido por 15 min).`
+  );
+  return { ok: true } as const;
 }
 
 // ---------- cerco (público) ----------
