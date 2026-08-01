@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { atualizarServoInline } from "@/lib/actions";
-import { CAMISETAS, FUNCOES } from "@/lib/constants";
+import { CAMISETAS, FUNCOES, HORARIOS_CERCO } from "@/lib/constants";
 
 export function CamisetaInlineSelect({ servoId, camiseta }: { servoId: number; camiseta: string | null }) {
   const [valor, setValor] = useState(camiseta ?? "");
@@ -51,6 +51,33 @@ export function FuncaoInlineSelect({ servoId, funcao }: { servoId: number; funca
       {FUNCOES.map((f) => (
         <option key={f} value={f}>
           {f}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+export function CercoInlineSelect({ servoId, cercoHorario }: { servoId: number; cercoHorario: string | null }) {
+  const [valor, setValor] = useState(cercoHorario ?? "");
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <select
+      value={valor}
+      disabled={pending}
+      onChange={(e) => {
+        const novo = e.target.value;
+        setValor(novo);
+        startTransition(() => {
+          atualizarServoInline(servoId, { cercoHorario: novo || null });
+        });
+      }}
+      className="input py-1 text-xs"
+    >
+      <option value="">—</option>
+      {HORARIOS_CERCO.map((h) => (
+        <option key={h} value={h}>
+          {h}
         </option>
       ))}
     </select>

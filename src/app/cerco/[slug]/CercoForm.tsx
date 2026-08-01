@@ -92,33 +92,33 @@ export default function CercoForm({
           Escolha sua hora de adoração{" "}
           <span className="text-[var(--ink-soft)]/60 font-normal">(máx. {MAX_POR_HORARIO} pessoas por horário)</span>
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-          {HORARIOS_CERCO.map((h) => {
+        {HORARIOS_CERCO.every((h) => (ocupados[h] || 0) >= MAX_POR_HORARIO) ? (
+          <p className="text-sm text-[var(--signal)]">Todos os horários já estão lotados.</p>
+        ) : (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
+          {HORARIOS_CERCO.filter((h) => (ocupados[h] || 0) < MAX_POR_HORARIO).map((h) => {
             const qtd = ocupados[h] || 0;
-            const cheio = qtd >= MAX_POR_HORARIO;
             const selecionado = horario === h;
             return (
               <button
                 key={h}
                 type="button"
-                disabled={cheio}
                 onClick={() => setHorario(h)}
-                className={`rounded px-3 py-2 flex justify-between text-sm border transition-colors ${
+                className={`rounded px-2 py-1 flex flex-col items-center text-xs border transition-colors ${
                   selecionado
                     ? "bg-[var(--brass-bright)] border-[var(--brass-bright)] text-[var(--ink)]"
-                    : cheio
-                    ? "bg-[var(--signal)]/10 border-[var(--signal)]/30 text-[var(--signal)] cursor-not-allowed"
                     : "bg-[var(--card)] border-[var(--line)] text-[var(--ink)]"
                 }`}
               >
-                <span>{h}</span>
-                <span className="font-mono font-semibold">
+                <span className="font-medium">{h}</span>
+                <span className="font-mono text-[0.65rem] opacity-70">
                   {qtd}/{MAX_POR_HORARIO}
                 </span>
               </button>
             );
           })}
         </div>
+        )}
       </div>
 
       {state && "error" in state && state.error && (

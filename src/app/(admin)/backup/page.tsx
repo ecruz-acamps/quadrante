@@ -1,4 +1,5 @@
-import { requireRole } from "@/lib/auth";
+import { requireRole, getMissaoAtiva } from "@/lib/auth";
+import CercoPublicoToggle from "./CercoPublicoToggle";
 
 export default async function BackupPage({
   searchParams,
@@ -8,6 +9,7 @@ export default async function BackupPage({
   await requireRole("SUPER");
   const { drive } = await searchParams;
   const driveConectado = Boolean(process.env.GOOGLE_DRIVE_REFRESH_TOKEN);
+  const missao = await getMissaoAtiva();
 
   return (
     <div className="max-w-2xl">
@@ -39,6 +41,20 @@ export default async function BackupPage({
           Baixar .env
         </a>
       </div>
+
+      {missao && (
+        <div className="card p-4 mt-4">
+          <p className="text-sm text-[var(--ink-soft)]/80 mb-4">
+            Controla se o link público do Cerco de Jericó (<code>/cerco/{missao.cercoSlug}</code>)
+            aceita novas inscrições. Ao tirar do ar, quem acessar o link vê um aviso de
+            &quot;inscrições encerradas&quot; — o resto do app continua funcionando normalmente.
+          </p>
+          <p className="text-xs text-[var(--ink-soft)]/60 mb-4">
+            Status: {missao.cercoPublicado ? "publicado" : "fora do ar"}
+          </p>
+          <CercoPublicoToggle missaoId={missao.id} cercoPublicado={missao.cercoPublicado} />
+        </div>
+      )}
 
       <div className="card p-4 mt-4">
         <p className="text-sm text-[var(--ink-soft)]/80 mb-2">

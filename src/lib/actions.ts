@@ -473,6 +473,12 @@ export async function solicitarLiberacaoConflito(pessoaId: number, missaoId: num
   return { ok: true } as const;
 }
 
+export async function marcarDesistiu(formData: FormData) {
+  await requireUser();
+  await db.servo.update({ where: { id: Number(formData.get("id")) }, data: { status: "DESISTIU" } });
+  revalidatePath("/servos");
+}
+
 // ---------- cerco (público) ----------
 const CERCO_MAX_POR_HORARIO = 15;
 
@@ -501,6 +507,7 @@ export async function inscreverCerco(_prev: unknown, formData: FormData) {
 
   const missao = await db.missao.findUnique({ where: { id: missaoId } });
   if (!missao) return { error: "Missão não encontrada." };
+  if (!missao.cercoPublicado) return { error: "Inscrições encerradas no momento." };
 
   const servosDaMissao = await db.servo.findMany({
     where: { missaoId, status: "ATIVO" },
@@ -529,6 +536,12 @@ export async function inscreverCerco(_prev: unknown, formData: FormData) {
     where: { id: existente.id },
     data: { setor, cercoHorario: horario },
   });
+
+  notificarPushbird(
+    "Cerco de Jericó",
+    `${existente.pessoa.nome} (${setor}) escolheu ${horario}h`,
+    missao.nome
+  );
 
   revalidatePath(`/cerco/${missao.cercoSlug}`);
   revalidatePath("/cerco-dashboard");
@@ -921,4 +934,12 @@ export async function ignorarDuplicata(formData: FormData) {
     create: { pessoa1Id, pessoa2Id },
   });
   revalidatePath("/duplicatas");
+}
+
+// ---------- cerco público ----------
+export async function alternarCercoPublicado(missaoId: number, publicado: boolean) {
+  await requireRole("SUPER");
+  await db.missao.update({ where: { id: missaoId }, data: { cercoPublicado: publicado } });
+  revalidatePath("/backup");
+  revalidatePath("/cerco/[slug]", "page");
 }

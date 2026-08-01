@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { excluirServo } from "@/lib/actions";
 import { FUNCOES } from "@/lib/constants";
 import AdicionarServoModal from "./AdicionarServoModal";
-import { CamisetaInlineSelect, PagoInlineSelect, FuncaoInlineSelect } from "./ServoInlineEdit";
+import SetorCard from "./SetorCard";
+import { CamisetaInlineSelect, PagoInlineSelect, FuncaoInlineSelect, CercoInlineSelect } from "./ServoInlineEdit";
+import ExcluirDesistiuButtons from "./ExcluirDesistiuButtons";
 
 export default async function ServosPage({
   searchParams,
@@ -76,13 +77,11 @@ export default async function ServosPage({
       </form>
 
       {[...grupos.entries()].map(([setorNome, lista]) => (
-        <div key={setorNome} className="mb-6 card overflow-hidden">
-          <div className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 font-medium text-sm flex items-center justify-between">
-            <span>
-              {setorNome} ({lista.length})
-            </span>
-            <AdicionarServoModal missaoId={missao.id} setor={setorNome} />
-          </div>
+        <SetorCard
+          key={setorNome}
+          titulo={`${setorNome} (${lista.length})`}
+          acao={<AdicionarServoModal missaoId={missao.id} setor={setorNome} />}
+        >
           {lista.length === 0 ? (
             <p className="px-4 py-4 text-sm text-[var(--ink-soft)]/60">Nenhum servo neste setor ainda.</p>
           ) : (
@@ -117,7 +116,9 @@ export default async function ServosPage({
                     <td className="px-4 py-2">
                       <CamisetaInlineSelect servoId={s.id} camiseta={s.camiseta} />
                     </td>
-                    <td className="px-4 py-2">{s.cercoHorario || "—"}</td>
+                    <td className="px-4 py-2">
+                      <CercoInlineSelect servoId={s.id} cercoHorario={s.cercoHorario} />
+                    </td>
                     <td className="px-4 py-2">
                       <PagoInlineSelect servoId={s.id} pago={s.pago} />
                     </td>
@@ -125,10 +126,7 @@ export default async function ServosPage({
                       <Link href={`/servos/${s.id}`} className="btn-link">
                         Editar
                       </Link>
-                      <form action={excluirServo} className="inline">
-                        <input type="hidden" name="id" value={s.id} />
-                        <button className="btn-danger-link">Excluir</button>
-                      </form>
+                      <ExcluirDesistiuButtons servoId={s.id} />
                     </td>
                   </tr>
                 ))}
@@ -136,7 +134,7 @@ export default async function ServosPage({
             </table>
             </div>
           )}
-        </div>
+        </SetorCard>
       ))}
       {grupos.size === 0 && <p className="text-[var(--ink-soft)]/60">Nenhum setor encontrado.</p>}
     </div>

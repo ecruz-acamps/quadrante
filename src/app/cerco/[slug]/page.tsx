@@ -7,6 +7,20 @@ export default async function CercoPublicoPage({ params }: { params: Promise<{ s
   const missao = await db.missao.findUnique({ where: { cercoSlug: slug } });
   if (!missao) notFound();
 
+  if (!missao.cercoPublicado) {
+    return (
+      <main className="min-h-screen bg-[var(--ink)] p-4 md:p-10 flex items-center justify-center">
+        <div className="max-w-md text-center">
+          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-[var(--brass-bright)] mb-2">
+            {missao.nome}
+          </p>
+          <h1 className="font-[var(--font-spectral)] text-3xl text-[var(--paper)] mb-3">Cerco de Jericó</h1>
+          <p className="text-sm text-[var(--paper)]/70">Inscrições encerradas no momento.</p>
+        </div>
+      </main>
+    );
+  }
+
   const setores = await db.setor.findMany({ orderBy: { nome: "asc" } });
 
   const ocupacao = await db.servo.groupBy({

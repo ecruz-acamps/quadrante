@@ -26,6 +26,7 @@ model Missao {
   valorInterna  Float  @default(160)
   valorExterna  Float  @default(80)
   valorCampista Float  @default(300)
+  cercoPublicado Boolean @default(true)
   mes           Int?    // mês real do acampamento (1-12) — só para checagem de proximidade entre missões
   anoCalendario Int?    // ano-calendário real (ex: 2026) — não confundir com o campo `ano` (edição), que não muda
 

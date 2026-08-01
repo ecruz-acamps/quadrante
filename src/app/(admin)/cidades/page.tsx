@@ -1,5 +1,6 @@
 import { getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
+import CidadeCard from "./CidadeCard";
 
 export default async function CidadesPage({
   searchParams,
@@ -28,19 +29,7 @@ export default async function CidadesPage({
       <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Servos por Cidade</h1>
       <div className="grid md:grid-cols-2 gap-4">
         {ordenado.map(([nomeCidade, lista]) => (
-          <div key={nomeCidade} className="card overflow-hidden">
-            <div className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 text-sm font-medium">
-              {nomeCidade} ({lista.length})
-            </div>
-            <ul className="divide-y divide-[var(--line)] text-sm">
-              {lista.map((s) => (
-                <li key={s.id} className="px-4 py-2 flex justify-between">
-                  <span>{s.pessoa.nome}</span>
-                  <span className="text-[var(--ink-soft)]/60">{s.setor}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <CidadeCard key={nomeCidade} nomeCidade={nomeCidade} servos={lista} />
         ))}
       </div>
       {ordenado.length === 0 && <p className="text-[var(--ink-soft)]/60">Nenhum servo encontrado.</p>}

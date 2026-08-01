@@ -20,18 +20,27 @@ export default async function Home() {
     );
   }
 
-  const [servos, fichas, comCerco, pagos] = await Promise.all([
+  const [servos, fichas, comCerco, pagos, semHorario] = await Promise.all([
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO" } }),
     db.neocampista.count({ where: { missaoId: missao.id } }),
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO", cercoHorario: { not: null } } }),
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO", pago: true } }),
+    db.servo.findMany({
+      where: { missaoId: missao.id, status: "ATIVO", cercoHorario: null },
+      include: { pessoa: true },
+      orderBy: { pessoa: { nome: "asc" } },
+    }),
   ]);
   const horariosOcupados = await db.servo.groupBy({
     by: ["cercoHorario"],
-    where: { missaoId: missao.id, cercoHorario: { not: null } },
+    where: { missaoId: missao.id, status: "ATIVO", cercoHorario: { not: null } },
+    _count: true,
   });
-  const setOcupados = new Set(horariosOcupados.map((h) => h.cercoHorario));
-  const buracos = HORARIOS_CERCO.filter((h) => !setOcupados.has(h)).length;
+  const contagemPorHorario = new Map(horariosOcupados.map((h) => [h.cercoHorario, h._count]));
+  const buracos = HORARIOS_CERCO.filter((h) => !contagemPorHorario.has(h)).length;
+  const horariosCriticos = HORARIOS_CERCO.map((h) => ({ horario: h, qtd: contagemPorHorario.get(h) ?? 0 })).filter(
+    (h) => h.qtd <= 2,
+  );
 
   const cards = [
     ["Servos ativos", servos, "/servos"],
@@ -58,6 +67,34 @@ export default async function Home() {
           </Link>
         ))}
       </div>
+
+      <div className="stat-card mt-4">
+        <div className="stat-value">{semHorario.length}</div>
+        <div className="stat-label">Servos sem horário no Cerco</div>
+        {semHorario.length > 0 && (
+          <ul className="mt-3 max-h-40 overflow-y-auto text-sm text-[var(--ink-soft)]/80 space-y-1">
+            {semHorario.map((s) => (
+              <li key={s.id}>
+                {s.pessoa.nome} <span className="text-[var(--ink-soft)]/50">— {s.setor}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {horariosCriticos.length > 0 && (
+        <div className="stat-card mt-4 border-l-4 border-[var(--signal)] bg-[var(--signal)]/5">
+          <div className="stat-value text-[var(--signal)]">{horariosCriticos.length}</div>
+          <div className="stat-label">Horários com 2 ou menos pessoas no Cerco</div>
+          <ul className="mt-3 max-h-40 overflow-y-auto text-sm text-[var(--ink-soft)]/80 space-y-1">
+            {horariosCriticos.map((h) => (
+              <li key={h.horario}>
+                {h.horario} <span className="text-[var(--ink-soft)]/50">— {h.qtd} pessoa(s)</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
