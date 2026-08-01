@@ -295,6 +295,23 @@ export async function adicionarServoRapido(formData: FormData) {
     return { error: "Selecione uma pessoa ou digite um nome." };
   }
 
+  const conflito = await checarConflitoServo(pessoaId, missaoId);
+  if (conflito) {
+    const codigo = String(formData.get("codigoLiberacao") || "") || null;
+    const liberado = await validarELiberarCodigo(pessoaId, missaoId, codigo);
+    if (!liberado) {
+      if (codigo) return { error: "Código de liberação inválido ou expirado." };
+      return {
+        conflito: {
+          pessoaId,
+          missaoId,
+          missaoConflitoNome: conflito.missaoConflitoNome,
+          distancia: conflito.distancia,
+        },
+      };
+    }
+  }
+
   await db.servo.create({
     data: { missaoId, pessoaId, setor, funcao: "INTEGRANTE", status: "ATIVO" },
   });
