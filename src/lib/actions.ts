@@ -305,12 +305,11 @@ export async function adicionarServoRapido(formData: FormData) {
 // valida um código de liberação de conflito; se válido, marca como usado e retorna true.
 async function validarELiberarCodigo(pessoaId: number, missaoId: number, codigo: string | null) {
   if (!codigo) return false;
-  const registro = await db.liberacaoConflitoServo.findFirst({
+  const resultado = await db.liberacaoConflitoServo.updateMany({
     where: { pessoaId, missaoId, codigo, usado: false, expiraEm: { gt: new Date() } },
+    data: { usado: true },
   });
-  if (!registro) return false;
-  await db.liberacaoConflitoServo.update({ where: { id: registro.id }, data: { usado: true } });
-  return true;
+  return resultado.count === 1;
 }
 
 export async function criarServo(_prevState: unknown, formData: FormData) {
@@ -324,23 +323,29 @@ export async function criarServo(_prevState: unknown, formData: FormData) {
   const nome = normalizarNome(String(formData.get("nome")));
 
   if (status === "ATIVO") {
-    const pessoaExistente = await db.pessoa.findFirst({ where: { nome } });
-    if (pessoaExistente) {
-      const conflito = await checarConflitoServo(pessoaExistente.id, missaoId);
+    const candidatos = await db.pessoa.findMany({ where: { nome } });
+    let conflitoEncontrado: { pessoaId: number; conflito: NonNullable<Awaited<ReturnType<typeof checarConflitoServo>>> } | null = null;
+    for (const candidato of candidatos) {
+      const conflito = await checarConflitoServo(candidato.id, missaoId);
       if (conflito) {
-        const codigo = s("codigoLiberacao");
-        const liberado = await validarELiberarCodigo(pessoaExistente.id, missaoId, codigo);
-        if (!liberado) {
-          if (codigo) return { error: "Código de liberação inválido ou expirado." };
-          return {
-            conflito: {
-              pessoaId: pessoaExistente.id,
-              missaoId,
-              missaoConflitoNome: conflito.missaoConflitoNome,
-              distancia: conflito.distancia,
-            },
-          };
-        }
+        conflitoEncontrado = { pessoaId: candidato.id, conflito };
+        break;
+      }
+    }
+    if (conflitoEncontrado) {
+      const { pessoaId: pessoaConflitoId, conflito } = conflitoEncontrado;
+      const codigo = s("codigoLiberacao");
+      const liberado = await validarELiberarCodigo(pessoaConflitoId, missaoId, codigo);
+      if (!liberado) {
+        if (codigo) return { error: "Código de liberação inválido ou expirado." };
+        return {
+          conflito: {
+            pessoaId: pessoaConflitoId,
+            missaoId,
+            missaoConflitoNome: conflito.missaoConflitoNome,
+            distancia: conflito.distancia,
+          },
+        };
       }
     }
   }

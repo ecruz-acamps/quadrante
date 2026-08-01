@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { solicitarLiberacaoConflito } from "@/lib/actions";
 
 type ConflitoState = {
@@ -29,14 +29,21 @@ export default function ServoFormClient({
   );
   const [solicitado, setSolicitado] = useState(false);
   const [codigo, setCodigo] = useState("");
+  const [ultimoConflito, setUltimoConflito] = useState(state?.conflito ?? null);
+
+  useEffect(() => {
+    if (state?.conflito) setUltimoConflito(state.conflito);
+  }, [state?.conflito]);
+
+  const conflitoExibido = ultimoConflito ?? state?.conflito;
 
   async function solicitarLiberacao() {
-    if (!state?.conflito) return;
+    if (!conflitoExibido) return;
     await solicitarLiberacaoConflito(
-      state.conflito.pessoaId,
-      state.conflito.missaoId,
+      conflitoExibido.pessoaId,
+      conflitoExibido.missaoId,
       pessoaNome,
-      state.conflito.missaoConflitoNome,
+      conflitoExibido.missaoConflitoNome,
       "esta missão"
     );
     setSolicitado(true);
@@ -45,11 +52,11 @@ export default function ServoFormClient({
   return (
     <form action={formAction} className="card p-6 space-y-4">
       {children}
-      {state?.conflito && (
+      {conflitoExibido && (
         <div className="border border-[var(--signal)] rounded p-3 text-sm space-y-2">
           <p>
-            {pessoaNome} já é servo ativo em <strong>{state.conflito.missaoConflitoNome}</strong>, a{" "}
-            {state.conflito.distancia} mês(es) de distância desta missão.
+            {pessoaNome} já é servo ativo em <strong>{conflitoExibido.missaoConflitoNome}</strong>, a{" "}
+            {conflitoExibido.distancia} mês(es) de distância desta missão.
           </p>
           {!solicitado ? (
             <button type="button" onClick={solicitarLiberacao} className="btn-primary px-3 py-1 text-sm">
