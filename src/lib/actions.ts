@@ -7,7 +7,7 @@ import { db } from "./db";
 import { createSession, destroySession, requireUser, requireRole, setMissaoAtiva } from "./auth";
 import { normalizarNome } from "./nomes";
 import { edicaoDe } from "./missoes";
-import { gerarCodigo6Digitos } from "./conflitoServo";
+import { gerarCodigo6Digitos, checarConflitoServo } from "./conflitoServo";
 import { notificarPushbird } from "./notificacoes";
 
 // ---------- auth ----------
@@ -302,16 +302,52 @@ export async function adicionarServoRapido(formData: FormData) {
   return { ok: true };
 }
 
-export async function criarServo(formData: FormData) {
+// valida um código de liberação de conflito; se válido, marca como usado e retorna true.
+async function validarELiberarCodigo(pessoaId: number, missaoId: number, codigo: string | null) {
+  if (!codigo) return false;
+  const registro = await db.liberacaoConflitoServo.findFirst({
+    where: { pessoaId, missaoId, codigo, usado: false, expiraEm: { gt: new Date() } },
+  });
+  if (!registro) return false;
+  await db.liberacaoConflitoServo.update({ where: { id: registro.id }, data: { usado: true } });
+  return true;
+}
+
+export async function criarServo(_prevState: unknown, formData: FormData) {
   await requireUser();
   const missaoId = Number(formData.get("missaoId"));
+  const status = String(formData.get("status") || "ATIVO");
   const s = (k: string) => {
     const v = formData.get(k);
     return v === null || v === "" ? null : String(v);
   };
+  const nome = normalizarNome(String(formData.get("nome")));
+
+  if (status === "ATIVO") {
+    const pessoaExistente = await db.pessoa.findFirst({ where: { nome } });
+    if (pessoaExistente) {
+      const conflito = await checarConflitoServo(pessoaExistente.id, missaoId);
+      if (conflito) {
+        const codigo = s("codigoLiberacao");
+        const liberado = await validarELiberarCodigo(pessoaExistente.id, missaoId, codigo);
+        if (!liberado) {
+          if (codigo) return { error: "Código de liberação inválido ou expirado." };
+          return {
+            conflito: {
+              pessoaId: pessoaExistente.id,
+              missaoId,
+              missaoConflitoNome: conflito.missaoConflitoNome,
+              distancia: conflito.distancia,
+            },
+          };
+        }
+      }
+    }
+  }
+
   const pessoa = await db.pessoa.create({
     data: {
-      nome: normalizarNome(String(formData.get("nome"))),
+      nome,
       cpf: s("cpf"),
       celular: s("celular"),
       endereco: s("endereco"),
@@ -324,16 +360,38 @@ export async function criarServo(formData: FormData) {
   });
   await db.servo.create({ data: { missaoId, pessoaId: pessoa.id, ...servoData(formData) } });
   revalidatePath("/servos");
+  return { ok: true } as const;
 }
 
-export async function atualizarServo(formData: FormData) {
+export async function atualizarServo(_prevState: unknown, formData: FormData) {
   await requireUser();
   const id = Number(formData.get("id"));
   const servo = await db.servo.findUniqueOrThrow({ where: { id } });
+  const status = String(formData.get("status") || "ATIVO");
   const s = (k: string) => {
     const v = formData.get(k);
     return v === null || v === "" ? null : String(v);
   };
+
+  if (status === "ATIVO") {
+    const conflito = await checarConflitoServo(servo.pessoaId, servo.missaoId);
+    if (conflito) {
+      const codigo = s("codigoLiberacao");
+      const liberado = await validarELiberarCodigo(servo.pessoaId, servo.missaoId, codigo);
+      if (!liberado) {
+        if (codigo) return { error: "Código de liberação inválido ou expirado." };
+        return {
+          conflito: {
+            pessoaId: servo.pessoaId,
+            missaoId: servo.missaoId,
+            missaoConflitoNome: conflito.missaoConflitoNome,
+            distancia: conflito.distancia,
+          },
+        };
+      }
+    }
+  }
+
   await db.pessoa.update({
     where: { id: servo.pessoaId },
     data: {
