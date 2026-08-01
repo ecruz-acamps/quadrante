@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { solicitarLiberacaoConflito } from "@/lib/actions";
 
 type ConflitoState = {
@@ -30,10 +30,12 @@ export default function ServoFormClient({
   const [solicitado, setSolicitado] = useState(false);
   const [codigo, setCodigo] = useState("");
   const [ultimoConflito, setUltimoConflito] = useState(state?.conflito ?? null);
+  const [prevStateConflito, setPrevStateConflito] = useState(state?.conflito ?? null);
 
-  useEffect(() => {
+  if (state?.conflito !== prevStateConflito) {
+    setPrevStateConflito(state?.conflito ?? null);
     if (state?.conflito) setUltimoConflito(state.conflito);
-  }, [state?.conflito]);
+  }
 
   const conflitoExibido = ultimoConflito ?? state?.conflito;
 
