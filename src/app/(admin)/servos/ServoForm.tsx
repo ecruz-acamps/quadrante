@@ -1,18 +1,18 @@
-import { db } from "@/lib/db";
 import { CAMISETAS, FUNCOES, HORARIOS_CERCO, PAGAMENTOS } from "@/lib/constants";
 import type { Pessoa, Servo } from "@prisma/client";
 import NomeSetorAlerta from "./NomeSetorAlerta";
 
-export default async function ServoForm({
+export default function ServoForm({
   servo,
   pessoa,
   missaoId,
+  setores,
 }: {
   servo?: Servo;
   pessoa?: Pessoa;
   missaoId?: number;
+  setores: { id: number; nome: string }[];
 }) {
-  const setores = await db.setor.findMany({ orderBy: { nome: "asc" } });
   const sel = "input";
   const simNao = (name: string, value?: string | null) => (
     <select name={name} defaultValue={value ?? ""} className={sel}>

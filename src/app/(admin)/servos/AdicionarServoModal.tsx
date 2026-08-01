@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { buscarPessoasGlobal, adicionarServoRapido } from "@/lib/actions";
+import { buscarPessoasGlobal, adicionarServoRapido, solicitarLiberacaoConflito } from "@/lib/actions";
 
 type Sugestao = Awaited<ReturnType<typeof buscarPessoasGlobal>>[number];
 
@@ -18,6 +18,14 @@ export default function AdicionarServoModal({ missaoId, setor }: { missaoId: num
   const [selecionada, setSelecionada] = useState<Sugestao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [conflito, setConflito] = useState<{
+    pessoaId: number;
+    missaoId: number;
+    missaoConflitoNome: string;
+    distancia: number;
+  } | null>(null);
+  const [codigoLiberacao, setCodigoLiberacao] = useState("");
+  const [liberacaoSolicitada, setLiberacaoSolicitada] = useState(false);
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +41,9 @@ export default function AdicionarServoModal({ missaoId, setor }: { missaoId: num
     setMostrarSugestoes(false);
     setSelecionada(null);
     setErro(null);
+    setConflito(null);
+    setCodigoLiberacao("");
+    setLiberacaoSolicitada(false);
   }
 
   useEffect(() => {
@@ -86,15 +97,26 @@ export default function AdicionarServoModal({ missaoId, setor }: { missaoId: num
       setEnviando(false);
       return;
     }
+    if (codigoLiberacao) formData.set("codigoLiberacao", codigoLiberacao);
 
     const resultado = await adicionarServoRapido(formData);
     setEnviando(false);
+    if (resultado && "conflito" in resultado && resultado.conflito) {
+      setConflito(resultado.conflito);
+      return;
+    }
     if (resultado && "error" in resultado && resultado.error) {
       setErro(resultado.error);
       return;
     }
     fechar();
     router.refresh();
+  }
+
+  async function solicitarLiberacao() {
+    if (!conflito) return;
+    await solicitarLiberacaoConflito(conflito.pessoaId, conflito.missaoId);
+    setLiberacaoSolicitada(true);
   }
 
   return (
@@ -203,6 +225,27 @@ export default function AdicionarServoModal({ missaoId, setor }: { missaoId: num
                       </li>
                     ))}
                   </ul>
+                )}
+              </div>
+            )}
+
+            {conflito && (
+              <div className="border border-[var(--signal)] rounded p-3 text-sm space-y-2">
+                <p>
+                  Já é servo ativo em <strong>{conflito.missaoConflitoNome}</strong>, a {conflito.distancia}{" "}
+                  mês(es) de distância.
+                </p>
+                {!liberacaoSolicitada ? (
+                  <button type="button" onClick={solicitarLiberacao} className="btn-primary px-3 py-1 text-sm">
+                    Solicitar liberação da coordenação
+                  </button>
+                ) : (
+                  <input
+                    value={codigoLiberacao}
+                    onChange={(e) => setCodigoLiberacao(e.target.value)}
+                    placeholder="Código de 6 dígitos"
+                    className="input"
+                  />
                 )}
               </div>
             )}

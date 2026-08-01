@@ -7,6 +7,8 @@ import { db } from "./db";
 import { createSession, destroySession, requireUser, requireRole, setMissaoAtiva } from "./auth";
 import { normalizarNome } from "./nomes";
 import { edicaoDe } from "./missoes";
+import { gerarCodigo6Digitos, checarConflitoServo } from "./conflitoServo";
+import { notificarPushbird } from "./notificacoes";
 
 // ---------- auth ----------
 export async function loginAction(_prev: unknown, formData: FormData) {
@@ -28,11 +30,15 @@ export async function logoutAction() {
 // ---------- missões ----------
 export async function criarMissao(formData: FormData) {
   await requireRole("SUPER");
+  const mesRaw = formData.get("mes");
+  const anoCalendarioRaw = formData.get("anoCalendario");
   const m = await db.missao.create({
     data: {
       nome: String(formData.get("nome")),
       tipo: String(formData.get("tipo")),
       ano: Number(formData.get("ano")),
+      mes: mesRaw ? Number(mesRaw) : null,
+      anoCalendario: anoCalendarioRaw ? Number(anoCalendarioRaw) : null,
       cercoSlug: String(formData.get("cercoSlug")).toLowerCase().replace(/[^a-z0-9-]/g, ""),
       valorInterna: Number(formData.get("valorInterna") || 160),
       valorExterna: Number(formData.get("valorExterna") || 80),
@@ -41,6 +47,32 @@ export async function criarMissao(formData: FormData) {
   });
   await setMissaoAtiva(m.id);
   revalidatePath("/");
+}
+
+export async function atualizarMissao(
+  _prevState: unknown,
+  formData: FormData
+): Promise<{ error: string } | { ok: true }> {
+  await requireRole("SUPER");
+  const id = Number(formData.get("id"));
+  const mesRaw = formData.get("mes");
+  const anoCalendarioRaw = formData.get("anoCalendario");
+  await db.missao.update({
+    where: { id },
+    data: {
+      nome: String(formData.get("nome")),
+      tipo: String(formData.get("tipo")),
+      ano: Number(formData.get("ano")),
+      mes: mesRaw ? Number(mesRaw) : null,
+      anoCalendario: anoCalendarioRaw ? Number(anoCalendarioRaw) : null,
+      cercoSlug: String(formData.get("cercoSlug")).toLowerCase().replace(/[^a-z0-9-]/g, ""),
+      valorInterna: Number(formData.get("valorInterna") || 160),
+      valorExterna: Number(formData.get("valorExterna") || 80),
+      valorCampista: Number(formData.get("valorCampista") || 300),
+    },
+  });
+  revalidatePath("/missoes");
+  return { ok: true } as const;
 }
 
 export async function excluirMissao(formData: FormData) {
@@ -56,6 +88,7 @@ export async function excluirMissao(formData: FormData) {
     db.neocampista.deleteMany({ where: { missaoId: id } }),
     db.tribo.deleteMany({ where: { missaoId: id } }),
     db.servo.deleteMany({ where: { missaoId: id } }),
+    db.liberacaoConflitoServo.deleteMany({ where: { missaoId: id } }),
     db.missao.delete({ where: { id } }),
   ]);
 
@@ -263,6 +296,23 @@ export async function adicionarServoRapido(formData: FormData) {
     return { error: "Selecione uma pessoa ou digite um nome." };
   }
 
+  const conflito = await checarConflitoServo(pessoaId, missaoId);
+  if (conflito) {
+    const codigo = String(formData.get("codigoLiberacao") || "") || null;
+    const liberado = await validarELiberarCodigo(pessoaId, missaoId, codigo);
+    if (!liberado) {
+      if (codigo) return { error: "Código de liberação inválido ou expirado." };
+      return {
+        conflito: {
+          pessoaId,
+          missaoId,
+          missaoConflitoNome: conflito.missaoConflitoNome,
+          distancia: conflito.distancia,
+        },
+      };
+    }
+  }
+
   await db.servo.create({
     data: { missaoId, pessoaId, setor, funcao: "INTEGRANTE", status: "ATIVO" },
   });
@@ -270,16 +320,57 @@ export async function adicionarServoRapido(formData: FormData) {
   return { ok: true };
 }
 
-export async function criarServo(formData: FormData) {
+// valida um código de liberação de conflito; se válido, marca como usado e retorna true.
+async function validarELiberarCodigo(pessoaId: number, missaoId: number, codigo: string | null) {
+  if (!codigo) return false;
+  const resultado = await db.liberacaoConflitoServo.updateMany({
+    where: { pessoaId, missaoId, codigo, usado: false, expiraEm: { gt: new Date() } },
+    data: { usado: true },
+  });
+  return resultado.count === 1;
+}
+
+export async function criarServo(_prevState: unknown, formData: FormData) {
   await requireUser();
   const missaoId = Number(formData.get("missaoId"));
+  const status = String(formData.get("status") || "ATIVO");
   const s = (k: string) => {
     const v = formData.get(k);
     return v === null || v === "" ? null : String(v);
   };
+  const nome = normalizarNome(String(formData.get("nome")));
+
+  if (status === "ATIVO") {
+    const candidatos = await db.pessoa.findMany({ where: { nome } });
+    let conflitoEncontrado: { pessoaId: number; conflito: NonNullable<Awaited<ReturnType<typeof checarConflitoServo>>> } | null = null;
+    for (const candidato of candidatos) {
+      const conflito = await checarConflitoServo(candidato.id, missaoId);
+      if (conflito) {
+        conflitoEncontrado = { pessoaId: candidato.id, conflito };
+        break;
+      }
+    }
+    if (conflitoEncontrado) {
+      const { pessoaId: pessoaConflitoId, conflito } = conflitoEncontrado;
+      const codigo = s("codigoLiberacao");
+      const liberado = await validarELiberarCodigo(pessoaConflitoId, missaoId, codigo);
+      if (!liberado) {
+        if (codigo) return { error: "Código de liberação inválido ou expirado." };
+        return {
+          conflito: {
+            pessoaId: pessoaConflitoId,
+            missaoId,
+            missaoConflitoNome: conflito.missaoConflitoNome,
+            distancia: conflito.distancia,
+          },
+        };
+      }
+    }
+  }
+
   const pessoa = await db.pessoa.create({
     data: {
-      nome: normalizarNome(String(formData.get("nome"))),
+      nome,
       cpf: s("cpf"),
       celular: s("celular"),
       endereco: s("endereco"),
@@ -292,16 +383,38 @@ export async function criarServo(formData: FormData) {
   });
   await db.servo.create({ data: { missaoId, pessoaId: pessoa.id, ...servoData(formData) } });
   revalidatePath("/servos");
+  return { ok: true } as const;
 }
 
-export async function atualizarServo(formData: FormData) {
+export async function atualizarServo(_prevState: unknown, formData: FormData) {
   await requireUser();
   const id = Number(formData.get("id"));
   const servo = await db.servo.findUniqueOrThrow({ where: { id } });
+  const status = String(formData.get("status") || "ATIVO");
   const s = (k: string) => {
     const v = formData.get(k);
     return v === null || v === "" ? null : String(v);
   };
+
+  if (status === "ATIVO" && servo.status !== "ATIVO") {
+    const conflito = await checarConflitoServo(servo.pessoaId, servo.missaoId);
+    if (conflito) {
+      const codigo = s("codigoLiberacao");
+      const liberado = await validarELiberarCodigo(servo.pessoaId, servo.missaoId, codigo);
+      if (!liberado) {
+        if (codigo) return { error: "Código de liberação inválido ou expirado." };
+        return {
+          conflito: {
+            pessoaId: servo.pessoaId,
+            missaoId: servo.missaoId,
+            missaoConflitoNome: conflito.missaoConflitoNome,
+            distancia: conflito.distancia,
+          },
+        };
+      }
+    }
+  }
+
   await db.pessoa.update({
     where: { id: servo.pessoaId },
     data: {
@@ -321,10 +434,11 @@ export async function atualizarServo(formData: FormData) {
 
 export async function atualizarServoInline(
   servoId: number,
-  dados: { camiseta?: string | null; pago?: boolean; funcao?: string }
+  dados: { camiseta?: string | null; pago?: boolean; funcao?: string; cercoHorario?: string | null }
 ) {
   await requireUser();
-  await db.servo.update({ where: { id: servoId }, data: dados });
+  const { camiseta, pago, funcao, cercoHorario } = dados;
+  await db.servo.update({ where: { id: servoId }, data: { camiseta, pago, funcao, cercoHorario } });
   revalidatePath("/servos");
 }
 
@@ -332,6 +446,31 @@ export async function excluirServo(formData: FormData) {
   await requireUser();
   await db.servo.delete({ where: { id: Number(formData.get("id")) } });
   revalidatePath("/servos");
+}
+
+// ---------- liberação de conflito de servo ----------
+export async function solicitarLiberacaoConflito(pessoaId: number, missaoId: number) {
+  await requireUser();
+  const [pessoa, missaoDestino] = await Promise.all([
+    db.pessoa.findUniqueOrThrow({ where: { id: pessoaId } }),
+    db.missao.findUniqueOrThrow({ where: { id: missaoId } }),
+  ]);
+  const conflito = await checarConflitoServo(pessoaId, missaoId);
+  const missaoOrigemNome = conflito?.missaoConflitoNome ?? "outra missão";
+  const codigo = gerarCodigo6Digitos();
+  await db.liberacaoConflitoServo.create({
+    data: {
+      pessoaId,
+      missaoId,
+      codigo,
+      expiraEm: new Date(Date.now() + 15 * 60 * 1000),
+    },
+  });
+  await notificarPushbird(
+    "Liberação de servo pendente",
+    `${pessoa.nome} já é servo ativo em "${missaoOrigemNome}" e está sendo cadastrado em "${missaoDestino.nome}". Código de liberação: ${codigo} (válido por 15 min).`
+  );
+  return { ok: true } as const;
 }
 
 // ---------- cerco (público) ----------

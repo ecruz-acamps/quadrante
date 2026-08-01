@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { criarMissao, selecionarMissao } from "@/lib/actions";
-import { TIPOS_MISSAO } from "@/lib/constants";
+import { TIPOS_MISSAO, MESES } from "@/lib/constants";
 import { requireRole } from "@/lib/auth";
 import ExcluirMissaoButton from "./ExcluirMissaoButton";
 
@@ -21,8 +21,9 @@ export default async function MissoesPage() {
             <div>
               <div className="font-medium">{m.nome}</div>
               <div className="text-sm text-[var(--ink-soft)]/60">
-                {m.tipo} · {m.ano} · {m._count.servos} servos · {m._count.neocampistas} neocampistas ·
-                cerco: /cerco/{m.cercoSlug}
+                {m.tipo} · {m.ano}
+                {m.mes && m.anoCalendario ? ` · ${MESES.find((x) => x.value === m.mes)?.label}/${m.anoCalendario}` : ""} ·{" "}
+                {m._count.servos} servos · {m._count.neocampistas} neocampistas · cerco: /cerco/{m.cercoSlug}
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -30,6 +31,9 @@ export default async function MissoesPage() {
                 <input type="hidden" name="id" value={m.id} />
                 <button className="text-sm btn-primary px-3 py-1">Ativar</button>
               </form>
+              <a href={`/missoes/${m.id}`} className="text-sm underline text-[var(--brass)]">
+                Editar
+              </a>
               <ExcluirMissaoButton id={m.id} nome={m.nome} />
             </div>
           </div>
@@ -46,6 +50,15 @@ export default async function MissoesPage() {
           ))}
         </select>
         <input name="ano" type="number" required placeholder="Ano" className="input" />
+        <select name="mes" className="input" defaultValue="">
+          <option value="">Mês (opcional)</option>
+          {MESES.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+        <input name="anoCalendario" type="number" placeholder="Ano-calendário (ex: 2026, opcional)" className="input" />
         <input name="cercoSlug" required placeholder="Slug do cerco (ex: cercosenior22)" className="input col-span-2" />
         <input name="valorInterna" type="number" step="0.01" placeholder="Valor eq. interna (160)" className="input" />
         <input name="valorExterna" type="number" step="0.01" placeholder="Valor eq. externa (80)" className="input" />
