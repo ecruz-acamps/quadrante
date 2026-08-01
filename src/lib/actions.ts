@@ -28,11 +28,15 @@ export async function logoutAction() {
 // ---------- missões ----------
 export async function criarMissao(formData: FormData) {
   await requireRole("SUPER");
+  const mesRaw = formData.get("mes");
+  const anoCalendarioRaw = formData.get("anoCalendario");
   const m = await db.missao.create({
     data: {
       nome: String(formData.get("nome")),
       tipo: String(formData.get("tipo")),
       ano: Number(formData.get("ano")),
+      mes: mesRaw ? Number(mesRaw) : null,
+      anoCalendario: anoCalendarioRaw ? Number(anoCalendarioRaw) : null,
       cercoSlug: String(formData.get("cercoSlug")).toLowerCase().replace(/[^a-z0-9-]/g, ""),
       valorInterna: Number(formData.get("valorInterna") || 160),
       valorExterna: Number(formData.get("valorExterna") || 80),
