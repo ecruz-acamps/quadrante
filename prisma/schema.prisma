@@ -26,11 +26,14 @@ model Missao {
   valorInterna  Float  @default(160)
   valorExterna  Float  @default(80)
   valorCampista Float  @default(300)
+  mes           Int?    // mês real do acampamento (1-12) — só para checagem de proximidade entre missões
+  anoCalendario Int?    // ano-calendário real (ex: 2026) — não confundir com o campo `ano` (edição), que não muda
 
   servos       Servo[]
   neocampistas Neocampista[]
   tribos       Tribo[]
   usuarios     UsuarioMissao[]
+  liberacoesConflito LiberacaoConflitoServo[]
 }
 
 // vínculo de acesso: quais missões um usuário ADMIN pode ver/editar (SUPER não usa isso)
@@ -59,6 +62,7 @@ model Pessoa {
   aniversario String?
 
   servos Servo[]
+  liberacoesConflito LiberacaoConflitoServo[]
 }
 
 model Servo {
@@ -183,4 +187,20 @@ model Paroquia {
   paroquia String
 
   @@unique([cidade, bairro])
+}
+
+// código de liberação temporário pra cadastrar servo ATIVO em missão com conflito de proximidade
+model LiberacaoConflitoServo {
+  id       Int      @id @default(autoincrement())
+  pessoaId Int
+  missaoId Int // missão de destino onde o servo está sendo cadastrado
+  codigo   String
+  criadoEm DateTime @default(now())
+  expiraEm DateTime
+  usado    Boolean  @default(false)
+
+  pessoa Pessoa @relation(fields: [pessoaId], references: [id])
+  missao Missao @relation(fields: [missaoId], references: [id])
+
+  @@index([pessoaId, missaoId])
 }
