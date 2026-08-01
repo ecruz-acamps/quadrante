@@ -31,6 +31,9 @@ export default async function MissoesPage() {
                 <input type="hidden" name="id" value={m.id} />
                 <button className="text-sm btn-primary px-3 py-1">Ativar</button>
               </form>
+              <a href={`/missoes/${m.id}`} className="text-sm underline text-[var(--brass)]">
+                Editar
+              </a>
               <ExcluirMissaoButton id={m.id} nome={m.nome} />
             </div>
           </div>

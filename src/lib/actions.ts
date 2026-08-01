@@ -47,6 +47,32 @@ export async function criarMissao(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function atualizarMissao(
+  _prevState: unknown,
+  formData: FormData
+): Promise<{ error: string } | { ok: true }> {
+  await requireRole("SUPER");
+  const id = Number(formData.get("id"));
+  const mesRaw = formData.get("mes");
+  const anoCalendarioRaw = formData.get("anoCalendario");
+  await db.missao.update({
+    where: { id },
+    data: {
+      nome: String(formData.get("nome")),
+      tipo: String(formData.get("tipo")),
+      ano: Number(formData.get("ano")),
+      mes: mesRaw ? Number(mesRaw) : null,
+      anoCalendario: anoCalendarioRaw ? Number(anoCalendarioRaw) : null,
+      cercoSlug: String(formData.get("cercoSlug")).toLowerCase().replace(/[^a-z0-9-]/g, ""),
+      valorInterna: Number(formData.get("valorInterna") || 160),
+      valorExterna: Number(formData.get("valorExterna") || 80),
+      valorCampista: Number(formData.get("valorCampista") || 300),
+    },
+  });
+  revalidatePath("/missoes");
+  return { ok: true } as const;
+}
+
 export async function excluirMissao(formData: FormData) {
   await requireRole("SUPER");
   const id = Number(formData.get("id"));
