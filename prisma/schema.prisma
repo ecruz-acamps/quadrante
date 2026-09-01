@@ -7,6 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model PushbirdDevice {
+  id                Int     @id @default(autoincrement())
+  nome              String
+  webhookUrl        String
+  notificarConflito Boolean @default(true) // liberação de servo (MFA de conflito ao adicionar)
+  notificarCerco    Boolean @default(true) // pessoa escolheu horário no Cerco de Jericó
+}
+
 model Usuario {
   id    Int    @id @default(autoincrement())
   nome  String
@@ -84,6 +92,8 @@ model Servo {
   pago           Boolean @default(false)
   observacoes    String?
   cercoHorario   String? // "00:00 - 01:00" ... ou null
+  motivoDesistiu String?
+  motivoRecusou  String?
 
   missao Missao @relation(fields: [missaoId], references: [id])
   pessoa Pessoa @relation(fields: [pessoaId], references: [id])

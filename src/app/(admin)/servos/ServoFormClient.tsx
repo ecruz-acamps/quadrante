@@ -32,7 +32,7 @@ export default function ServoFormClient({
   const [ultimoConflito, setUltimoConflito] = useState(state?.conflito ?? null);
   const [prevStateConflito, setPrevStateConflito] = useState(state?.conflito ?? null);
 
-  if (state?.conflito !== prevStateConflito) {
+  if ((state?.conflito ?? null) !== prevStateConflito) {
     setPrevStateConflito(state?.conflito ?? null);
     if (state?.conflito) setUltimoConflito(state.conflito);
   }

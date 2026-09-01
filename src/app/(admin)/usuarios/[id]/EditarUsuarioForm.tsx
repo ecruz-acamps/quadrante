@@ -7,11 +7,9 @@ import MissaoCheckboxes from "../MissaoCheckboxes";
 export default function EditarUsuarioForm({
   usuario,
   missoes,
-  ehVoceMesmo,
 }: {
   usuario: { id: number; nome: string; role: string; missaoIds: number[] };
   missoes: { id: number; nome: string }[];
-  ehVoceMesmo: boolean;
 }) {
   const [state, action, pending] = useActionState(atualizarUsuario, null);
 
@@ -24,14 +22,12 @@ export default function EditarUsuarioForm({
         <option value="SUPER">SUPER (acesso total)</option>
       </select>
       <MissaoCheckboxes missoes={missoes} selecionadas={usuario.missaoIds} />
-      {ehVoceMesmo && (
-        <input
-          name="novaSenha"
-          type="password"
-          placeholder="Nova senha (deixe em branco para não alterar)"
-          className="input col-span-2"
-        />
-      )}
+      <input
+        name="novaSenha"
+        type="password"
+        placeholder="Nova senha (deixe em branco para não alterar)"
+        className="input col-span-2"
+      />
       {state && "error" in state && state.error && (
         <p className="col-span-2 text-[var(--signal)] text-sm">{state.error}</p>
       )}

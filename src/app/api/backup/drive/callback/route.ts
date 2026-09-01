@@ -19,16 +19,16 @@ export async function GET(req: NextRequest) {
   store.delete(STATE_COOKIE);
 
   if (!code || !state || !expectedState || state !== expectedState) {
-    redirect("/backup?drive=erro");
+    redirect("/configuracoes?drive=erro");
   }
 
   const tokens = await exchangeCodeForToken(code!, getDriveRedirectUri());
   if (!tokens.refresh_token) {
     // Google só emite refresh_token na primeira autorização (ou com prompt=consent,
     // que já forçamos); se não veio, oriente a revogar o acesso e tentar de novo.
-    redirect("/backup?drive=sem-refresh-token");
+    redirect("/configuracoes?drive=sem-refresh-token");
   }
 
   await setEnvValue("GOOGLE_DRIVE_REFRESH_TOKEN", tokens.refresh_token!);
-  redirect("/backup?drive=conectado");
+  redirect("/configuracoes?drive=conectado");
 }

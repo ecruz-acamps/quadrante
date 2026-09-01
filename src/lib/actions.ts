@@ -320,6 +320,75 @@ export async function adicionarServoRapido(formData: FormData) {
   return { ok: true };
 }
 
+// missões SENIOR que têm neocampistas cadastrados — para escolher de onde puxar a Evangelização
+export async function listarMissoesComNeocampistas() {
+  await requireUser();
+  const missoes = await db.missao.findMany({
+    where: { neocampistas: { some: { situacao: "OK" } } },
+    orderBy: { id: "desc" },
+    include: { _count: { select: { neocampistas: true } } },
+  });
+  return missoes.map((m) => ({
+    id: m.id,
+    nome: m.nome,
+    ano: m.ano,
+    tipo: m.tipo,
+    totalNeocampistas: m._count.neocampistas,
+  }));
+}
+
+// puxa todos os neocampistas (situação OK) de uma missão de origem e os adiciona
+// como servos no setor Evangelização da missão de destino (a ativa no momento)
+export async function chamarEvangelizacao(missaoOrigemId: number, missaoDestinoId: number) {
+  await requireUser();
+  const fichas = await db.neocampista.findMany({ where: { missaoId: missaoOrigemId, situacao: "OK" } });
+
+  let adicionados = 0;
+  let jaEstavam = 0;
+  let comConflito = 0;
+
+  for (const ficha of fichas) {
+    const nomeNormalizado = normalizarNome(ficha.nome);
+    let pessoa = await db.pessoa.findFirst({ where: { nome: { equals: nomeNormalizado } } });
+    if (!pessoa) {
+      pessoa = await db.pessoa.create({
+        data: {
+          nome: nomeNormalizado,
+          endereco: ficha.endereco,
+          bairro: ficha.bairro,
+          cidade: ficha.cidade,
+          celular: ficha.celular,
+          sexo: ficha.sexo,
+          camiseta: ficha.camiseta,
+          cpf: ficha.cpf,
+        },
+      });
+    }
+
+    const jaExiste = await db.servo.findUnique({
+      where: { missaoId_pessoaId: { missaoId: missaoDestinoId, pessoaId: pessoa.id } },
+    });
+    if (jaExiste) {
+      jaEstavam++;
+      continue;
+    }
+
+    const conflito = await checarConflitoServo(pessoa.id, missaoDestinoId);
+    if (conflito) {
+      comConflito++;
+      continue;
+    }
+
+    await db.servo.create({
+      data: { missaoId: missaoDestinoId, pessoaId: pessoa.id, setor: "EVANGELIZAÇÃO", funcao: "INTEGRANTE", status: "ATIVO" },
+    });
+    adicionados++;
+  }
+
+  revalidatePath("/servos");
+  return { adicionados, jaEstavam, comConflito, total: fichas.length };
+}
+
 // valida um código de liberação de conflito; se válido, marca como usado e retorna true.
 async function validarELiberarCodigo(pessoaId: number, missaoId: number, codigo: string | null) {
   if (!codigo) return false;
@@ -467,6 +536,7 @@ export async function solicitarLiberacaoConflito(pessoaId: number, missaoId: num
     },
   });
   await notificarPushbird(
+    "conflito",
     "Liberação de servo pendente",
     `${pessoa.nome} já é servo ativo em "${missaoOrigemNome}" e está sendo cadastrado em "${missaoDestino.nome}". Código de liberação: ${codigo} (válido por 15 min).`
   );
@@ -475,8 +545,42 @@ export async function solicitarLiberacaoConflito(pessoaId: number, missaoId: num
 
 export async function marcarDesistiu(formData: FormData) {
   await requireUser();
-  await db.servo.update({ where: { id: Number(formData.get("id")) }, data: { status: "DESISTIU" } });
+  const motivo = String(formData.get("motivo") || "").trim();
+  await db.servo.update({
+    where: { id: Number(formData.get("id")) },
+    data: { status: "DESISTIU", motivoDesistiu: motivo || null },
+  });
   revalidatePath("/servos");
+  revalidatePath("/registros");
+}
+
+export async function marcarRecusou(formData: FormData) {
+  await requireUser();
+  const motivo = String(formData.get("motivo") || "").trim();
+  await db.servo.update({
+    where: { id: Number(formData.get("id")) },
+    data: { status: "RECUSOU", motivoRecusou: motivo || null },
+  });
+  revalidatePath("/servos");
+  revalidatePath("/registros");
+}
+
+// ---------- formação (3 formações por missão) ----------
+export async function marcarFormacao(formData: FormData) {
+  await requireUser();
+  const servoId = Number(formData.get("servoId"));
+  const numero = Number(formData.get("numero")); // 1 | 2 | 3
+  const presente = formData.get("presente") === "true";
+  const motivo = String(formData.get("motivo") || "").trim();
+  if (![1, 2, 3].includes(numero)) return;
+
+  const campo = `formacao${numero}` as "formacao1" | "formacao2" | "formacao3";
+  const data: Record<string, string | null> = { [campo]: presente ? "SIM" : "Não" };
+  if (!presente) data.motivoFalta = motivo || null;
+
+  await db.servo.update({ where: { id: servoId }, data });
+  revalidatePath("/formacao");
+  revalidatePath("/registros");
 }
 
 // ---------- cerco (público) ----------
@@ -538,6 +642,7 @@ export async function inscreverCerco(_prev: unknown, formData: FormData) {
   });
 
   notificarPushbird(
+    "cerco",
     "Cerco de Jericó",
     `${existente.pessoa.nome} (${setor}) escolheu ${horario}h`,
     missao.nome
@@ -892,11 +997,11 @@ export async function atualizarUsuario(_prev: unknown, formData: FormData) {
   if (role === "ADMIN" && missaoIds.length === 0) {
     return { error: "Selecione ao menos uma missão para este usuário." };
   }
-  if (id === atual.id && novaSenha && novaSenha.length < 4) {
+  if (novaSenha && novaSenha.length < 4) {
     return { error: "A nova senha precisa ter pelo menos 4 caracteres." };
   }
 
-  const senhaHash = id === atual.id && novaSenha ? await bcrypt.hash(novaSenha, 10) : undefined;
+  const senhaHash = novaSenha ? await bcrypt.hash(novaSenha, 10) : undefined;
 
   await db.$transaction([
     db.usuario.update({ where: { id }, data: { nome, role, ...(senhaHash ? { senha: senhaHash } : {}) } }),
@@ -940,6 +1045,47 @@ export async function ignorarDuplicata(formData: FormData) {
 export async function alternarCercoPublicado(missaoId: number, publicado: boolean) {
   await requireRole("SUPER");
   await db.missao.update({ where: { id: missaoId }, data: { cercoPublicado: publicado } });
-  revalidatePath("/backup");
+  revalidatePath("/configuracoes");
   revalidatePath("/cerco/[slug]", "page");
+}
+
+// ---------- dispositivos Pushbird (notificações push) ----------
+export async function criarPushbirdDevice(formData: FormData) {
+  await requireRole("SUPER");
+  const nome = String(formData.get("nome") || "").trim();
+  const webhookUrl = String(formData.get("webhookUrl") || "").trim();
+  if (!nome || !webhookUrl) return;
+  await db.pushbirdDevice.create({
+    data: {
+      nome,
+      webhookUrl,
+      notificarConflito: formData.get("notificarConflito") === "on",
+      notificarCerco: formData.get("notificarCerco") === "on",
+    },
+  });
+  revalidatePath("/configuracoes");
+}
+
+export async function atualizarPushbirdDevice(formData: FormData) {
+  await requireRole("SUPER");
+  const id = Number(formData.get("id"));
+  const nome = String(formData.get("nome") || "").trim();
+  const webhookUrl = String(formData.get("webhookUrl") || "").trim();
+  if (!id || !nome || !webhookUrl) return;
+  await db.pushbirdDevice.update({
+    where: { id },
+    data: {
+      nome,
+      webhookUrl,
+      notificarConflito: formData.get("notificarConflito") === "on",
+      notificarCerco: formData.get("notificarCerco") === "on",
+    },
+  });
+  revalidatePath("/configuracoes");
+}
+
+export async function excluirPushbirdDevice(formData: FormData) {
+  await requireRole("SUPER");
+  await db.pushbirdDevice.delete({ where: { id: Number(formData.get("id")) } });
+  revalidatePath("/configuracoes");
 }

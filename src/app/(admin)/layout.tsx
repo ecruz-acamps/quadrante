@@ -6,6 +6,7 @@ import AdminShell from "./AdminShell";
 const NAV = [
   ["/", "Início", false],
   ["/servos", "Quadrante de Servos", false],
+  ["/formacao", "Formação", false],
   ["/cerco-dashboard", "Cerco de Jericó", false],
   ["/camisetas", "Camisetas", false],
   ["/setores", "Por Setor", false],
@@ -19,7 +20,7 @@ const NAV = [
   ["/duplicatas", "Possíveis Duplicatas", true],
   ["/missoes", "Missões", true],
   ["/usuarios", "Usuários", true],
-  ["/backup", "Backup", true],
+  ["/configuracoes", "Configurações", true],
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -3,6 +3,7 @@ import { getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { FUNCOES } from "@/lib/constants";
 import AdicionarServoModal from "./AdicionarServoModal";
+import ChamarEvangelizacaoModal from "./ChamarEvangelizacaoModal";
 import SetorCard from "./SetorCard";
 import { CamisetaInlineSelect, PagoInlineSelect, FuncaoInlineSelect, CercoInlineSelect } from "./ServoInlineEdit";
 import ExcluirDesistiuButtons from "./ExcluirDesistiuButtons";
@@ -60,9 +61,12 @@ export default async function ServosPage({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)]">Quadrante de Servos</h1>
-        <Link href="/servos/novo" className="btn-primary px-4 py-2 text-sm">
-          + Novo servo
-        </Link>
+        <div className="flex items-center gap-2">
+          <ChamarEvangelizacaoModal missaoDestinoId={missao.id} />
+          <Link href="/servos/novo" className="btn-primary px-4 py-2 text-sm">
+            + Novo servo
+          </Link>
+        </div>
       </div>
 
       <form className="flex flex-wrap gap-3 mb-6">
