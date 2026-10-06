@@ -2,6 +2,9 @@ import { getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { HORARIOS_CERCO } from "@/lib/constants";
 import Link from "next/link";
+import { IconClipboard, IconAlert, IconClock, IconCheck } from "../DashboardIcons";
+
+const MINIMO_POR_HORARIO = 2;
 
 export default async function CercoDashboardPage() {
   const missao = await getMissaoAtiva();
@@ -30,7 +33,41 @@ export default async function CercoDashboardPage() {
   }
 
   const buracos = HORARIOS_CERCO.filter((h) => (porHorario.get(h)?.length || 0) === 0);
+  const cobertos = HORARIOS_CERCO.length - buracos.length;
   const totalInscritos = servos.length - semHorario;
+
+  const kpis = [
+    {
+      label: "Inscritos no Cerco",
+      value: totalInscritos,
+      icon: IconClipboard,
+      color: "var(--ink)",
+      soft: "color-mix(in srgb, var(--ink) 10%, var(--card))",
+    },
+    {
+      label: "Servos sem horário",
+      value: semHorario,
+      icon: IconAlert,
+      color: "var(--signal)",
+      soft: "var(--signal-soft)",
+    },
+    {
+      label: "Horários vazios (24h)",
+      value: buracos.length,
+      icon: IconAlert,
+      color: "var(--amber)",
+      soft: "var(--amber-soft)",
+    },
+    {
+      label: "Horários cobertos",
+      value: `${cobertos}/24`,
+      icon: IconCheck,
+      color: "var(--success)",
+      soft: "var(--success-soft)",
+      pct: Math.round((cobertos / 24) * 100),
+      barColor: "var(--success)",
+    },
+  ];
 
   return (
     <div>
@@ -46,74 +83,96 @@ export default async function CercoDashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="stat-card">
-          <div className="stat-value">{totalInscritos}</div>
-          <div className="stat-label">Inscritos no Cerco</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{semHorario}</div>
-          <div className="stat-label">Servos sem horário</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{buracos.length}</div>
-          <div className="stat-label">Horários vazios (24h)</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{HORARIOS_CERCO.length - buracos.length}/24</div>
-          <div className="stat-label">Horários cobertos</div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {kpis.map((k) => {
+          const Icon = k.icon;
+          return (
+            <div key={k.label} className="kpi-card flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="kpi-icon" style={{ background: k.soft, color: k.color }}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                {k.pct !== undefined && (
+                  <span className="text-xs font-semibold" style={{ color: k.color }}>
+                    {k.pct}%
+                  </span>
+                )}
+              </div>
+              <div>
+                <div className="kpi-value">{k.value}</div>
+                <div className="kpi-label">{k.label}</div>
+              </div>
+              {k.pct !== undefined && (
+                <div className="kpi-bar-track">
+                  <div className="kpi-bar-fill" style={{ width: `${Math.min(k.pct, 100)}%`, background: k.barColor }} />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
-
-      {buracos.length > 0 && (
-        <div className="bg-[var(--signal)]/10 border border-[var(--signal)]/30 rounded-lg p-4 mb-6 text-sm text-[var(--signal)]">
-          <strong>Horários sem ninguém: </strong>
-          {buracos.join(", ")}
-        </div>
-      )}
 
       <div className="mb-6">
         <div className="card overflow-hidden">
           <div className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 text-sm font-medium">Servos por Setor no Cerco</div>
           <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <tbody className="divide-y divide-[var(--line)]">
-              {[...porSetor.entries()].sort((a, b) => b[1] - a[1]).map(([setor, qtd]) => (
-                <tr key={setor}>
-                  <td className="px-4 py-2">{setor}</td>
-                  <td className="px-4 py-2">{qtd}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-[var(--line)]">
+                {[...porSetor.entries()].sort((a, b) => b[1] - a[1]).map(([setor, qtd]) => (
+                  <tr key={setor}>
+                    <td className="px-4 py-2">{setor}</td>
+                    <td className="px-4 py-2">{qtd}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      <div className="card overflow-hidden">
-        <div className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 text-sm font-medium">Grade 24 horas</div>
-        <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-[var(--paper)] text-[var(--ink-soft)]/60">
-            <tr>
-              <th className="text-left px-4 py-2">Horário</th>
-              <th className="text-left px-4 py-2">Qtd.</th>
-              <th className="text-left px-4 py-2">Servos</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--line)]">
-            {HORARIOS_CERCO.map((h) => {
-              const lista = porHorario.get(h) || [];
-              return (
-                <tr key={h} className={lista.length === 0 ? "bg-[var(--signal)]/5" : ""}>
-                  <td className="px-4 py-2 font-medium">{h}</td>
-                  <td className="px-4 py-2">{lista.length}</td>
-                  <td className="px-4 py-2">{lista.map((s) => s.pessoa.nome).join(", ") || "—"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-[var(--font-spectral)] text-lg text-[var(--ink)]">Grade 24 horas</h2>
+          <div className="flex items-center gap-4 text-xs text-[var(--ink-soft)]/60">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: "var(--success)" }} /> completo (≥ {MINIMO_POR_HORARIO})
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: "var(--signal)" }} /> incompleto
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full border border-[var(--line)]" style={{ background: "var(--paper)" }} /> vazio
+            </span>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
+          {HORARIOS_CERCO.map((h) => {
+            const lista = porHorario.get(h) || [];
+            const vazio = lista.length === 0;
+            const completo = lista.length >= MINIMO_POR_HORARIO;
+            const bg = vazio ? "var(--card)" : completo ? "var(--success-soft)" : "var(--signal-soft)";
+            const border = vazio ? "var(--line)" : completo ? "color-mix(in srgb, var(--success) 35%, transparent)" : "color-mix(in srgb, var(--signal) 35%, transparent)";
+            const dot = vazio ? "var(--line)" : completo ? "var(--success)" : "var(--signal)";
+            const valueColor = vazio ? "var(--ink-soft)" : completo ? "var(--success)" : "var(--signal)";
+            return (
+              <div
+                key={h}
+                className="horario-card flex flex-col gap-2"
+                style={{ background: bg, borderColor: border }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[var(--ink-soft)]/70">{h}</span>
+                  <span className="w-2 h-2 rounded-full" style={{ background: dot }} />
+                </div>
+                <div className="text-xl font-bold" style={{ fontFamily: "var(--font-plex-mono), monospace", color: valueColor }}>
+                  {lista.length}
+                </div>
+                <div className="text-[0.7rem] text-[var(--ink-soft)]/60 leading-snug line-clamp-2 min-h-[2.1em]">
+                  {lista.map((s) => s.pessoa.nome).join(", ") || "Ninguém escalado"}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

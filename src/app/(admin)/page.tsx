@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { HORARIOS_CERCO } from "@/lib/constants";
+import { IconUsers, IconClipboard, IconClock, IconAlert, IconCoin } from "./DashboardIcons";
 
 export default async function Home() {
   const missao = await getMissaoAtiva();
@@ -42,13 +43,54 @@ export default async function Home() {
     (h) => h.qtd <= 2,
   );
 
-  const cards = [
-    ["Servos ativos", servos, "/servos"],
-    ["Neocampistas", fichas, "/fichas"],
-    ["Servos no Cerco", `${comCerco}/${servos}`, "/cerco-dashboard"],
-    ["Horários vazios no Cerco", buracos, "/cerco-dashboard"],
-    ["Servos que pagaram", `${pagos}/${servos}`, "/financeiro"],
-  ] as const;
+  const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 100) : 0);
+
+  const kpis = [
+    {
+      label: "Servos ativos",
+      value: servos,
+      href: "/servos",
+      icon: IconUsers,
+      color: "var(--ink)",
+      soft: "color-mix(in srgb, var(--ink) 10%, var(--card))",
+    },
+    {
+      label: "Neocampistas inscritos",
+      value: fichas,
+      href: "/fichas",
+      icon: IconClipboard,
+      color: "var(--brass)",
+      soft: "var(--amber-soft)",
+    },
+    {
+      label: "Escalados no Cerco",
+      value: `${comCerco}/${servos}`,
+      href: "/cerco-dashboard",
+      icon: IconClock,
+      color: "var(--purple)",
+      soft: "var(--purple-soft)",
+      pct: pct(comCerco, servos),
+      barColor: "var(--purple)",
+    },
+    {
+      label: "Horários vagos no Cerco",
+      value: buracos,
+      href: "/cerco-dashboard",
+      icon: IconAlert,
+      color: "var(--signal)",
+      soft: "var(--signal-soft)",
+    },
+    {
+      label: "Servos que pagaram",
+      value: `${pagos}/${servos}`,
+      href: "/financeiro",
+      icon: IconCoin,
+      color: "var(--success)",
+      soft: "var(--success-soft)",
+      pct: pct(pagos, servos),
+      barColor: "var(--success)",
+    },
+  ];
 
   return (
     <div>
@@ -59,37 +101,94 @@ export default async function Home() {
           /cerco/{missao.cercoSlug}
         </Link>
       </p>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {cards.map(([label, value, href]) => (
-          <Link key={label} href={href} className="stat-card hover:shadow-md transition-shadow">
-            <div className="stat-value">{value}</div>
-            <div className="stat-label">{label}</div>
-          </Link>
-        ))}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {kpis.map((k) => {
+          const Icon = k.icon;
+          return (
+            <Link
+              key={k.label}
+              href={k.href}
+              className="kpi-card hover:-translate-y-0.5 hover:shadow-lg transition-all flex flex-col gap-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="kpi-icon" style={{ background: k.soft, color: k.color }}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                {k.pct !== undefined && (
+                  <span className="text-xs font-semibold" style={{ color: k.color }}>
+                    {k.pct}%
+                  </span>
+                )}
+              </div>
+              <div>
+                <div className="kpi-value">{k.value}</div>
+                <div className="kpi-label">{k.label}</div>
+              </div>
+              {k.pct !== undefined && (
+                <div className="kpi-bar-track">
+                  <div
+                    className="kpi-bar-fill"
+                    style={{ width: `${Math.min(k.pct, 100)}%`, background: k.barColor }}
+                  />
+                </div>
+              )}
+            </Link>
+          );
+        })}
       </div>
 
-      <div className="stat-card mt-4">
-        <div className="stat-value">{semHorario.length}</div>
-        <div className="stat-label">Servos sem horário no Cerco</div>
-        {semHorario.length > 0 && (
-          <ul className="mt-3 max-h-40 overflow-y-auto text-sm text-[var(--ink-soft)]/80 space-y-1">
+      {semHorario.length > 0 && (
+        <div className="kpi-card mt-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="kpi-icon" style={{ background: "var(--signal-soft)", color: "var(--signal)" }}>
+              <IconAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="kpi-value text-2xl">{semHorario.length}</div>
+              <div className="kpi-label">Servos sem horário no Cerco</div>
+            </div>
+          </div>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {semHorario.map((s) => (
-              <li key={s.id}>
-                {s.pessoa.nome} <span className="text-[var(--ink-soft)]/50">— {s.setor}</span>
+              <li
+                key={s.id}
+                className="flex items-center justify-between gap-2 text-sm bg-[var(--signal-soft)] border border-[var(--signal)]/15 rounded-lg px-3 py-2"
+              >
+                <span className="truncate">
+                  <span className="font-medium text-[var(--ink-soft)]">{s.pessoa.nome}</span>{" "}
+                  <span className="text-[var(--ink-soft)]/50">— {s.setor}</span>
+                </span>
+                <span className="shrink-0 text-[0.65rem] uppercase tracking-wide font-semibold text-[var(--signal)]">
+                  pendente
+                </span>
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        </div>
+      )}
 
       {horariosCriticos.length > 0 && (
-        <div className="stat-card mt-4 border-l-4 border-[var(--signal)] bg-[var(--signal)]/5">
-          <div className="stat-value text-[var(--signal)]">{horariosCriticos.length}</div>
-          <div className="stat-label">Horários com 2 ou menos pessoas no Cerco</div>
-          <ul className="mt-3 max-h-40 overflow-y-auto text-sm text-[var(--ink-soft)]/80 space-y-1">
+        <div className="kpi-card mt-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="kpi-icon" style={{ background: "var(--amber-soft)", color: "var(--amber)" }}>
+              <IconClock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="kpi-value text-2xl" style={{ color: "var(--amber)" }}>
+                {horariosCriticos.length}
+              </div>
+              <div className="kpi-label">Horários com 2 ou menos pessoas no Cerco</div>
+            </div>
+          </div>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {horariosCriticos.map((h) => (
-              <li key={h.horario}>
-                {h.horario} <span className="text-[var(--ink-soft)]/50">— {h.qtd} pessoa(s)</span>
+              <li
+                key={h.horario}
+                className="flex items-center justify-between gap-2 text-sm bg-[var(--amber-soft)] border border-[var(--amber)]/20 rounded-lg px-3 py-2"
+              >
+                <span className="font-medium text-[var(--ink-soft)]">{h.horario}</span>
+                <span className="text-[var(--amber)] font-semibold">{h.qtd} pessoa(s)</span>
               </li>
             ))}
           </ul>

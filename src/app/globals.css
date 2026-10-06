@@ -13,6 +13,16 @@
   /* vermelho das línguas de fogo do Espírito Santo — alerta/cheio e toques pontuais */
   --signal: #a4291f;
   --line: #dcd6c4;
+  /* verde da esperança litúrgica — indicadores positivos/completos */
+  --success: #2f6b4f;
+  --success-soft: #e7f1ec;
+  /* roxo da penitência/Advento — pagamentos */
+  --purple: #5b3a7a;
+  --purple-soft: #efe9f4;
+  /* laranja — destaques */
+  --amber: #c2703a;
+  --amber-soft: #f7ece0;
+  --signal-soft: #f7e6e3;
 }
 
 @theme inline {
@@ -24,6 +34,9 @@
   --color-brass-bright: var(--brass-bright);
   --color-signal: var(--signal);
   --color-line: var(--line);
+  --color-success: var(--success);
+  --color-purple: var(--purple);
+  --color-amber: var(--amber);
   --color-background: var(--paper);
   --color-foreground: var(--ink-soft);
   --font-display: var(--font-spectral);
@@ -78,6 +91,52 @@ body {
     font-size: 0.8rem;
     color: var(--ink-soft);
     opacity: 0.7;
+  }
+
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 2px rgba(26, 53, 114, 0.04), 0 8px 20px -12px rgba(26, 53, 114, 0.12);
+  }
+  .kpi-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .kpi-value {
+    font-family: var(--font-plex-mono), monospace;
+    font-size: 2rem;
+    line-height: 1.1;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .kpi-label {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    opacity: 0.65;
+    font-weight: 500;
+  }
+  .kpi-bar-track {
+    height: 0.375rem;
+    border-radius: 999px;
+    background: var(--paper);
+    overflow: hidden;
+  }
+  .kpi-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+  }
+
+  .horario-card {
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
   }
 
   .table-shell {
