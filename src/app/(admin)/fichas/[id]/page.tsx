@@ -10,7 +10,7 @@ export default async function EditarFichaPage({ params }: { params: Promise<{ id
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Editar ficha #{ficha.numero}</h1>
+      <h1 className="page-title mb-6">Editar ficha #{ficha.numero}</h1>
       <form action={atualizarFicha} className="card p-6 space-y-4">
         <input type="hidden" name="id" value={ficha.id} />
         <FichaForm ficha={ficha} />

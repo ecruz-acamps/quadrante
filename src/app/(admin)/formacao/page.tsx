@@ -35,7 +35,7 @@ export default async function FormacaoPage() {
 
   return (
     <div>
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Formação</h1>
+      <h1 className="page-title mb-6">Formação</h1>
 
       {[...grupos.entries()].map(([setorNome, lista]) => (
         <SetorCard key={setorNome} titulo={`${setorNome} (${lista.length})`} acao={null}>
@@ -44,7 +44,7 @@ export default async function FormacaoPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-[var(--paper)] text-[var(--ink-soft)]/60">
+                <thead className="qd-thead">
                   <tr>
                     <th className="text-left px-4 py-2">Nome</th>
                     <th className="text-left px-4 py-2">1ª Formação</th>

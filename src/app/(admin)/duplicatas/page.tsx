@@ -91,7 +91,7 @@ export default async function DuplicatasPage() {
 
   return (
     <div>
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-2">Possíveis Duplicatas</h1>
+      <h1 className="page-title mb-2">Possíveis Duplicatas</h1>
       <p className="text-sm text-[var(--ink-soft)]/70 mb-6">
         Pares de pessoas com nomes parecidos. <strong>Fundir</strong> junta os dois cadastros no nome escolhido
         (o histórico de missões é transferido). <strong>Não é duplicata</strong> esconde o par desta lista.

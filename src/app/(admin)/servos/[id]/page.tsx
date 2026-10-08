@@ -12,7 +12,7 @@ export default async function EditarServoPage({ params }: { params: Promise<{ id
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Editar servo</h1>
+      <h1 className="page-title mb-6">Editar servo</h1>
       <ServoFormClient action={atualizarServo} pessoaNome={servo.pessoa.nome}>
         <input type="hidden" name="id" value={servo.id} />
         <ServoForm servo={servo} pessoa={servo.pessoa} setores={setores} />

@@ -79,7 +79,7 @@ function LinhaDispositivo({ device }: { device: Device }) {
         </div>
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        <button type="button" onClick={() => setEditando(true)} className="text-sm underline text-[var(--brass)]">
+        <button type="button" onClick={() => setEditando(true)} className="text-sm font-medium text-[var(--ink)] transition-colors hover:text-[var(--brass)]">
           Editar
         </button>
         <form action={excluirPushbirdDevice}>

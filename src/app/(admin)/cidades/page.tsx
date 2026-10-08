@@ -26,7 +26,7 @@ export default async function CidadesPage({
 
   return (
     <div>
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Servos por Cidade</h1>
+      <h1 className="page-title mb-6">Servos por Cidade</h1>
       <div className="grid md:grid-cols-2 gap-4">
         {ordenado.map(([nomeCidade, lista]) => (
           <CidadeCard key={nomeCidade} nomeCidade={nomeCidade} servos={lista} />

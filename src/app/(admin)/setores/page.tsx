@@ -17,11 +17,11 @@ export default async function SetoresPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Servos por Setor</h1>
+      <h1 className="page-title mb-6">Servos por Setor</h1>
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--ink)] text-[var(--paper)]">
+          <thead className="qd-thead">
             <tr>
               <th className="text-left px-4 py-2">Setor</th>
               <th className="text-left px-4 py-2">Qtd. servos</th>

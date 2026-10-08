@@ -36,7 +36,7 @@ export default async function EstatisticasPage() {
 
   return (
     <div>
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-2">Estatísticas</h1>
+      <h1 className="page-title mb-2">Estatísticas</h1>
       <p className="text-sm text-[var(--ink-soft)]/70 mb-6">
         Servos e campistas por edição, em todas as missões registradas.
       </p>

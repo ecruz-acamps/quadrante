@@ -72,7 +72,7 @@ export default async function CercoDashboardPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)]">Dashboard — Cerco de Jericó</h1>
+        <h1 className="page-title">Dashboard — Cerco de Jericó</h1>
         <div className="flex flex-wrap items-center gap-4">
           <a href="/cerco-dashboard/exportar" className="text-sm btn-link">
             Exportar grade 24h (Excel)
@@ -114,7 +114,7 @@ export default async function CercoDashboardPage() {
 
       <div className="mb-6">
         <div className="card overflow-hidden">
-          <div className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 text-sm font-medium">Servos por Setor no Cerco</div>
+          <div className="qd-card-head">Servos por Setor no Cerco</div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody className="divide-y divide-[var(--line)]">

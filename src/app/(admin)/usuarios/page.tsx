@@ -13,7 +13,7 @@ export default async function UsuariosPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Usuários</h1>
+      <h1 className="page-title mb-6">Usuários</h1>
 
       <div className="card divide-y divide-[var(--line)] mb-8">
         {usuarios.map((u) => (
@@ -35,7 +35,7 @@ export default async function UsuariosPage() {
               )}
             </div>
             <div className="flex items-center gap-3">
-              <a href={`/usuarios/${u.id}`} className="text-sm underline text-[var(--brass)]">
+              <a href={`/usuarios/${u.id}`} className="text-sm font-medium text-[var(--ink)] transition-colors hover:text-[var(--brass)]">
                 Editar
               </a>
               {u.id !== atual.id && (

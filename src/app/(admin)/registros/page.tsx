@@ -29,12 +29,12 @@ export default async function RegistrosPage() {
     campoMotivo: "motivoRecusou" | "motivoDesistiu";
   }) => (
     <div className="card overflow-hidden mb-6">
-      <div className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 text-sm font-medium">
+      <div className="qd-card-head">
         {titulo} ({lista.length})
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--paper)] text-[var(--ink-soft)]/60">
+          <thead className="qd-thead">
             <tr>
               <th className="text-left px-4 py-2">Nome</th>
               <th className="text-left px-4 py-2">Setor</th>
@@ -66,12 +66,12 @@ export default async function RegistrosPage() {
 
   const TabelaFaltas = () => (
     <div className="card overflow-hidden mb-6">
-      <div className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 text-sm font-medium">
+      <div className="qd-card-head">
         Faltaram na formação ({faltaram.length})
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--paper)] text-[var(--ink-soft)]/60">
+          <thead className="qd-thead">
             <tr>
               <th className="text-left px-4 py-2">Nome</th>
               <th className="text-left px-4 py-2">Setor</th>
@@ -123,7 +123,7 @@ export default async function RegistrosPage() {
 
   return (
     <div>
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Não / Desistências / Faltas na formação</h1>
+      <h1 className="page-title mb-6">Não / Desistências / Faltas na formação</h1>
       <TabelaComMotivo titulo="Falaram NÃO ao chamado" lista={recusaram} campoMotivo="motivoRecusou" />
       <TabelaComMotivo titulo="Desistiram" lista={desistiram} campoMotivo="motivoDesistiu" />
       <TabelaFaltas />

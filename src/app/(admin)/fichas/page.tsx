@@ -21,7 +21,7 @@ export default async function FichasPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)]">Fichas dos Núcleos (Neocampistas)</h1>
+        <h1 className="page-title">Fichas dos Núcleos (Neocampistas)</h1>
         <Link href="/fichas/novo" className="btn-primary px-4 py-2 text-sm">
           + Nova ficha
         </Link>
@@ -30,7 +30,7 @@ export default async function FichasPage() {
       <div className="card overflow-hidden mb-8">
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--ink)] text-[var(--paper)]">
+          <thead className="qd-thead">
             <tr>
               <th className="text-left px-4 py-2">Nº</th>
               <th className="text-left px-4 py-2">Núcleo</th>
@@ -97,7 +97,7 @@ export default async function FichasPage() {
       </form>
 
       <div className="card overflow-hidden">
-        <div className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 text-sm font-medium">Alertas cadastrados</div>
+        <div className="qd-card-head">Alertas cadastrados</div>
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <tbody className="divide-y divide-[var(--line)]">

@@ -8,7 +8,7 @@ export default async function NovaFichaPage() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Nova ficha</h1>
+      <h1 className="page-title mb-6">Nova ficha</h1>
       <form action={criarFicha} className="card p-6 space-y-4">
         <input type="hidden" name="missaoId" value={missao.id} />
         <FichaForm />

@@ -9,7 +9,7 @@ export default async function Home() {
   if (!missao) {
     return (
       <div>
-        <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-4">Bem-vindo ao Quadrante</h1>
+        <h1 className="page-title mb-4">Bem-vindo ao Quadrante</h1>
         <p>
           Nenhuma missão cadastrada ainda.{" "}
           <Link className="btn-link" href="/missoes">
@@ -94,7 +94,7 @@ export default async function Home() {
 
   return (
     <div>
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-1">{missao.nome}</h1>
+      <h1 className="page-title mb-1">{missao.nome}</h1>
       <p className="text-[var(--ink-soft)]/60 mb-6">
         Link público do Cerco:{" "}
         <Link className="btn-link" href={`/cerco/${missao.cercoSlug}`}>
@@ -102,7 +102,7 @@ export default async function Home() {
         </Link>
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {kpis.map((k) => {
           const Icon = k.icon;
           return (

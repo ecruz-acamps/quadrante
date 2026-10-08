@@ -16,7 +16,7 @@ export default async function ConfiguracoesPage({
 
   return (
     <div className="max-w-2xl">
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Configurações</h1>
+      <h1 className="page-title mb-6">Configurações</h1>
 
       <nav className="flex gap-4 mb-6 text-sm border-b border-[var(--line)]">
         <a href="#backup" className="px-1 pb-2 border-b-2 border-[var(--brass)] text-[var(--ink)] font-medium">

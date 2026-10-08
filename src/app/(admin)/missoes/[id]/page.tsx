@@ -11,7 +11,7 @@ export default async function EditarMissaoPage({ params }: { params: Promise<{ i
 
   return (
     <div className="max-w-2xl">
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Editar missão</h1>
+      <h1 className="page-title mb-6">Editar missão</h1>
       <EditarMissaoForm missao={missao} />
     </div>
   );

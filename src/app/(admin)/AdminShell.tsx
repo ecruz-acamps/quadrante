@@ -3,8 +3,33 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Icon } from "./servos/icons";
 
 type NavItem = readonly [string, string, boolean];
+
+const NAV_ICONE: Record<string, string> = {
+  "/": "home",
+  "/servos": "users",
+  "/formacao": "book",
+  "/cerco-dashboard": "clock",
+  "/camisetas": "shirt",
+  "/setores": "layers",
+  "/cidades": "pin",
+  "/fichas": "clipboard",
+  "/tribos": "flag",
+  "/financeiro": "coin",
+  "/registros": "ban",
+  "/pessoas": "user",
+  "/estatisticas": "chart",
+  "/duplicatas": "copy",
+  "/missoes": "star",
+  "/usuarios": "key",
+  "/configuracoes": "settings",
+};
+
+function ativo(pathname: string, href: string) {
+  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+}
 
 export default function AdminShell({
   nav,
@@ -32,18 +57,23 @@ export default function AdminShell({
 
   const sidebarConteudo = (
     <>
-      <div className="p-5 border-b border-white/10">
-        <h1 className="font-[var(--font-spectral)] text-xl tracking-wide">Quadrante</h1>
-        <p className="text-[0.65rem] uppercase tracking-[0.2em] text-[var(--brass-bright)] mt-0.5">
-          Movimento Campista
-        </p>
+      <div className="px-5 pb-4 pt-6">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brass)] text-[var(--ink)]">
+            <Icon name="cross" className="h-[18px] w-[18px]" />
+          </span>
+          <div className="leading-tight">
+            <h1 className="font-[var(--font-spectral)] text-lg font-semibold tracking-wide">Quadrante</h1>
+            <p className="text-[0.6rem] uppercase tracking-[0.2em] text-[var(--brass-bright)]">Movimento Campista</p>
+          </div>
+        </div>
         {missaoNome && mostrarSeletor && (
-          <form action={selecionarMissaoAction} className="mt-4">
+          <form action={selecionarMissaoAction} className="mt-5">
             <select
               key={missaoId}
               name="id"
               defaultValue={missaoId ?? undefined}
-              className="w-full text-xs bg-white/10 border border-white/15 rounded px-2 py-1.5 text-[var(--paper)]"
+              className="w-full rounded-lg border border-white/15 bg-white/10 px-2.5 py-2 text-xs text-[var(--paper)] transition-colors hover:bg-white/15"
             >
               {missoes.map((m) => (
                 <option key={m.id} value={m.id} className="text-[var(--ink-soft)]">
@@ -51,35 +81,54 @@ export default function AdminShell({
                 </option>
               ))}
             </select>
-            <button className="mt-2 w-full text-xs uppercase tracking-wide bg-[var(--brass)] hover:bg-[var(--brass-bright)] text-[var(--ink)] font-semibold rounded py-1.5 transition-colors">
+            <button className="mt-2 w-full rounded-lg bg-[var(--brass)] py-2 text-xs font-semibold uppercase tracking-wide text-[var(--ink)] transition-colors hover:bg-[var(--brass-bright)]">
               Trocar missão
             </button>
           </form>
         )}
         {missaoNome && !mostrarSeletor && (
-          <p className="mt-4 text-xs text-[var(--paper)]/70">{missaoNome}</p>
+          <p className="mt-5 rounded-lg bg-white/10 px-3 py-2 text-xs text-[var(--paper)]/80">{missaoNome}</p>
         )}
       </div>
-      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-        {nav.map(([href, label]) => (
-          <Link
-            key={href}
-            href={href}
-            onClick={() => setAberto(false)}
-            className={`group flex items-center gap-2 px-3 py-2 text-sm border-l-2 transition-colors ${
-              pathname === href
-                ? "text-[var(--paper)] border-[var(--brass)] bg-white/5"
-                : "text-[var(--paper)]/85 hover:text-[var(--paper)] border-transparent hover:border-[var(--brass)]"
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
+        {nav.map(([href, label]) => {
+          const on = ativo(pathname, href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setAberto(false)}
+              aria-current={on ? "page" : undefined}
+              className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[0.8125rem] transition-all duration-150 ${
+                on
+                  ? "bg-white/12 font-medium text-white shadow-[inset_3px_0_0_var(--brass-bright)]"
+                  : "text-[var(--paper)]/75 hover:bg-white/8 hover:text-white"
+              }`}
+            >
+              <Icon
+                name={NAV_ICONE[href] ?? "users"}
+                className={`h-[17px] w-[17px] shrink-0 transition-colors ${
+                  on ? "text-[var(--brass-bright)]" : "text-[var(--paper)]/55 group-hover:text-[var(--brass-bright)]"
+                }`}
+              />
+              <span className="truncate">{label}</span>
+            </Link>
+          );
+        })}
       </nav>
-      <div className="p-4 border-t border-white/10 text-xs flex items-center justify-between text-[var(--paper)]/70">
-        <span className="truncate">{userNome}</span>
+      <div className="flex items-center gap-3 border-t border-white/10 px-4 py-4">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-semibold">
+          {userNome.trim().charAt(0).toUpperCase()}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-xs text-[var(--paper)]/80">{userNome}</span>
         <form action={logoutAction}>
-          <button className="underline hover:text-[var(--brass-bright)] transition-colors">Sair</button>
+          <button
+            aria-label="Sair"
+            title="Sair"
+            className="rounded-md p-1.5 text-[var(--paper)]/60 transition-colors hover:bg-white/10 hover:text-[var(--brass-bright)]"
+          >
+            <Icon name="logout" className="h-4 w-4" />
+          </button>
         </form>
       </div>
     </>
@@ -98,14 +147,12 @@ export default function AdminShell({
           aria-label="Abrir menu"
           className="p-2 -mr-2 text-[var(--paper)]"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
-          </svg>
+          <Icon name="menu" className="h-6 w-6" />
         </button>
       </div>
 
       {/* sidebar desktop */}
-      <aside className="hidden md:flex w-64 shrink-0 bg-[var(--ink)] text-[var(--paper)] flex-col">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-[var(--ink)] text-[var(--paper)] md:flex">
         {sidebarConteudo}
       </aside>
 
@@ -113,15 +160,13 @@ export default function AdminShell({
       {aberto && (
         <div className="md:hidden fixed inset-0 z-40 flex">
           <div className="absolute inset-0 bg-black/50" onClick={() => setAberto(false)} />
-          <aside className="relative w-72 max-w-[85vw] bg-[var(--ink)] text-[var(--paper)] flex flex-col">
+          <aside className="relative flex w-72 max-w-[85vw] flex-col bg-[var(--ink)] text-[var(--paper)] shadow-2xl">
             <button
               onClick={() => setAberto(false)}
               aria-label="Fechar menu"
               className="absolute top-4 right-4 p-1 text-[var(--paper)]/70"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-              </svg>
+              <Icon name="close" className="h-5 w-5" />
             </button>
             {sidebarConteudo}
           </aside>

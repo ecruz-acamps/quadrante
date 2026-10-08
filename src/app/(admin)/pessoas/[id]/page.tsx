@@ -45,7 +45,7 @@ export default async function FichaPessoaPage({
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)]">{pessoa.nome}</h1>
+        <h1 className="page-title">{pessoa.nome}</h1>
         <Link href="/pessoas" className="btn-link text-sm">
           ← Pessoas
         </Link>
@@ -77,12 +77,12 @@ export default async function FichaPessoaPage({
       </div>
 
       <div className="card overflow-hidden">
-        <div className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 font-medium text-sm">
+        <div className="qd-card-head">
           Histórico de missões
         </div>
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--paper)] text-[var(--ink-soft)]/60">
+          <thead className="qd-thead">
             <tr>
               <th className="text-left px-4 py-2">Missão</th>
               <th className="text-left px-4 py-2">Setor</th>

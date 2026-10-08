@@ -13,7 +13,7 @@ export default async function MissoesPage() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Missões</h1>
+      <h1 className="page-title mb-6">Missões</h1>
 
       <div className="card divide-y divide-[var(--line)] mb-8">
         {missoes.map((m) => (
@@ -31,7 +31,7 @@ export default async function MissoesPage() {
                 <input type="hidden" name="id" value={m.id} />
                 <button className="text-sm btn-primary px-3 py-1">Ativar</button>
               </form>
-              <a href={`/missoes/${m.id}`} className="text-sm underline text-[var(--brass)]">
+              <a href={`/missoes/${m.id}`} className="text-sm font-medium text-[var(--ink)] transition-colors hover:text-[var(--brass)]">
                 Editar
               </a>
               <ExcluirMissaoButton id={m.id} nome={m.nome} />

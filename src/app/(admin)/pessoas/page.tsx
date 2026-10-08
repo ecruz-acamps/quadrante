@@ -25,7 +25,7 @@ export default async function PessoasPage({
 
   return (
     <div>
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-2">Pessoas</h1>
+      <h1 className="page-title mb-2">Pessoas</h1>
       <p className="text-sm text-[var(--ink-soft)]/70 mb-6">
         Busca em todas as missões. Sem busca, mostra os servos com mais participações.
       </p>
@@ -38,7 +38,7 @@ export default async function PessoasPage({
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--paper)] text-[var(--ink-soft)]/60">
+          <thead className="qd-thead">
             <tr>
               <th className="text-left px-4 py-2">Nome</th>
               <th className="text-left px-4 py-2">Cidade</th>

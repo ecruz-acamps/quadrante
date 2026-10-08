@@ -50,7 +50,7 @@ export default async function TribosPage() {
 
   return (
     <div>
-      <h1 className="font-[var(--font-spectral)] text-2xl text-[var(--ink)] mb-6">Divisão de Tribos</h1>
+      <h1 className="page-title mb-6">Divisão de Tribos</h1>
 
       <SortearTribosButton missaoId={missao.id} quantidade={fichasSemTribo.length} />
 
@@ -76,16 +76,16 @@ export default async function TribosPage() {
 
           return (
             <div key={t.id} className="table-shell">
-              <div className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 font-medium text-sm flex items-center justify-between">
+              <div className="qd-card-head flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <span
-                    className="inline-block w-3 h-3 rounded-full border border-white/30"
+                    className="inline-block h-3 w-3 rounded-full ring-2 ring-white shadow-sm"
                     style={{ background: cor }}
                     aria-hidden
                   />
                   {t.nome}
                 </span>
-                <span className="font-mono">{t.neocampistas.length} fichas</span>
+                <span className="rounded-full bg-[#eef1f8] px-2.5 py-0.5 font-[var(--font-plex-mono)] text-xs font-medium text-[var(--ink)]">{t.neocampistas.length} fichas</span>
               </div>
               <div className="px-4 py-2 text-xs text-[var(--ink-soft)]/70 border-b border-[var(--line)] flex gap-3 flex-wrap">
                 <span>H: {homens}</span>
