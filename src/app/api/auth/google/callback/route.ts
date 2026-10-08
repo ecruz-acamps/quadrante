@@ -25,14 +25,18 @@ export async function GET(req: NextRequest) {
 
   const email = info.email.toLowerCase();
   const dominio = process.env.GSUITE_DOMAIN;
-  if (dominio && !email.endsWith(`@${dominio}`)) {
+  // domínio é obrigatório: sem ele qualquer conta Google conseguiria entrar
+  if (!dominio) redirect("/login?error=oauth");
+  if (!info.email_verified || info.hd?.toLowerCase() !== dominio.toLowerCase() || !email.endsWith(`@${dominio.toLowerCase()}`)) {
     redirect("/login?error=dominio");
   }
 
   const isWorkspaceAdmin = await checkIsWorkspaceAdmin(access_token, email);
-  const role = isWorkspaceAdmin ? "SUPER" : "ADMIN";
 
   const existente = await db.usuario.findUnique({ where: { email } });
+  // Admins do Workspace entram como SUPER; os demais usuários do domínio, como ADMIN
+  // (sem missões vinculadas até um SUPER liberar em /usuarios).
+  const role = isWorkspaceAdmin ? "SUPER" : "ADMIN";
   const user = existente
     ? await db.usuario.update({
         where: { id: existente.id },

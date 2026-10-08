@@ -1,10 +1,23 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { loginAction } from "@/lib/actions";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, null);
+  const erroGoogle = {
+    oauth: "Não foi possível concluir o login com Google. Tente novamente.",
+    dominio: "Use uma conta Google verificada do domínio do acampamento.",
+  }[useSearchParams().get("error") ?? ""];
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-[var(--ink)] relative overflow-hidden">
       <svg
@@ -49,7 +62,7 @@ export default function LoginPage() {
             className="input"
           />
         </div>
-        {state?.error && <p className="text-[var(--signal)] text-sm">{state.error}</p>}
+        {(state?.error || erroGoogle) && <p className="text-[var(--signal)] text-sm">{state?.error ?? erroGoogle}</p>}
         <button
           disabled={pending}
           className="btn-primary w-full py-2.5"

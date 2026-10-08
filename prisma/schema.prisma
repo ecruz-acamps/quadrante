@@ -21,6 +21,7 @@ model Usuario {
   email String  @unique
   senha String? // hash bcrypt; null para contas criadas via login Google
   role  String  @default("ADMIN") // SUPER | ADMIN
+  sessaoVersao Int @default(0) // incrementa no logout/troca de senha → invalida tokens de sessão antigos
 
   missoes UsuarioMissao[]
 }

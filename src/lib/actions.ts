@@ -4,20 +4,31 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { createSession, destroySession, requireUser, requireRole, setMissaoAtiva } from "./auth";
+import { createSession, destroySession, requireUser, requireRole, setMissaoAtiva, podeAcessarMissao } from "./auth";
 import { normalizarNome } from "./nomes";
 import { edicaoDe } from "./missoes";
 import { gerarCodigo6Digitos, checarConflitoServo } from "./conflitoServo";
 import { notificarPushbird } from "./notificacoes";
+import { excedeuLimite, limparLimite, ipDoCliente } from "./rateLimit";
 
 // ---------- auth ----------
 export async function loginAction(_prev: unknown, formData: FormData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const senha = String(formData.get("senha") || "");
+  const ip = await ipDoCliente();
+  const chaveEmail = `login:email:${email}`;
+  // 10 tentativas por IP e 5 por e-mail em 15 min (conta tentativas inválidas e válidas do IP)
+  if (excedeuLimite(`login:ip:${ip}`, 10, 15 * 60_000) || excedeuLimite(chaveEmail, 5, 15 * 60_000)) {
+    return { error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." };
+  }
   const user = await db.usuario.findUnique({ where: { email } });
-  if (!user || !user.senha || !(await bcrypt.compare(senha, user.senha))) {
+  // compara sempre, mesmo sem usuário, para não revelar por tempo se o e-mail existe
+  const hash = user?.senha ?? "$2b$10$HLmxZfgpcFuZXdo9rkLjc.S/5r7AwOPAK64lwUPs4tfnqK95a0gji";
+  const ok = await bcrypt.compare(senha, hash);
+  if (!user || !user.senha || !ok) {
     return { error: "E-mail ou senha inválidos" };
   }
+  limparLimite(chaveEmail);
   await createSession(user.id);
   redirect("/");
 }
@@ -245,8 +256,11 @@ export async function buscarPessoasGlobal(missaoId: number, termo: string) {
 
 // adiciona servo a partir do modal do card de setor (sem redigitar dados de quem já existe)
 export async function adicionarServoRapido(formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const missaoId = Number(formData.get("missaoId"));
+  if (!(await podeAcessarMissao(usuario, missaoId))) {
+    return { error: "Sem acesso a esta missão." };
+  }
   const setor = String(formData.get("setor") || "");
   const pessoaIdRaw = formData.get("pessoaId");
   const neocampistaIdRaw = formData.get("neocampistaId");
@@ -590,6 +604,7 @@ const CERCO_MAX_POR_HORARIO = 15;
 export async function sugerirNomesCerco(missaoId: number, termo: string) {
   const t = termo.trim();
   if (t.length < 3 || !missaoId) return [];
+  if (excedeuLimite(`cerco:sugestao:${await ipDoCliente()}`, 60, 60_000)) return [];
   const servos = await db.servo.findMany({
     where: { missaoId, status: "ATIVO", pessoa: { nome: { contains: t } } },
     include: { pessoa: true },
@@ -607,6 +622,9 @@ export async function inscreverCerco(_prev: unknown, formData: FormData) {
   const horario = String(formData.get("horario") || "").trim();
   if (!missaoId || !nome || !setor || !horario) {
     return { error: "Preencha seu nome, setor e escolha um horário." };
+  }
+  if (excedeuLimite(`cerco:inscricao:${await ipDoCliente()}`, 10, 10 * 60_000)) {
+    return { error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." };
   }
 
   const missao = await db.missao.findUnique({ where: { id: missaoId } });
@@ -1004,7 +1022,7 @@ export async function atualizarUsuario(_prev: unknown, formData: FormData) {
   const senhaHash = novaSenha ? await bcrypt.hash(novaSenha, 10) : undefined;
 
   await db.$transaction([
-    db.usuario.update({ where: { id }, data: { nome, role, ...(senhaHash ? { senha: senhaHash } : {}) } }),
+    db.usuario.update({ where: { id }, data: { nome, role, ...(senhaHash ? { senha: senhaHash, sessaoVersao: { increment: 1 } } : {}) } }),
     db.usuarioMissao.deleteMany({ where: { usuarioId: id } }),
     ...(role === "ADMIN"
       ? [
