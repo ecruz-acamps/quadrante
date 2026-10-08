@@ -4,7 +4,7 @@
  * Mantém as últimas RETENCAO cópias na pasta, apagando as mais antigas.
  *
  * Uso: npx tsx scripts/backup-to-drive.ts
- * Agendado via cron a cada 2 dias (ver crontab -l).
+ * Agendado via cron a cada 15 dias (dias 1 e 16) (ver crontab -l).
  */
 import "dotenv/config";
 import { execFile } from "child_process";
@@ -16,7 +16,7 @@ import { refreshDriveAccessToken } from "../src/lib/googleAuth";
 import { setEnvValue } from "../src/lib/envFile";
 
 const execFileAsync = promisify(execFile);
-const RETENCAO = 30; // ~2 meses de backups a cada 2 dias
+const RETENCAO = 30; // ~15 meses de backups (dias 1 e 16)
 const APP_DIR = path.resolve(__dirname, "..");
 
 function timestamp() {

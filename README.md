@@ -237,13 +237,13 @@ O script `scripts/backup-to-drive.ts` gera `quadrante-backup-AAAA-MM-DD-HHMM.tar
    ```bash
    npx tsx scripts/backup-to-drive.ts
    ```
-3. **Agende.** O script foi pensado para rodar a cada 2 dias. Exemplo (`crontab -e`):
+3. **Agende.** Está agendado no cron do servidor para os dias 1 e 16 de cada mês (aprox. a cada 15 dias). Linha usada (`crontab -e`):
    ```cron
-   0 3 */2 * * cd /caminho/para/quadrante && npx tsx scripts/backup-to-drive.ts >> /var/log/quadrante-backup.log 2>&1
+   0 3 1,16 * * export PATH=/caminho/do/node/bin:/usr/bin:/bin; cd /caminho/para/quadrante && ./node_modules/.bin/tsx scripts/backup-to-drive.ts >> /var/log/quadrante/backup.log 2>&1
    ```
 
-> ⚠️ **Verifique se o agendamento realmente existe no servidor e se há arquivos recentes na pasta do Drive.**
-> O agendamento não faz parte do repositório; um backup que nunca rodou não protege nada.
+> ⚠️ **Confira de tempos em tempos se há arquivos recentes na pasta do Drive e olhe `/var/log/quadrante/backup.log`.**
+> O agendamento (cron) vive no servidor, não no repositório: ao trocar de máquina, recrie-o. O cron não enxerga o `node` do nvm sem o `export PATH`.
 
 Guarde também uma cópia do `.env` num cofre de senhas, independente do Drive: o backup do Drive só é
 acessível com credenciais que estão no próprio `.env`.
