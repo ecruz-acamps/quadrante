@@ -7,6 +7,9 @@ export const CAMISETAS = ["PP", "P", "M", "G", "GG", "X1", "X2", "X3", "XG", "X4
 
 export const FUNCOES = ["COORDENADOR", "AUXILIAR", "APOIO", "INTEGRANTE"];
 
+// setores em que servir várias vezes seguidas é normal: não geram o alerta de "mais de 2 vezes no mesmo setor"
+export const SETORES_SEM_ALERTA_CONSECUTIVO = ["DIRETOR ESPIRITUAL"];
+
 export const PAGAMENTOS = ["DINHEIRO", "PIX", "DÉBITO", "ISENTO", "PAGO OUTRA MISSAO"];
 
 export const TIPOS_MISSAO = ["MIRIM", "FAC", "JUVENIL", "SENIOR", "CASAIS"];

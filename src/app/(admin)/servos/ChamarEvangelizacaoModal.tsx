@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Icon } from "./icons";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { listarMissoesComNeocampistas, chamarEvangelizacao } from "@/lib/actions";
 
@@ -42,7 +43,8 @@ export default function ChamarEvangelizacaoModal({ missaoDestinoId }: { missaoDe
 
   return (
     <>
-      <button type="button" onClick={abrir} className="btn-primary px-4 py-2 text-sm">
+      <button type="button" onClick={abrir} className="qd-btn qd-btn-ghost">
+        <Icon name="megaphone" className="h-4 w-4 text-[var(--brass)]" />
         Chamar Evangelização
       </button>
 

@@ -194,3 +194,151 @@ body {
     outline-offset: 1px;
   }
 }
+
+/* ===== Quadrante de Servos: visual SaaS (apenas apresentação) ===== */
+@layer components {
+  .qd-surface {
+    background: #fff;
+    border: 1px solid #e6e8ee;
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(26, 53, 114, 0.04);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .qd-surface:hover {
+    border-color: #d5d9e4;
+    box-shadow: 0 4px 16px -8px rgba(26, 53, 114, 0.14);
+  }
+
+  /* botões */
+  .qd-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: 0.625rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+    padding: 0.6rem 0.9rem;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .qd-btn:active {
+    transform: translateY(1px);
+  }
+  .qd-btn-ghost {
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid #e0e3ec;
+  }
+  .qd-btn-ghost:hover {
+    background: #f6f7fb;
+    border-color: #c9cfdf;
+  }
+  .qd-btn-cta {
+    background: var(--brass);
+    color: #1b2a52;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(189, 143, 46, 0.35);
+  }
+  .qd-btn-cta:hover {
+    background: var(--brass-bright);
+    box-shadow: 0 4px 12px -4px rgba(189, 143, 46, 0.55);
+  }
+  .qd-btn-soft {
+    background: #f3f5fb;
+    color: var(--ink);
+  }
+  .qd-btn-soft:hover {
+    background: #e7ebf6;
+  }
+
+  /* campos */
+  .qd-field {
+    width: 100%;
+    background: #fff;
+    border: 1px solid #e0e3ec;
+    border-radius: 0.625rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.875rem;
+    color: var(--ink-soft);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .qd-field::placeholder {
+    color: #9aa1b5;
+  }
+  .qd-field:hover {
+    border-color: #c9cfdf;
+  }
+  .qd-field:focus {
+    outline: none;
+    border-color: var(--brass);
+    box-shadow: 0 0 0 3px rgba(189, 143, 46, 0.18);
+  }
+
+  /* selects compactos / chips */
+  .qd-select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    padding: 0.28rem 1.5rem 0.28rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 0.65rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23697089' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  }
+  .qd-select:hover:not(:disabled) {
+    border-color: rgba(26, 53, 114, 0.25);
+  }
+  .qd-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(189, 143, 46, 0.2);
+  }
+  .qd-select:disabled {
+    opacity: 0.55;
+  }
+
+  /* chips de função / pagamento */
+  .qd-tone-coord { background: #e8edf9; color: #1a3572; }
+  .qd-tone-aux { background: #e6f1f8; color: #1f5b84; }
+  .qd-tone-apoio { background: #f3eee2; color: #7a5b17; }
+  .qd-tone-integ { background: #f1f2f6; color: #4a5168; }
+  .qd-tone-sim { background: #e7f1ec; color: #2f6b4f; }
+  .qd-tone-nao { background: #fbefe4; color: #a85a22; }
+  .qd-tone-neutro { background: #f1f2f6; color: #4a5168; }
+
+  /* expandir / recolher suave */
+  .qd-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.28s ease;
+  }
+  .qd-collapse[data-open="true"] {
+    grid-template-rows: 1fr;
+  }
+  .qd-collapse > div {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  @keyframes qd-fade-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .qd-fade-in {
+    animation: qd-fade-in 0.25s ease both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .qd-collapse, .qd-surface, .qd-btn, .qd-select, .qd-fade-in {
+      transition: none;
+      animation: none;
+    }
+  }
+}

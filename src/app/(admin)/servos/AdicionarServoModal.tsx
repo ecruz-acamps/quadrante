@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SETORES_SEM_ALERTA_CONSECUTIVO } from "@/lib/constants";
+import { Icon } from "./icons";
 import { buscarPessoasGlobal, adicionarServoRapido, solicitarLiberacaoConflito } from "@/lib/actions";
 
 type Sugestao = Awaited<ReturnType<typeof buscarPessoasGlobal>>[number];
@@ -9,7 +11,15 @@ type Sugestao = Awaited<ReturnType<typeof buscarPessoasGlobal>>[number];
 const ALERTA_ESPIRITUAL =
   "Não é saudável espiritualmente um servo servir por mais que 2 vezes no mesmo setor. Utilize seus dons em outro local, seja obediente. Obediência gera graça.";
 
-export default function AdicionarServoModal({ missaoId, setor }: { missaoId: number; setor: string }) {
+export default function AdicionarServoModal({
+  missaoId,
+  setor,
+  variante = "cabecalho",
+}: {
+  missaoId: number;
+  setor: string;
+  variante?: "cabecalho" | "vazio"; // só muda o visual do botão que abre o modal
+}) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [termo, setTermo] = useState("");
@@ -121,13 +131,19 @@ export default function AdicionarServoModal({ missaoId, setor }: { missaoId: num
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setAberto(true)}
-        className="text-xs text-[var(--brass-bright)] hover:underline font-medium"
-      >
-        + Adicionar servo
-      </button>
+      {variante === "vazio" ? (
+        <button type="button" onClick={() => setAberto(true)} className="qd-btn qd-btn-cta">
+          <Icon name="plus" className="h-4 w-4" />
+          Adicionar primeiro servo
+        </button>
+      ) : (
+        <button type="button" onClick={() => setAberto(true)} className="qd-btn qd-btn-soft px-3 py-2 text-xs">
+          <Icon name="plus" className="h-3.5 w-3.5 text-[var(--brass)]" />
+          <span>
+            Adicionar<span className="hidden sm:inline"> servo</span>
+          </span>
+        </button>
+      )}
 
       {aberto && (
         <div
@@ -175,7 +191,7 @@ export default function AdicionarServoModal({ missaoId, setor }: { missaoId: num
               </div>
             ) : null}
 
-            {selecionada && selecionada.setorConsecutivo && selecionada.setorConsecutivo.vezes >= 2 && selecionada.setorConsecutivo.setor === setor && (
+            {selecionada && selecionada.setorConsecutivo && selecionada.setorConsecutivo.vezes >= 2 && selecionada.setorConsecutivo.setor === setor && !SETORES_SEM_ALERTA_CONSECUTIVO.includes(setor) && (
               <div className="rounded border border-[var(--signal)]/50 bg-[var(--signal)]/10 px-3 py-2 text-sm text-[var(--signal)]">
                 {ALERTA_ESPIRITUAL}
               </div>

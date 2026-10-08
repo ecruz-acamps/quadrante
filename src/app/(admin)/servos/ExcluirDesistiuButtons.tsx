@@ -98,19 +98,23 @@ export default function ExcluirDesistiuButtons({ servoId }: { servoId: number })
         type="button"
         onClick={() => setAbertoRecusou(true)}
         disabled={enviando}
-        className="text-[var(--signal)] hover:underline text-sm font-medium"
+        className="rounded-md px-2 py-1 text-xs font-medium text-[#8a92a8] transition-colors hover:bg-[var(--signal-soft)] hover:text-[var(--signal)] disabled:opacity-50"
       >
-        Dizer não
+        Disse não
       </button>
       <button
         type="button"
         onClick={() => setAbertoDesistiu(true)}
         disabled={enviando}
-        className="text-[var(--brass)] hover:underline text-sm font-medium"
+        className="rounded-md px-2 py-1 text-xs font-medium text-[#8a92a8] transition-colors hover:bg-[var(--amber-soft)] hover:text-[var(--amber)] disabled:opacity-50"
       >
         Desistiu
       </button>
-      <button type="button" onClick={() => setAbertoExcluir(true)} className="btn-danger-link">
+      <button
+        type="button"
+        onClick={() => setAbertoExcluir(true)}
+        className="rounded-md px-2 py-1 text-xs font-medium text-[#8a92a8] transition-colors hover:bg-[var(--signal-soft)] hover:text-[var(--signal)]"
+      >
         Excluir
       </button>
 
@@ -124,7 +128,7 @@ export default function ExcluirDesistiuButtons({ servoId }: { servoId: number })
           <div className="card w-full max-w-sm p-5 space-y-4">
             <p className="text-sm text-[var(--ink)]">
               Tem certeza que deseja excluir este servo? Se a pessoa apenas desistiu ou disse não, prefira os botões{" "}
-              <strong>Desistiu</strong> / <strong>Dizer não</strong> para manter o histórico.
+              <strong>Desistiu</strong> / <strong>Disse não</strong> para manter o histórico.
             </p>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setAbertoExcluir(false)} className="btn-link text-sm">

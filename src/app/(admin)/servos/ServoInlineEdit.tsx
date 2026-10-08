@@ -4,6 +4,13 @@ import { useState, useTransition } from "react";
 import { atualizarServoInline } from "@/lib/actions";
 import { CAMISETAS, FUNCOES, HORARIOS_CERCO } from "@/lib/constants";
 
+const TOM_FUNCAO: Record<string, string> = {
+  COORDENADOR: "qd-tone-coord",
+  AUXILIAR: "qd-tone-aux",
+  APOIO: "qd-tone-apoio",
+  INTEGRANTE: "qd-tone-integ",
+};
+
 export function CamisetaInlineSelect({ servoId, camiseta }: { servoId: number; camiseta: string | null }) {
   const [valor, setValor] = useState(camiseta ?? "");
   const [pending, startTransition] = useTransition();
@@ -19,7 +26,7 @@ export function CamisetaInlineSelect({ servoId, camiseta }: { servoId: number; c
           atualizarServoInline(servoId, { camiseta: novo || null });
         });
       }}
-      className="input py-1 text-xs"
+      className="qd-select qd-tone-neutro"
     >
       <option value="">—</option>
       {CAMISETAS.map((c) => (
@@ -46,7 +53,7 @@ export function FuncaoInlineSelect({ servoId, funcao }: { servoId: number; funca
           atualizarServoInline(servoId, { funcao: novo });
         });
       }}
-      className="input py-1 text-xs"
+      className={`qd-select ${TOM_FUNCAO[valor] ?? "qd-tone-neutro"}`}
     >
       {FUNCOES.map((f) => (
         <option key={f} value={f}>
@@ -72,7 +79,7 @@ export function CercoInlineSelect({ servoId, cercoHorario }: { servoId: number; 
           atualizarServoInline(servoId, { cercoHorario: novo || null });
         });
       }}
-      className="input py-1 text-xs"
+      className="qd-select qd-tone-neutro"
     >
       <option value="">—</option>
       {HORARIOS_CERCO.map((h) => (
@@ -99,7 +106,7 @@ export function PagoInlineSelect({ servoId, pago }: { servoId: number; pago: boo
           atualizarServoInline(servoId, { pago: novo });
         });
       }}
-      className="input py-1 text-xs"
+      className={`qd-select ${valor ? "qd-tone-sim" : "qd-tone-nao"}`}
     >
       <option value="sim">Sim</option>
       <option value="nao">Não</option>

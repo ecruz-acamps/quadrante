@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SETORES_SEM_ALERTA_CONSECUTIVO } from "@/lib/constants";
 import ServoBusca from "./ServoBusca";
 
 const ALERTA_ESPIRITUAL =
@@ -23,7 +24,11 @@ export default function NomeSetorAlerta({
   const [setor, setSetor] = useState(setorInicial ?? setores[0] ?? "");
   const [setorConsecutivo, setSetorConsecutivo] = useState<SetorConsecutivo>(null);
 
-  const mostrarAlerta = !!setorConsecutivo && setorConsecutivo.vezes >= 2 && setorConsecutivo.setor === setor;
+  const mostrarAlerta =
+    !!setorConsecutivo &&
+    setorConsecutivo.vezes >= 2 &&
+    setorConsecutivo.setor === setor &&
+    !SETORES_SEM_ALERTA_CONSECUTIVO.includes(setor);
 
   return (
     <>
