@@ -72,11 +72,19 @@ export const getSessionUserId = cache(async (): Promise<number | null> => {
   return id;
 });
 
-export const requireUser = cache(async () => {
+// exige login; aceita qualquer perfil (usada pelo layout e por requireCoordenador)
+export const requireQualquerUsuario = cache(async () => {
   const id = await getSessionUserId();
   if (!id) redirect("/login");
   const user = await db.usuario.findUnique({ where: { id } });
   if (!user) redirect("/login");
+  return user;
+});
+
+// páginas e ações do sistema: o coordenador só tem acesso a /meu-setor
+export const requireUser = cache(async () => {
+  const user = await requireQualquerUsuario();
+  if (user.role === "COORDENADOR") redirect("/meu-setor");
   return user;
 });
 
@@ -118,6 +126,7 @@ export const getMissaoAtiva = cache(async () => {
   const userId = await getSessionUserId();
   const user = userId ? await db.usuario.findUnique({ where: { id: userId } }) : null;
   if (!user) return null;
+  if (user.role === "COORDENADOR") return null; // coordenador não usa o sistema geral, só /meu-setor
 
   const store = await cookies();
   const raw = store.get(MISSAO_COOKIE)?.value;
@@ -139,4 +148,19 @@ export const getMissaoAtiva = cache(async () => {
     if (m) return m;
   }
   return db.missao.findFirst({ orderBy: { id: "desc" } });
+});
+
+// ---------- coordenador ----------
+// missão do coordenador = a mais recente entre as vinculadas (sem seletor)
+export async function getContextoCoordenador(user: { id: number; setor: string | null }) {
+  const missoes = await getMissoesPermitidas(user.id); // já ordenadas por id desc
+  return { setor: user.setor, missao: missoes[0] ?? null, missaoIds: missoes.map((m) => m.id) };
+}
+
+// única porta de entrada do perfil COORDENADOR. Outro perfil volta para o início.
+// Não redireciona quando faltam setor ou missão: a página mostra o aviso de cadastro incompleto.
+export const requireCoordenador = cache(async () => {
+  const usuario = await requireQualquerUsuario();
+  if (usuario.role !== "COORDENADOR") redirect("/");
+  return { usuario, ...(await getContextoCoordenador(usuario)) };
 });

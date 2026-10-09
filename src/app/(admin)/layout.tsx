@@ -1,4 +1,4 @@
-import { requireUser, getMissaoAtiva, getMissoesPermitidas } from "@/lib/auth";
+import { requireQualquerUsuario, getMissaoAtiva, getMissoesPermitidas, getContextoCoordenador } from "@/lib/auth";
 import { logoutAction, selecionarMissao } from "@/lib/actions";
 import { db } from "@/lib/db";
 import AdminShell from "./AdminShell";
@@ -24,7 +24,24 @@ const NAV = [
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  const user = await requireQualquerUsuario();
+  if (user.role === "COORDENADOR") {
+    const { missao: missaoCoord } = await getContextoCoordenador(user);
+    return (
+      <AdminShell
+        nav={[["/meu-setor", "Meu setor", false]]}
+        userNome={user.nome}
+        missaoNome={missaoCoord?.nome ?? null}
+        missaoId={missaoCoord?.id ?? null}
+        mostrarSeletor={false}
+        missoes={[]}
+        selecionarMissaoAction={selecionarMissao}
+        logoutAction={logoutAction}
+      >
+        {children}
+      </AdminShell>
+    );
+  }
   const missao = await getMissaoAtiva();
   const isSuper = user.role === "SUPER";
   const missoes = isSuper
