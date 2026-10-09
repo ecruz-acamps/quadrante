@@ -603,7 +603,7 @@ export async function marcarRecusou(formData: FormData) {
 // ---------- coordenador: marca sim / não / desistiu nos servos do próprio setor ----------
 export async function marcarStatusServo(servoId: number, status: string, motivo?: string) {
   const { setor, missaoIds } = await requireCoordenador();
-  if (!Number.isInteger(servoId)) return { error: "Servo inválido." } as const;
+  if (!Number.isSafeInteger(servoId) || servoId <= 0 || servoId > 2147483647) return { error: "Servo inválido." } as const;
   if (!statusValido(status)) return { error: "Status inválido." } as const;
 
   const servo = await db.servo.findUnique({
@@ -614,7 +614,7 @@ export async function marcarStatusServo(servoId: number, status: string, motivo?
     return { error: "Servo não encontrado no seu setor." } as const;
   }
 
-  await db.servo.update({ where: { id: servo.id }, data: dadosDoStatus(status, motivo) });
+  await db.servo.update({ where: { id: servo.id }, data: dadosDoStatus(status, typeof motivo === "string" ? motivo : undefined) });
   revalidatePath("/meu-setor");
   revalidatePath("/servos");
   revalidatePath("/registros");
@@ -1077,6 +1077,9 @@ export async function atualizarUsuario(_prev: unknown, formData: FormData) {
   const novaSenha = String(formData.get("novaSenha") || "");
 
   if (!id || !nome) return { error: "Preencha o nome." };
+  if (id === atual.id && role !== "SUPER") {
+    return { error: "Você não pode remover o seu próprio acesso de SUPER." };
+  }
   if (role !== "SUPER" && missaoIds.length === 0) {
     return { error: "Selecione ao menos uma missão para este usuário." };
   }

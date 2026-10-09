@@ -22,15 +22,25 @@ export default function StatusServoButtons({ servoId, status, motivo }: { servoI
   async function gravar(novo: Status, motivoTexto?: string) {
     setEnviando(true);
     setErro("");
-    const r = await marcarStatusServo(servoId, novo, motivoTexto);
-    setEnviando(false);
-    if (r.error) {
-      setErro(r.error);
-      return;
+    try {
+      const r = await marcarStatusServo(servoId, novo, motivoTexto);
+      if (r.error) {
+        setErro(r.error);
+        return;
+      }
+      fechar();
+      router.refresh();
+    } catch {
+      setErro("Não foi possível salvar. Verifique a conexão e tente de novo.");
+    } finally {
+      setEnviando(false);
     }
+  }
+
+  function fechar() {
     setPedindo(null);
     setTexto("");
-    router.refresh();
+    setErro("");
   }
 
   const pergunta = BOTOES.find((b) => b.status === pedindo)?.pergunta;
@@ -53,13 +63,13 @@ export default function StatusServoButtons({ servoId, status, motivo }: { servoI
         ))}
       </div>
       {status !== "ATIVO" && motivo && <p className="mt-1 text-xs text-[var(--ink-soft)]/70">{motivo}</p>}
-      {erro && <p className="mt-1 text-xs text-[var(--signal)]">{erro}</p>}
+      {erro && !pedindo && <p className="mt-1 text-xs text-[var(--signal)]">{erro}</p>}
 
       {pedindo && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setPedindo(null);
+            if (e.target === e.currentTarget) fechar();
           }}
         >
           <div className="card w-full max-w-sm p-5 space-y-4">
@@ -73,8 +83,13 @@ export default function StatusServoButtons({ servoId, status, motivo }: { servoI
               maxLength={500}
               className="input w-full"
             />
+            {erro && (
+              <p role="alert" className="text-sm text-[var(--signal)]">
+                {erro}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setPedindo(null)} className="btn-link text-sm">
+              <button type="button" onClick={fechar} className="btn-link text-sm">
                 Cancelar
               </button>
               <button type="button" onClick={() => gravar(pedindo, texto)} disabled={enviando} className="btn-primary px-4 py-1.5 text-sm">

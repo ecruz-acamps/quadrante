@@ -34,6 +34,7 @@ export default async function ServosPage({
 }: {
   searchParams: Promise<{ setor?: string; q?: string; ref?: string }>;
 }) {
+  const usuario = await requireUser();
   const { setor, q, ref } = await searchParams;
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
@@ -53,7 +54,6 @@ export default async function ServosPage({
   const totalServos = await db.servo.count({ where: { missaoId: missao.id, status: "ATIVO" } });
 
   // painel de referência: outra edição ao lado (?ref=ID). ADMIN só enxerga as missões permitidas a ele.
-  const usuario = await requireUser();
   const candidatas = (
     usuario.role === "SUPER"
       ? await db.missao.findMany({ orderBy: { id: "desc" } })

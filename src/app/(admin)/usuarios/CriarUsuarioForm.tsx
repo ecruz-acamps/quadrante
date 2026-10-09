@@ -15,6 +15,13 @@ export default function CriarUsuarioForm({
   const [role, setRole] = useState("ADMIN");
   const formRef = useRef<HTMLFormElement>(null);
 
+  // após criar com sucesso o form é resetado; o estado do select controlado precisa voltar junto
+  const [estadoVisto, setEstadoVisto] = useState(state);
+  if (state !== estadoVisto) {
+    setEstadoVisto(state);
+    if (state && "ok" in state && state.ok) setRole("ADMIN");
+  }
+
   useEffect(() => {
     if (state && "ok" in state && state.ok) formRef.current?.reset();
   }, [state]);
