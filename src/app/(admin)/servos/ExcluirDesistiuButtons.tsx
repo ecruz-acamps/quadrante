@@ -9,6 +9,7 @@ function ModalMotivo({
   motivo,
   setMotivo,
   enviando,
+  erro,
   onCancelar,
   onConfirmar,
 }: {
@@ -16,6 +17,7 @@ function ModalMotivo({
   motivo: string;
   setMotivo: (v: string) => void;
   enviando: boolean;
+  erro: string;
   onCancelar: () => void;
   onConfirmar: () => void;
 }) {
@@ -36,6 +38,11 @@ function ModalMotivo({
           rows={3}
           className="input w-full"
         />
+        {erro && (
+          <p role="alert" className="text-sm text-[var(--signal)]">
+            {erro}
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onCancelar} className="btn-link text-sm">
             Cancelar
@@ -56,47 +63,65 @@ export default function ExcluirDesistiuButtons({ servoId }: { servoId: number })
   const [abertoRecusou, setAbertoRecusou] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState("");
 
-  async function excluir() {
+  // roda a ação; se falhar (rede, sessão, permissão) mantém o modal aberto e mostra o motivo em vez de travar o botão
+  async function executar(acao: () => Promise<unknown>, aoSucesso: () => void) {
     setEnviando(true);
-    const formData = new FormData();
-    formData.set("id", String(servoId));
-    await excluirServo(formData);
-    setEnviando(false);
-    setAbertoExcluir(false);
-    router.refresh();
+    setErro("");
+    try {
+      await acao();
+      aoSucesso();
+      router.refresh();
+    } catch {
+      setErro("Não foi possível salvar. Verifique a conexão e tente de novo.");
+    } finally {
+      setEnviando(false);
+    }
   }
 
-  async function confirmarDesistiu() {
-    setEnviando(true);
+  function dados(comMotivo: boolean) {
     const formData = new FormData();
     formData.set("id", String(servoId));
-    formData.set("motivo", motivo.trim());
-    await marcarDesistiu(formData);
-    setEnviando(false);
-    setAbertoDesistiu(false);
-    setAbertoExcluir(false);
-    setMotivo("");
-    router.refresh();
+    if (comMotivo) formData.set("motivo", motivo.trim());
+    return formData;
   }
 
-  async function confirmarRecusou() {
-    setEnviando(true);
-    const formData = new FormData();
-    formData.set("id", String(servoId));
-    formData.set("motivo", motivo.trim());
-    await marcarRecusou(formData);
-    setEnviando(false);
-    setAbertoRecusou(false);
-    setMotivo("");
-    router.refresh();
+  const excluir = () =>
+    executar(
+      () => excluirServo(dados(false)),
+      () => setAbertoExcluir(false),
+    );
+
+  const confirmarDesistiu = () =>
+    executar(
+      () => marcarDesistiu(dados(true)),
+      () => {
+        setAbertoDesistiu(false);
+        setAbertoExcluir(false);
+        setMotivo("");
+      },
+    );
+
+  const confirmarRecusou = () =>
+    executar(
+      () => marcarRecusou(dados(true)),
+      () => {
+        setAbertoRecusou(false);
+        setMotivo("");
+      },
+    );
+
+  function fechar(setAberto: (v: boolean) => void) {
+    setAberto(false);
+    setErro("");
   }
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setAbertoRecusou(true)}
+        onClick={() => { setErro(""); setAbertoRecusou(true); }}
         disabled={enviando}
         className="rounded-md px-2 py-1 text-xs font-medium text-[#8a92a8] transition-colors hover:bg-[var(--signal-soft)] hover:text-[var(--signal)] disabled:opacity-50"
       >
@@ -104,7 +129,7 @@ export default function ExcluirDesistiuButtons({ servoId }: { servoId: number })
       </button>
       <button
         type="button"
-        onClick={() => setAbertoDesistiu(true)}
+        onClick={() => { setErro(""); setAbertoDesistiu(true); }}
         disabled={enviando}
         className="rounded-md px-2 py-1 text-xs font-medium text-[#8a92a8] transition-colors hover:bg-[var(--amber-soft)] hover:text-[var(--amber)] disabled:opacity-50"
       >
@@ -112,7 +137,7 @@ export default function ExcluirDesistiuButtons({ servoId }: { servoId: number })
       </button>
       <button
         type="button"
-        onClick={() => setAbertoExcluir(true)}
+        onClick={() => { setErro(""); setAbertoExcluir(true); }}
         className="rounded-md px-2 py-1 text-xs font-medium text-[#8a92a8] transition-colors hover:bg-[var(--signal-soft)] hover:text-[var(--signal)]"
       >
         Excluir
@@ -130,6 +155,11 @@ export default function ExcluirDesistiuButtons({ servoId }: { servoId: number })
               Tem certeza que deseja excluir este servo? Se a pessoa apenas desistiu ou disse não, prefira os botões{" "}
               <strong>Desistiu</strong> / <strong>Disse não</strong> para manter o histórico.
             </p>
+            {erro && (
+              <p role="alert" className="text-sm text-[var(--signal)]">
+                {erro}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setAbertoExcluir(false)} className="btn-link text-sm">
                 Cancelar
@@ -164,8 +194,9 @@ export default function ExcluirDesistiuButtons({ servoId }: { servoId: number })
           motivo={motivo}
           setMotivo={setMotivo}
           enviando={enviando}
+          erro={erro}
           onCancelar={() => {
-            setAbertoDesistiu(false);
+            fechar(setAbertoDesistiu);
             setMotivo("");
           }}
           onConfirmar={confirmarDesistiu}
@@ -178,8 +209,9 @@ export default function ExcluirDesistiuButtons({ servoId }: { servoId: number })
           motivo={motivo}
           setMotivo={setMotivo}
           enviando={enviando}
+          erro={erro}
           onCancelar={() => {
-            setAbertoRecusou(false);
+            fechar(setAbertoRecusou);
             setMotivo("");
           }}
           onConfirmar={confirmarRecusou}

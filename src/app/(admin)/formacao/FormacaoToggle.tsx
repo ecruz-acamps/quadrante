@@ -17,19 +17,26 @@ export default function FormacaoToggle({
   const [abertoModal, setAbertoModal] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState("");
 
   async function marcar(presente: boolean, motivoTexto?: string) {
     setEnviando(true);
-    const formData = new FormData();
-    formData.set("servoId", String(servoId));
-    formData.set("numero", String(numero));
-    formData.set("presente", String(presente));
-    if (motivoTexto) formData.set("motivo", motivoTexto);
-    await marcarFormacao(formData);
-    setEnviando(false);
-    setAbertoModal(false);
-    setMotivo("");
-    router.refresh();
+    setErro("");
+    try {
+      const formData = new FormData();
+      formData.set("servoId", String(servoId));
+      formData.set("numero", String(numero));
+      formData.set("presente", String(presente));
+      if (motivoTexto) formData.set("motivo", motivoTexto);
+      await marcarFormacao(formData);
+      setAbertoModal(false);
+      setMotivo("");
+      router.refresh();
+    } catch {
+      setErro("Não salvou. Verifique a conexão e tente de novo.");
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -59,6 +66,12 @@ export default function FormacaoToggle({
         Faltou
       </button>
 
+      {erro && !abertoModal && (
+        <span role="alert" className="ml-1 text-[0.7rem] text-[var(--signal)]">
+          {erro}
+        </span>
+      )}
+
       {abertoModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -76,6 +89,11 @@ export default function FormacaoToggle({
               rows={3}
               className="input w-full"
             />
+            {erro && (
+              <p role="alert" className="text-sm text-[var(--signal)]">
+                {erro}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setAbertoModal(false)} className="btn-link text-sm">
                 Cancelar
