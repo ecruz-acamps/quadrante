@@ -1,5 +1,6 @@
 import { getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { brl } from "@/lib/format";
 
 export default async function FinanceiroPage() {
   const missao = await getMissaoAtiva();
@@ -46,15 +47,15 @@ export default async function FinanceiroPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="stat-card">
-          <div className="stat-value">R$ {totalServos.toFixed(2)}</div>
+          <div className="stat-value">{brl(totalServos)}</div>
           <div className="stat-label">Arrecadado servos</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">R$ {arrecadadoCampistas.toFixed(2)}</div>
+          <div className="stat-value">{brl(arrecadadoCampistas)}</div>
           <div className="stat-label">Arrecadado campistas</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">R$ {totalGeral.toFixed(2)}</div>
+          <div className="stat-value">{brl(totalGeral)}</div>
           <div className="stat-label">Total geral</div>
         </div>
         <div className="stat-card">
@@ -90,8 +91,8 @@ export default async function FinanceiroPage() {
             {[...porSetor.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([setor, g]) => (
               <tr key={setor}>
                 <td className="px-4 py-2">{setor}</td>
-                <td className="px-4 py-2">R$ {g.dinheiro.toFixed(2)}</td>
-                <td className="px-4 py-2">R$ {g.pix.toFixed(2)}</td>
+                <td className="px-4 py-2">{brl(g.dinheiro)}</td>
+                <td className="px-4 py-2">{brl(g.pix)}</td>
                 <td className="px-4 py-2">{g.isento}</td>
                 <td className="px-4 py-2">{g.qtd}</td>
                 <td className="px-4 py-2">{g.pagaram}</td>
@@ -100,8 +101,8 @@ export default async function FinanceiroPage() {
             ))}
             <tr className="bg-[var(--paper)] font-medium">
               <td className="px-4 py-2">NEO-CAMPISTAS</td>
-              <td className="px-4 py-2">R$ {(fichasDinheiro * missao.valorCampista).toFixed(2)}</td>
-              <td className="px-4 py-2">R$ {(fichasPix * missao.valorCampista).toFixed(2)}</td>
+              <td className="px-4 py-2">{brl((fichasDinheiro * missao.valorCampista))}</td>
+              <td className="px-4 py-2">{brl((fichasPix * missao.valorCampista))}</td>
               <td className="px-4 py-2">{fichasIsentas}</td>
               <td className="px-4 py-2">{fichas.length}</td>
               <td className="px-4 py-2">{fichasPagas}</td>

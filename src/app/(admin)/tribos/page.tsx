@@ -1,5 +1,6 @@
 import { getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { decimal } from "@/lib/format";
 import { CORES_TRIBO } from "@/lib/constants";
 import { adicionarLiderTribo, removerLiderTribo } from "@/lib/actions";
 import AlocarFichaForm from "./AlocarFichaForm";
@@ -92,7 +93,7 @@ export default async function TribosPage() {
                 <span>M: {mulheres}</span>
                 <span>Idade média: {media(idades).toFixed(0)} anos</span>
                 <span>Peso médio: {media(pesos).toFixed(0)} kg</span>
-                <span>Altura média: {media(alturas).toFixed(2)} m</span>
+                <span>Altura média: {decimal(media(alturas), 2)} m</span>
               </div>
               <div className="px-4 py-2 border-b border-[var(--line)]">
                 <p className="text-xs font-medium text-[var(--ink-soft)]/70 mb-1">Líderes</p>

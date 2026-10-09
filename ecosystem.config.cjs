@@ -9,6 +9,7 @@ module.exports = {
       args: "start -p 3008",
       env: { NODE_ENV: "production" },
       autorestart: true,
+      max_memory_restart: "600M", // reinicia sozinho se vazar memória (hoje usa ~200-300 MB)
       max_restarts: 10,
       min_uptime: "15s",
       restart_delay: 3000,

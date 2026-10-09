@@ -103,6 +103,7 @@ model Servo {
 
   @@unique([missaoId, pessoaId])
   @@index([missaoId, setor])
+  @@index([pessoaId])
 }
 
 model Neocampista {
@@ -133,6 +134,7 @@ model Neocampista {
   alvos   FichaAlerta[] @relation("alertaAlvo")
 
   @@unique([missaoId, numero])
+  @@index([triboId])
 }
 
 // par de fichas que não podem ficar na mesma tribo (parentesco/amizade)

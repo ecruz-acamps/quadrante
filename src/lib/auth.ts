@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import crypto from "crypto";
@@ -54,7 +55,7 @@ export async function destroySession() {
   store.delete(COOKIE);
 }
 
-export async function getSessionUserId(): Promise<number | null> {
+export const getSessionUserId = cache(async (): Promise<number | null> => {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
   if (!token) return null;
@@ -69,15 +70,15 @@ export async function getSessionUserId(): Promise<number | null> {
   const user = await db.usuario.findUnique({ where: { id }, select: { sessaoVersao: true } });
   if (!user || user.sessaoVersao !== Number(versao)) return null;
   return id;
-}
+});
 
-export async function requireUser() {
+export const requireUser = cache(async () => {
   const id = await getSessionUserId();
   if (!id) redirect("/login");
   const user = await db.usuario.findUnique({ where: { id } });
   if (!user) redirect("/login");
   return user;
-}
+});
 
 // exige um nível mínimo de acesso; ADMIN sem permissão volta para o início
 export async function requireRole(role: "SUPER") {
@@ -104,16 +105,16 @@ export async function setMissaoAtiva(id: number) {
 }
 
 // missões que o usuário pode ver/editar. SUPER não é consultado aqui (sempre vê tudo).
-export async function getMissoesPermitidas(userId: number) {
+export const getMissoesPermitidas = cache(async (userId: number) => {
   const vinculos = await db.usuarioMissao.findMany({
     where: { usuarioId: userId },
     include: { missao: true },
     orderBy: { missao: { id: "desc" } },
   });
   return vinculos.map((v) => v.missao);
-}
+});
 
-export async function getMissaoAtiva() {
+export const getMissaoAtiva = cache(async () => {
   const userId = await getSessionUserId();
   const user = userId ? await db.usuario.findUnique({ where: { id: userId } }) : null;
   if (!user) return null;
@@ -138,4 +139,4 @@ export async function getMissaoAtiva() {
     if (m) return m;
   }
   return db.missao.findFirst({ orderBy: { id: "desc" } });
-}
+});
