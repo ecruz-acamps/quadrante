@@ -12,6 +12,7 @@ export default async function EditarUsuarioPage({ params }: { params: Promise<{ 
   });
   if (!usuario) notFound();
   const missoes = await db.missao.findMany({ orderBy: { id: "desc" } });
+  const setores = (await db.setor.findMany({ orderBy: { nome: "asc" } })).map((s) => s.nome);
 
   return (
     <div className="max-w-2xl">
@@ -21,9 +22,11 @@ export default async function EditarUsuarioPage({ params }: { params: Promise<{ 
           id: usuario.id,
           nome: usuario.nome,
           role: usuario.role,
+          setor: usuario.setor,
           missaoIds: usuario.missoes.map((v) => v.missaoId),
         }}
         missoes={missoes}
+        setores={setores}
       />
     </div>
   );

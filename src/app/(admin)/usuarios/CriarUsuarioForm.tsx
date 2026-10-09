@@ -1,11 +1,18 @@
 "use client";
 
-import { useActionState, useRef, useEffect } from "react";
+import { useActionState, useRef, useEffect, useState } from "react";
 import { criarUsuario } from "@/lib/actions";
 import MissaoCheckboxes from "./MissaoCheckboxes";
 
-export default function CriarUsuarioForm({ missoes }: { missoes: { id: number; nome: string }[] }) {
+export default function CriarUsuarioForm({
+  missoes,
+  setores,
+}: {
+  missoes: { id: number; nome: string }[];
+  setores: string[];
+}) {
   const [state, action, pending] = useActionState(criarUsuario, null);
+  const [role, setRole] = useState("ADMIN");
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -17,10 +24,23 @@ export default function CriarUsuarioForm({ missoes }: { missoes: { id: number; n
       <input name="nome" required placeholder="Nome" className="input col-span-2" />
       <input name="email" type="email" required placeholder="E-mail" className="input col-span-2" />
       <input name="senha" type="password" required placeholder="Senha" className="input" />
-      <select name="role" className="input" defaultValue="ADMIN">
+      <select name="role" className="input" value={role} onChange={(e) => setRole(e.target.value)}>
         <option value="ADMIN">ADMIN (secretaria)</option>
+        <option value="COORDENADOR">COORDENADOR (só o próprio setor)</option>
         <option value="SUPER">SUPER (acesso total)</option>
       </select>
+      {role === "COORDENADOR" && (
+        <select name="setor" required defaultValue="" className="input col-span-2">
+          <option value="" disabled>
+            Setor do coordenador…
+          </option>
+          {setores.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      )}
       <MissaoCheckboxes missoes={missoes} selecionadas={[]} />
       {state && "error" in state && state.error && (
         <p className="col-span-2 text-[var(--signal)] text-sm">{state.error}</p>

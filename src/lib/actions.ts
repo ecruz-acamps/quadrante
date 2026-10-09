@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { createSession, destroySession, requireUser, requireRole, requireCoordenador, setMissaoAtiva } from "./auth";
-import { statusValido, podeMarcarServo, dadosDoStatus } from "./coordenador";
+import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole } from "./coordenador";
 import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
 import { normalizarNome } from "./nomes";
 import { FUNCOES, PAGAMENTOS } from "./constants";
@@ -1039,20 +1039,26 @@ export async function criarUsuario(_prev: unknown, formData: FormData) {
   const nome = String(formData.get("nome") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const senha = String(formData.get("senha") || "");
-  const role = String(formData.get("role") || "ADMIN") === "SUPER" ? "SUPER" : "ADMIN";
+  const role = normalizarRole(formData.get("role"));
+  const setorInformado = String(formData.get("setor") || "").trim();
   const missaoIds = formData.getAll("missaoIds").map(Number).filter((n) => !Number.isNaN(n));
 
   if (!nome || !email || senha.length < 10) {
     return { error: "Preencha nome, e-mail e uma senha com pelo menos 10 caracteres." };
   }
-  if (role === "ADMIN" && missaoIds.length === 0) {
+  if (role !== "SUPER" && missaoIds.length === 0) {
     return { error: "Selecione ao menos uma missão para este usuário." };
+  }
+  if (role === "COORDENADOR" && !(await db.setor.findUnique({ where: { nome: setorInformado } }))) {
+    return { error: "Escolha o setor do coordenador." };
   }
   const existente = await db.usuario.findUnique({ where: { email } });
   if (existente) return { error: "Já existe um usuário com esse e-mail." };
   const hash = await bcrypt.hash(senha, 10);
-  const usuario = await db.usuario.create({ data: { nome, email, senha: hash, role } });
-  if (role === "ADMIN") {
+  const usuario = await db.usuario.create({
+    data: { nome, email, senha: hash, role, setor: role === "COORDENADOR" ? setorInformado : null },
+  });
+  if (role !== "SUPER") {
     await db.usuarioMissao.createMany({
       data: missaoIds.map((missaoId) => ({ usuarioId: usuario.id, missaoId })),
     });
@@ -1065,13 +1071,17 @@ export async function atualizarUsuario(_prev: unknown, formData: FormData) {
   const atual = await requireRole("SUPER");
   const id = Number(formData.get("id"));
   const nome = String(formData.get("nome") || "").trim();
-  const role = String(formData.get("role") || "ADMIN") === "SUPER" ? "SUPER" : "ADMIN";
+  const role = normalizarRole(formData.get("role"));
+  const setorInformado = String(formData.get("setor") || "").trim();
   const missaoIds = formData.getAll("missaoIds").map(Number).filter((n) => !Number.isNaN(n));
   const novaSenha = String(formData.get("novaSenha") || "");
 
   if (!id || !nome) return { error: "Preencha o nome." };
-  if (role === "ADMIN" && missaoIds.length === 0) {
+  if (role !== "SUPER" && missaoIds.length === 0) {
     return { error: "Selecione ao menos uma missão para este usuário." };
+  }
+  if (role === "COORDENADOR" && !(await db.setor.findUnique({ where: { nome: setorInformado } }))) {
+    return { error: "Escolha o setor do coordenador." };
   }
   if (novaSenha && novaSenha.length < 10) {
     return { error: "A nova senha precisa ter pelo menos 10 caracteres." };
@@ -1080,9 +1090,17 @@ export async function atualizarUsuario(_prev: unknown, formData: FormData) {
   const senhaHash = novaSenha ? await bcrypt.hash(novaSenha, 10) : undefined;
 
   await db.$transaction([
-    db.usuario.update({ where: { id }, data: { nome, role, ...(senhaHash ? { senha: senhaHash, sessaoVersao: { increment: 1 } } : {}) } }),
+    db.usuario.update({
+      where: { id },
+      data: {
+        nome,
+        role,
+        setor: role === "COORDENADOR" ? setorInformado : null, // sai de COORDENADOR → setor é limpo
+        ...(senhaHash ? { senha: senhaHash, sessaoVersao: { increment: 1 } } : {}),
+      },
+    }),
     db.usuarioMissao.deleteMany({ where: { usuarioId: id } }),
-    ...(role === "ADMIN"
+    ...(role !== "SUPER"
       ? [
           db.usuarioMissao.createMany({
             data: missaoIds.map((missaoId) => ({ usuarioId: id, missaoId })),

@@ -10,6 +10,7 @@ export default async function UsuariosPage() {
     include: { missoes: { include: { missao: true } } },
   });
   const missoes = await db.missao.findMany({ orderBy: { id: "desc" } });
+  const setores = (await db.setor.findMany({ orderBy: { nome: "asc" } })).map((s) => s.nome);
 
   return (
     <div className="max-w-2xl">
@@ -26,8 +27,9 @@ export default async function UsuariosPage() {
                 </span>
               </div>
               <div className="text-sm text-[var(--ink-soft)]/60">{u.email}</div>
-              {u.role === "ADMIN" && (
+              {u.role !== "SUPER" && (
                 <div className="text-xs text-[var(--ink-soft)]/60 mt-0.5">
+                  {u.role === "COORDENADOR" && <span className="mr-1 font-medium">{u.setor ?? "sem setor"} ·</span>}
                   {u.missoes.length > 0
                     ? u.missoes.map((v) => v.missao.nome).join(", ")
                     : "nenhuma missão vinculada"}
@@ -50,7 +52,7 @@ export default async function UsuariosPage() {
       </div>
 
       <h2 className="font-bold mb-3">Novo usuário</h2>
-      <CriarUsuarioForm missoes={missoes} />
+      <CriarUsuarioForm missoes={missoes} setores={setores} />
     </div>
   );
 }
