@@ -10,6 +10,7 @@ import { QuadranteDndProvider } from "./QuadranteDnd";
 import { CamisetaInlineSelect, PagoInlineSelect, FuncaoInlineSelect, CercoInlineSelect } from "./ServoInlineEdit";
 import ExcluirDesistiuButtons from "./ExcluirDesistiuButtons";
 import { Icon } from "./icons";
+import { normalizarBusca } from "@/lib/busca";
 
 // colunas da lista de servos no desktop (a largura é do card, via container query; abaixo disso vira card)
 const COLUNAS = "@4xl:grid-cols-[minmax(0,1.7fr)_8.5rem_5rem_9.5rem_5.5rem_16.5rem]";
@@ -208,6 +209,7 @@ export default async function ServosPage({
                 {lista.map((s) => (
                   <div
                     key={s.id}
+                    data-nome={normalizarBusca(s.pessoa.nome)}
                     className={`grid grid-cols-2 gap-x-3 gap-y-3 px-4 py-4 transition-colors hover:bg-[#fafbfd] @4xl:items-center @4xl:gap-x-4 @4xl:gap-y-0 @4xl:py-2.5 ${COLUNAS}`}
                   >
                     <div className="col-span-2 flex min-w-0 items-center gap-3 @4xl:col-span-1">

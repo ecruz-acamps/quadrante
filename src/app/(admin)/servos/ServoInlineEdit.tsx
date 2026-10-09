@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { atualizarServoInline } from "@/lib/actions";
-import { CAMISETAS, FUNCOES, HORARIOS_CERCO } from "@/lib/constants";
+import { CAMISETAS, FUNCOES, HORARIOS_CERCO, PAGAMENTOS } from "@/lib/constants";
 
 const TOM_FUNCAO: Record<string, string> = {
   COORDENADOR: "qd-tone-coord",
@@ -110,6 +110,38 @@ export function PagoInlineSelect({ servoId, pago }: { servoId: number; pago: boo
     >
       <option value="sim">Sim</option>
       <option value="nao">Não</option>
+    </select>
+  );
+}
+
+const ROTULO_PAGAMENTO: Record<string, string> = { DINHEIRO: "Dinheiro", PIX: "Pix", DÉBITO: "Débito", ISENTO: "Isento", "PAGO OUTRA MISSAO": "Pago em outra missão" };
+
+export function FormaPagamentoInlineSelect({ servoId, forma }: { servoId: number; forma: string | null }) {
+  const [valor, setValor] = useState(forma ?? "");
+  const [pending, startTransition] = useTransition();
+  // valor antigo fora da lista (ex.: dado importado) continua aparecendo em vez de sumir
+  const fora = valor !== "" && !PAGAMENTOS.includes(valor);
+
+  return (
+    <select
+      value={valor}
+      disabled={pending}
+      onChange={(e) => {
+        const novo = e.target.value;
+        setValor(novo);
+        startTransition(() => {
+          atualizarServoInline(servoId, { pagamentoForma: novo || null });
+        });
+      }}
+      className="qd-select"
+    >
+      <option value="">—</option>
+      {fora && <option value={valor}>{valor}</option>}
+      {PAGAMENTOS.map((p) => (
+        <option key={p} value={p}>
+          {ROTULO_PAGAMENTO[p] ?? p}
+        </option>
+      ))}
     </select>
   );
 }

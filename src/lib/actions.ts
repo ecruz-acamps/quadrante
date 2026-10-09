@@ -517,12 +517,13 @@ export async function atualizarServo(_prevState: unknown, formData: FormData) {
 
 export async function atualizarServoInline(
   servoId: number,
-  dados: { camiseta?: string | null; pago?: boolean; funcao?: string; cercoHorario?: string | null }
+  dados: { camiseta?: string | null; pago?: boolean; funcao?: string; cercoHorario?: string | null; pagamentoForma?: string | null }
 ) {
   await requireUser();
-  const { camiseta, pago, funcao, cercoHorario } = dados;
-  await db.servo.update({ where: { id: servoId }, data: { camiseta, pago, funcao, cercoHorario } });
+  const { camiseta, pago, funcao, cercoHorario, pagamentoForma } = dados;
+  await db.servo.update({ where: { id: servoId }, data: { camiseta, pago, funcao, cercoHorario, pagamentoForma } });
   revalidatePath("/servos");
+  revalidatePath("/formacao");
 }
 
 export async function excluirServo(formData: FormData) {

@@ -9,19 +9,25 @@ export default async function FinanceiroPage() {
     where: { missaoId: missao.id, status: "ATIVO" },
   });
 
+  // valor do servo vem da missão (campo "equipe interna"); pagamentoValor, se preenchido à mão, tem prioridade
+  const valorServo = missao.valorInterna;
+
   const porSetor = new Map<
     string,
     { dinheiro: number; pix: number; isento: number; qtd: number; pagaram: number }
   >();
+  let pagosSemForma = 0;
   for (const s of servos) {
     if (!porSetor.has(s.setor)) porSetor.set(s.setor, { dinheiro: 0, pix: 0, isento: 0, qtd: 0, pagaram: 0 });
     const g = porSetor.get(s.setor)!;
     g.qtd++;
     if (s.pago) g.pagaram++;
-    const v = s.pagamentoValor || 0;
+    if (s.pagamentoForma === "ISENTO") g.isento++;
+    if (!s.pago) continue;
+    const v = s.pagamentoValor ?? valorServo;
     if (s.pagamentoForma === "DINHEIRO") g.dinheiro += v;
     else if (s.pagamentoForma === "PIX" || s.pagamentoForma === "DÉBITO") g.pix += v;
-    else if (s.pagamentoForma === "ISENTO") g.isento += v;
+    else if (!s.pagamentoForma) pagosSemForma++;
   }
 
   const fichas = await db.neocampista.findMany({ where: { missaoId: missao.id } });
@@ -31,7 +37,7 @@ export default async function FinanceiroPage() {
   const fichasPix = fichas.filter((f) => f.pagamento === "PIX" || f.pagamento === "DÉBITO").length;
 
   const totalServos = [...porSetor.values()].reduce((a, g) => a + g.dinheiro + g.pix, 0);
-  const arrecadadoCampistas = fichasPagas * missao.valorCampista;
+  const arrecadadoCampistas = (fichasDinheiro + fichasPix) * missao.valorCampista; // "pago em outra missão" não entra aqui
   const totalGeral = totalServos + arrecadadoCampistas;
 
   return (
@@ -58,6 +64,13 @@ export default async function FinanceiroPage() {
           <div className="stat-label">Neocampistas — pagos</div>
         </div>
       </div>
+
+      {pagosSemForma > 0 && (
+        <p className="mb-4 text-sm text-[var(--signal)]">
+          {pagosSemForma} {pagosSemForma === 1 ? "servo marcado como pago está" : "servos marcados como pagos estão"} sem forma de
+          pagamento e não {pagosSemForma === 1 ? "entrou" : "entraram"} na soma.
+        </p>
+      )}
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">

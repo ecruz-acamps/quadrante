@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MIME_PESSOA, useQuadranteDnd } from "./QuadranteDnd";
 import { Icon, setorVisual } from "./icons";
+import { normalizarBusca } from "@/lib/busca";
+
+// só vale a pena buscar dentro do setor quando a lista é longa
+const MIN_PARA_BUSCA = 5;
 
 export default function SetorCard({
   titulo,
@@ -19,8 +23,31 @@ export default function SetorCard({
 }) {
   const [aberto, setAberto] = useState(true);
   const [sobre, setSobre] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [visiveis, setVisiveis] = useState<number | null>(null);
+  const lista = useRef<HTMLDivElement>(null);
+  const comBusca = (quantidade ?? 0) > MIN_PARA_BUSCA;
   const { ativo, adicionar } = useQuadranteDnd();
   const visual = setorVisual(setor ?? titulo);
+
+  // esconde as linhas (renderizadas no servidor, marcadas com data-nome) que não casam com a busca;
+  // devolve quantas continuam visíveis
+  function filtrar(texto: string) {
+    const termo = normalizarBusca(texto);
+    let achadas = 0;
+    lista.current?.querySelectorAll<HTMLElement>("[data-nome]").forEach((el) => {
+      const casa = !termo || (el.dataset.nome ?? "").includes(termo);
+      el.style.display = casa ? "" : "none";
+      if (casa) achadas++;
+    });
+    return termo ? achadas : null;
+  }
+
+  // a lista é re-renderizada pelo servidor depois de editar um servo: reaplica o filtro sem mexer no estado
+  useEffect(() => {
+    filtrar(busca);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [children]);
 
   return (
     <div
@@ -68,15 +95,32 @@ export default function SetorCard({
           <span className="truncate text-[0.8125rem] font-semibold tracking-wide text-[var(--ink)]">{titulo}</span>
           {quantidade !== undefined && (
             <span className="shrink-0 rounded-full bg-[#eef1f8] px-2 py-0.5 font-[var(--font-plex-mono)] text-xs font-medium text-[var(--ink)]">
-              {quantidade}
+              {visiveis !== null ? `${visiveis} de ${quantidade}` : quantidade}
             </span>
           )}
         </button>
+        {comBusca && (
+          <input
+            type="search"
+            value={busca}
+            onChange={(e) => {
+              setBusca(e.target.value);
+              setVisiveis(filtrar(e.target.value));
+              if (e.target.value) setAberto(true);
+            }}
+            placeholder="Buscar neste setor…"
+            aria-label={`Buscar servo no setor ${titulo}`}
+            className="qd-field !w-40 shrink-0 !py-1.5 text-sm sm:!w-52"
+          />
+        )}
         {acao}
       </div>
       <div className="qd-collapse" data-open={aberto}>
         <div inert={!aberto}>
-          <div className="border-t border-[#eef0f5]">{children}</div>
+          <div ref={lista} className="border-t border-[#eef0f5]">
+            {children}
+            {visiveis === 0 && <p className="px-4 py-6 text-center text-sm text-[#697089]">Nenhum servo encontrado neste setor.</p>}
+          </div>
         </div>
       </div>
     </div>
