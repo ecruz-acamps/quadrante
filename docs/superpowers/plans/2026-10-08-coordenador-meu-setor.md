@@ -28,6 +28,17 @@ Duas decisões tomadas ao escrever o plano; o spec foi atualizado para refletir:
 1. `requireCoordenador()` exige apenas o perfil e **não redireciona** quando faltam setor ou missão: devolve `setor` e `missao` como `null`, e a página mostra a mensagem de cadastro incompleto (evita loop de redirecionamento). A ação `marcarStatusServo` é quem recusa quando faltam.
 2. A missão do coordenador é a **mais recente entre as vinculadas**; não há seletor de missão para ele.
 
+## Atualização do plano (2026-10-09)
+
+O código mudou depois que este plano foi escrito (pacote de segurança, backup, cache de sessão). Valem estas correções, que prevalecem sobre o texto das tasks:
+
+- `package.json` **já tem** o script `test` (`tsx --test src/lib/*.test.ts`) e existe `src/lib/testdb.ts` (banco temporário para testes). Não recriar.
+- `src/lib/auth.ts` agora declara `getSessionUserId`, `requireUser`, `getMissaoAtiva` e `getMissoesPermitidas` como `export const x = cache(async (...) => { ... })` (React `cache`, uma execução por requisição). `podeAcessarMissao` mora em `src/lib/autorizacao.ts` e é reexportada por `auth.ts`.
+- Já existem `acessoRegistros`, `exigirRegistros`, `exigirMissao` e `podeAcessarMissao` em `src/lib/autorizacao.ts`; `src/app/(admin)/servos/[id]/page.tsx` e `fichas/[id]/page.tsx` **já** chamam `requireUser`.
+- Senha mínima de usuário agora é **10** caracteres (`criarUsuario`/`atualizarUsuario`).
+- A migração é escrita **à mão** (nunca `prisma migrate dev`, que pode propor reset do banco); conferir com `prisma migrate diff ... --exit-code`.
+- Trabalho na branch `coordenador-meu-setor`; merge na `main`, push e deploy só com ok do usuário.
+
 ## Review Focus
 
 - Coordenador sem setor ou sem missão: a página mostra a mensagem, e a ação recusa sem gravar (Tasks 1 e 4).
@@ -49,7 +60,7 @@ Duas decisões tomadas ao escrever o plano; o spec foi atualizado para refletir:
 | `src/lib/auth.ts` | `requireQualquerUsuario`, `requireUser` (bloqueia coordenador), `getMissaoAtiva` (null p/ coordenador), `getContextoCoordenador`, `requireCoordenador`. |
 | `src/app/(admin)/layout.tsx` | Usa `requireQualquerUsuario`; menu reduzido para coordenador. |
 | `src/app/(admin)/AdminShell.tsx` | Ícone de `/meu-setor`. |
-| 15 páginas/rotas em `(admin)` | Primeira linha: `await requireUser();`. |
+| 13 páginas/rotas em `(admin)` | Primeira linha: `await requireUser();`. |
 | `src/lib/actions.ts` | `marcarStatusServo`; `criarUsuario`/`atualizarUsuario` aceitam COORDENADOR. |
 | `src/app/(admin)/meu-setor/page.tsx` (novo) | Lista do setor. |
 | `src/app/(admin)/meu-setor/StatusServoButtons.tsx` (novo) | Botões Sim/Não/Desistiu com modal de motivo. |
@@ -63,7 +74,6 @@ Duas decisões tomadas ao escrever o plano; o spec foi atualizado para refletir:
 **Files:**
 - Create: `src/lib/coordenador.ts`
 - Create: `src/lib/coordenador.test.ts`
-- Modify: `package.json` (script `test`)
 
 **Interfaces:**
 - Produces (usado pelas Tasks 4 e 5):
@@ -75,14 +85,7 @@ Duas decisões tomadas ao escrever o plano; o spec foi atualizado para refletir:
   - `dadosDoStatus(status: StatusServo, motivo?: string | null): { status: StatusServo; motivoRecusou: string | null; motivoDesistiu: string | null }`
   - `normalizarRole(v: unknown): "SUPER" | "ADMIN" | "COORDENADOR"`
 
-- [ ] **Step 1: Adicionar o script de teste**
-
-Em `package.json`, dentro de `"scripts"`, acrescente depois de `"lint": "eslint"`:
-
-```json
-    "lint": "eslint",
-    "test": "tsx --test src/lib/*.test.ts"
-```
+- [x] **Step 1: (já existe)** O script `npm test` e `src/lib/testdb.ts` já estão no repositório. Nada a fazer.
 
 - [ ] **Step 2: Escrever os testes que falham**
 
@@ -201,7 +204,7 @@ Expected: PASS, 9 testes, 0 falhas.
 
 ```bash
 cd /home/true/quadrante/app
-git add package.json src/lib/coordenador.ts src/lib/coordenador.test.ts
+git add src/lib/coordenador.ts src/lib/coordenador.test.ts
 git commit -m "feat(coordenador): regras puras de status/setor e script de teste"
 ```
 
@@ -218,7 +221,7 @@ git commit -m "feat(coordenador): regras puras de status/setor e script de teste
 
 - [ ] **Step 1: Backup do banco**
 
-Run: `cd /home/true/quadrante/app && cp prisma/quadrante.db prisma/quadrante.db.bak-antes-coordenador && ls -la prisma/quadrante.db.bak-antes-coordenador`
+Run: `cd /home/true/quadrante/app && cp prisma/quadrante.db prisma/quadrante.db.bak-antes-coordenador && chmod 600 prisma/quadrante.db.bak-antes-coordenador && ls -la prisma/quadrante.db.bak-antes-coordenador`
 Expected: arquivo listado com tamanho igual ao de `prisma/quadrante.db`.
 
 - [ ] **Step 2: Conferir que as migrações estão em dia**
@@ -235,10 +238,19 @@ Em `prisma/schema.prisma`, no model `Usuario`, troque a linha do `role` e acresc
   setor String? // só para COORDENADOR: nome do setor (igual a Setor.nome / Servo.setor)
 ```
 
-- [ ] **Step 4: Gerar e aplicar a migração**
+- [ ] **Step 4: Escrever e aplicar a migração à mão**
 
-Run: `cd /home/true/quadrante/app && npx prisma migrate dev --name usuario_setor_coordenador`
-Expected: cria `prisma/migrations/<timestamp>_usuario_setor_coordenador/migration.sql` contendo apenas `ALTER TABLE "Usuario" ADD COLUMN "setor" TEXT;` e roda `prisma generate`. Abra o `migration.sql` e confirme que não há `DROP` nem recriação de tabela.
+Não use `prisma migrate dev` (pode propor reset do banco). Crie `prisma/migrations/20261009000000_usuario_setor_coordenador/migration.sql` com exatamente:
+
+```sql
+-- AlterTable
+ALTER TABLE "Usuario" ADD COLUMN "setor" TEXT;
+```
+
+Confirme que migrações e schema batem e aplique:
+
+Run: `cd /home/true/quadrante/app && npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "file:$TMPDIR/shadow.db" --exit-code && npx prisma migrate deploy && npx prisma generate`
+Expected: `No difference detected.`, depois `All migrations have been successfully applied.` e o client regenerado.
 
 - [ ] **Step 5: Conferir tipos**
 
@@ -249,7 +261,7 @@ Expected: sem erros.
 
 ```bash
 cd /home/true/quadrante/app
-git add prisma/schema.prisma prisma/migrations
+git add prisma/schema.prisma prisma/migrations/20261009000000_usuario_setor_coordenador
 git commit -m "feat(coordenador): coluna Usuario.setor"
 ```
 
@@ -272,31 +284,33 @@ git commit -m "feat(coordenador): coluna Usuario.setor"
 
 > Esta task não tem teste unitário (usa `next/headers` e o banco). É verificada por `tsc` aqui e pela verificação manual da Task 7.
 
-- [ ] **Step 1: Renomear o corpo atual de `requireUser`**
+- [ ] **Step 1: Separar `requireQualquerUsuario` de `requireUser`**
 
-Em `src/lib/auth.ts`, substitua o bloco de `requireUser` (hoje nas linhas ~83-89) por:
+Em `src/lib/auth.ts`, hoje `requireUser` é `export const requireUser = cache(async () => { ... })`, com o corpo: pega `getSessionUserId()`, redireciona para `/login` se não houver, busca o usuário e devolve. Substitua esse bloco inteiro por:
 
 ```ts
 // exige login; aceita qualquer perfil (usada pelo layout e por requireCoordenador)
-export async function requireQualquerUsuario() {
+export const requireQualquerUsuario = cache(async () => {
   const id = await getSessionUserId();
   if (!id) redirect("/login");
   const user = await db.usuario.findUnique({ where: { id } });
   if (!user) redirect("/login");
   return user;
-}
+});
 
 // páginas e ações do sistema: o coordenador só tem acesso a /meu-setor
-export async function requireUser() {
+export const requireUser = cache(async () => {
   const user = await requireQualquerUsuario();
   if (user.role === "COORDENADOR") redirect("/meu-setor");
   return user;
-}
+});
 ```
+
+(Preserve o `cache` importado de `"react"` que já existe no topo do arquivo.)
 
 - [ ] **Step 2: Bloquear o coordenador em `getMissaoAtiva`**
 
-Em `getMissaoAtiva`, logo depois de `if (!user) return null;`, acrescente:
+Em `getMissaoAtiva` (que é `export const getMissaoAtiva = cache(async () => { ... })`), logo depois de `if (!user) return null;`, acrescente:
 
 ```ts
   if (user.role === "COORDENADOR") return null; // coordenador não usa o sistema geral, só /meu-setor
@@ -316,11 +330,11 @@ export async function getContextoCoordenador(user: { id: number; setor: string |
 
 // única porta de entrada do perfil COORDENADOR. Outro perfil volta para o início.
 // Não redireciona quando faltam setor ou missão: a página mostra o aviso de cadastro incompleto.
-export async function requireCoordenador() {
+export const requireCoordenador = cache(async () => {
   const usuario = await requireQualquerUsuario();
   if (usuario.role !== "COORDENADOR") redirect("/");
   return { usuario, ...(await getContextoCoordenador(usuario)) };
-}
+});
 ```
 
 - [ ] **Step 4: Layout com menu reduzido para o coordenador**
@@ -373,11 +387,11 @@ git commit -m "feat(coordenador): requireCoordenador, bloqueio por padrão e men
 
 ---
 
-### Task 4: Proteger as 15 páginas e criar `/meu-setor` com a ação
+### Task 4: Proteger as 13 páginas e criar `/meu-setor` com a ação
 
 **Files:**
 - Create: `src/lib/protecao-paginas.test.ts`
-- Modify (uma linha `await requireUser();` cada): `src/app/(admin)/page.tsx`, `cidades/page.tsx`, `formacao/page.tsx`, `cerco-dashboard/page.tsx`, `cerco-dashboard/exportar/route.ts`, `registros/page.tsx`, `fichas/page.tsx`, `fichas/novo/page.tsx`, `fichas/[id]/page.tsx`, `tribos/page.tsx`, `camisetas/page.tsx`, `financeiro/page.tsx`, `setores/page.tsx`, `servos/novo/page.tsx`, `servos/[id]/page.tsx` (todos sob `src/app/(admin)/`)
+- Modify (uma linha `await requireUser();` cada): `src/app/(admin)/page.tsx`, `cidades/page.tsx`, `formacao/page.tsx`, `cerco-dashboard/page.tsx`, `cerco-dashboard/exportar/route.ts`, `registros/page.tsx`, `fichas/page.tsx`, `fichas/novo/page.tsx`, `tribos/page.tsx`, `camisetas/page.tsx`, `financeiro/page.tsx`, `setores/page.tsx`, `servos/novo/page.tsx` (todos sob `src/app/(admin)/`; `fichas/[id]` e `servos/[id]` já foram protegidos)
 - Modify: `src/lib/actions.ts` (ação `marcarStatusServo`)
 - Create: `src/app/(admin)/meu-setor/page.tsx`
 - Create: `src/app/(admin)/meu-setor/StatusServoButtons.tsx`
@@ -422,13 +436,13 @@ test("toda página e rota de (admin) confere o usuário por conta própria", () 
 - [ ] **Step 2: Rodar e confirmar que falha listando os 15 arquivos**
 
 Run: `cd /home/true/quadrante/app && npm test`
-Expected: o teste `toda página e rota...` FALHA e a mensagem lista `page.tsx`, `cidades/page.tsx`, `formacao/page.tsx`, `cerco-dashboard/page.tsx`, `cerco-dashboard/exportar/route.ts`, `registros/page.tsx`, `fichas/page.tsx`, `fichas/novo/page.tsx`, `fichas/[id]/page.tsx`, `tribos/page.tsx`, `camisetas/page.tsx`, `financeiro/page.tsx`, `setores/page.tsx`, `servos/novo/page.tsx`, `servos/[id]/page.tsx`. Os testes da Task 1 continuam passando.
+Expected: o teste `toda página e rota...` FALHA e a mensagem lista exatamente `page.tsx`, `cidades/page.tsx`, `formacao/page.tsx`, `cerco-dashboard/page.tsx`, `cerco-dashboard/exportar/route.ts`, `registros/page.tsx`, `fichas/page.tsx`, `fichas/novo/page.tsx`, `tribos/page.tsx`, `camisetas/page.tsx`, `financeiro/page.tsx`, `setores/page.tsx`, `servos/novo/page.tsx` (13 arquivos). Os testes da Task 1 continuam passando.
 
-- [ ] **Step 3: Proteger as 15 páginas**
+- [ ] **Step 3: Proteger as 13 páginas**
 
 Para cada arquivo da lista, faça duas coisas:
 
-1. No import de `@/lib/auth`, acrescente `requireUser`. Exemplo: `import { getMissaoAtiva } from "@/lib/auth";` vira `import { getMissaoAtiva, requireUser } from "@/lib/auth";`. Os dois arquivos `fichas/[id]/page.tsx` e `servos/[id]/page.tsx` não importam de `@/lib/auth` hoje: acrescente `import { requireUser } from "@/lib/auth";` junto dos outros imports.
+1. No import de `@/lib/auth`, acrescente `requireUser`. Exemplo: `import { getMissaoAtiva } from "@/lib/auth";` vira `import { getMissaoAtiva, requireUser } from "@/lib/auth";`. Se algum arquivo ainda não importar de `@/lib/auth`, acrescente `import { requireUser } from "@/lib/auth";` junto dos outros imports.
 2. Insira `await requireUser();` como **primeira linha do corpo** da função exportada (`export default async function ...` ou `export async function GET`). Exemplo em `financeiro/page.tsx`:
 
 ```tsx
@@ -446,7 +460,7 @@ Expected: PASS em todos os testes; `tsc` sem erros.
 
 - [ ] **Step 5: Ação `marcarStatusServo`**
 
-Em `src/lib/actions.ts`, acrescente ao bloco de imports de `@/lib/auth` o nome `requireCoordenador` e adicione um import:
+Em `src/lib/actions.ts`, acrescente `requireCoordenador` ao import de `"./auth"` e adicione (junto dos outros imports de `./`):
 
 ```ts
 import { statusValido, podeMarcarServo, dadosDoStatus } from "./coordenador";
@@ -666,13 +680,13 @@ git add src/lib/protecao-paginas.test.ts src/lib/actions.ts "src/app/(admin)/meu
   "src/app/(admin)/page.tsx" "src/app/(admin)/cidades/page.tsx" "src/app/(admin)/formacao/page.tsx" \
   "src/app/(admin)/cerco-dashboard/page.tsx" "src/app/(admin)/cerco-dashboard/exportar/route.ts" \
   "src/app/(admin)/registros/page.tsx" "src/app/(admin)/fichas/page.tsx" "src/app/(admin)/fichas/novo/page.tsx" \
-  "src/app/(admin)/fichas/[id]/page.tsx" "src/app/(admin)/tribos/page.tsx" "src/app/(admin)/camisetas/page.tsx" \
+  "src/app/(admin)/tribos/page.tsx" "src/app/(admin)/camisetas/page.tsx" \
   "src/app/(admin)/financeiro/page.tsx" "src/app/(admin)/setores/page.tsx" \
-  "src/app/(admin)/servos/novo/page.tsx" "src/app/(admin)/servos/[id]/page.tsx"
+  "src/app/(admin)/servos/novo/page.tsx"
 git commit -m "feat(coordenador): página /meu-setor, ação marcarStatusServo e checagem em todas as páginas"
 ```
 
-> Atenção: `formacao/page.tsx`, `financeiro/page.tsx` e `src/lib/actions.ts` já têm alterações de hoje sem commit (pagamento na Formação, Financeiro automático). Elas entram neste commit junto. Se preferir separar, rode antes um commit só dessas alterações.
+> Observação: as alterações de hoje (Formação, Financeiro, segurança, backup) já estão commitadas na `main`; este commit contém só o trabalho do coordenador.
 
 ---
 
@@ -698,8 +712,8 @@ Em `src/lib/actions.ts`, adicione `normalizarRole` ao import de `./coordenador` 
   const setorInformado = String(formData.get("setor") || "").trim();
   const missaoIds = formData.getAll("missaoIds").map(Number).filter((n) => !Number.isNaN(n));
 
-  if (!nome || !email || senha.length < 4) {
-    return { error: "Preencha nome, e-mail e uma senha com pelo menos 4 caracteres." };
+  if (!nome || !email || senha.length < 10) {
+    return { error: "Preencha nome, e-mail e uma senha com pelo menos 10 caracteres." };
   }
   if (role !== "SUPER" && missaoIds.length === 0) {
     return { error: "Selecione ao menos uma missão para este usuário." };
@@ -944,10 +958,10 @@ c=sqlite3.connect('file:prisma/quadrante.db?mode=ro',uri=True)
 print(c.execute(\"select s.setor, count(*) from Servo s where s.missaoId=95 group by 1 order by 2 desc limit 4\").fetchall())"`
 Expected: lista de setores da missão 23 (id 95) com a contagem. Anote um setor **A** (com servos) e um servo de **outro** setor **B** (nome e id).
 
-- [ ] **Step 2: Subir o servidor de desenvolvimento**
+- [ ] **Step 2: Compilar e subir esta branch no pm2 (porta 3008)**
 
-Run (em segundo plano): `cd /home/true/quadrante/app && npm run dev`
-Expected: `Ready` na porta 3005. (Usa o mesmo banco; o usuário de teste é removido no passo final.)
+Não rode `npm run dev` (compartilha o diretório `.next` com a produção). Run: `cd /home/true/quadrante/app && npm run build 2>&1 | grep -E "rror|Failed|Compiled" && pm2 restart quadrante && sleep 4 && curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3008/login`
+Expected: `Compiled successfully` e `200`. Todos os `curl` seguintes usam `http://127.0.0.1:3008`, não 3005.
 
 - [ ] **Step 3: Criar o coordenador de teste e guardar o cookie**
 
@@ -959,7 +973,7 @@ Expected: imprime o início de um token `id.versao.expira...`.
 Run:
 ```bash
 for u in / /servos /financeiro /fichas /formacao /pessoas /tribos /registros /setores /cidades /camisetas /cerco-dashboard /usuarios /missoes /estatisticas "/servos/<ID DO SERVO DO SETOR B>" /servos/novo /cerco-dashboard/exportar /servos/exportar; do
-  curl -s -o /dev/null -w "%{http_code} $u -> %{redirect_url}\n" -b "quadrante_session=$TOKEN" "http://127.0.0.1:3005$u"
+  curl -s -o /dev/null -w "%{http_code} $u -> %{redirect_url}\n" -b "quadrante_session=$TOKEN" "http://127.0.0.1:3008$u"
 done
 ```
 Expected: todas as linhas com `307` e destino terminando em `/meu-setor`, ou `/` (que por sua vez cai em `/meu-setor`) para `/usuarios`, `/missoes` e `/estatisticas`. **Nenhuma pode ser `200`.**
@@ -968,7 +982,7 @@ Expected: todas as linhas com `307` e destino terminando em `/meu-setor`, ou `/`
 
 Run:
 ```bash
-curl -s -b "quadrante_session=$TOKEN" http://127.0.0.1:3005/meu-setor -o /tmp/meu-setor.html -w "%{http_code}\n"
+curl -s -b "quadrante_session=$TOKEN" http://127.0.0.1:3008/meu-setor -o /tmp/meu-setor.html -w "%{http_code}\n"
 grep -c "<SETOR A>" /tmp/meu-setor.html
 grep -c "<NOME DO SERVO DO SETOR B>" /tmp/meu-setor.html
 grep -c "Financeiro\|Fichas (Neocampistas)" /tmp/meu-setor.html
@@ -1000,7 +1014,7 @@ Expected: só o servo que você clicou, no setor A, mudou de status; os demais s
 - [ ] **Step 9: Limpar o usuário de teste e parar o dev**
 
 Run: `cd /home/true/quadrante/app && npx tsx --env-file=.env scripts/_coordenador-teste.ts remover`
-Expected: `removidos: 1`. Pare o servidor de desenvolvimento. **Devolva o servo que você alterou ao status original** (use "Sim" no passo 7.3, ou ajuste em `/servos`).
+Expected: `removidos: 1`. **Devolva o servo que você alterou ao status original** (use "Sim" no passo 7.3, ou ajuste em `/servos`).
 
 - [ ] **Step 10: Build e deploy**
 
@@ -1021,7 +1035,7 @@ Anote para o usuário: para criar um coordenador, `/usuarios` → "Novo usuário
 **Cobertura do spec**
 - Dados (`role`, `setor`, migração com backup): Task 2.
 - Autorização (`requireUser`, `getMissaoAtiva`, `requireCoordenador`, layout/menu): Task 3.
-- 15 páginas e rotas protegidas: Task 4, com a varredura como teste.
+- 13 páginas e rotas protegidas: Task 4, com a varredura como teste.
 - Tela `/meu-setor`: Task 4, passos 6 e 7.
 - Ação `marcarStatusServo` (setor, missão, status válido, só os campos de status, revalidação): Task 4, passo 5, e regras na Task 1.
 - Criação do acesso em `/usuarios`: Task 5. Troca de perfil limpa o setor, setor validado contra `Setor`.
