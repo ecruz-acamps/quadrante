@@ -37,6 +37,18 @@ export default function EditarMissaoForm({ missao }: { missao: Missao }) {
       <input name="valorInterna" type="number" step="0.01" defaultValue={missao.valorInterna} className="input" />
       <input name="valorExterna" type="number" step="0.01" defaultValue={missao.valorExterna} className="input" />
       <input name="valorCampista" type="number" step="0.01" defaultValue={missao.valorCampista} className="input" />
+      <label className="col-span-2 text-sm">
+        Vagas por hora no Cerco de Jericó
+        <input
+          name="cercoMaxPorHorario"
+          type="number"
+          min={1}
+          max={200}
+          step={1}
+          defaultValue={missao.cercoMaxPorHorario}
+          className="input mt-1"
+        />
+      </label>
       {state && "error" in state && <p className="col-span-2 text-[var(--signal)] text-sm">{state.error}</p>}
       {state && "ok" in state && state.ok && (
         <p className="col-span-2 text-sm text-[var(--ink-soft)]/70">Salvo.</p>

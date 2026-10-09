@@ -63,6 +63,7 @@ export default async function MissoesPage() {
         <input name="valorInterna" type="number" step="0.01" placeholder="Valor eq. interna (160)" className="input" />
         <input name="valorExterna" type="number" step="0.01" placeholder="Valor eq. externa (80)" className="input" />
         <input name="valorCampista" type="number" step="0.01" placeholder="Valor campista (300)" className="input" />
+        <input name="cercoMaxPorHorario" type="number" min={1} max={200} step={1} placeholder="Vagas por hora no Cerco (15)" className="input" />
         <button className="btn-primary px-4 py-2 col-span-2">Criar missão</button>
       </form>
     </div>

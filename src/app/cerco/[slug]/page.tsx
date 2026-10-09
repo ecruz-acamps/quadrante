@@ -21,8 +21,6 @@ export default async function CercoPublicoPage({ params }: { params: Promise<{ s
     );
   }
 
-  const setores = await db.setor.findMany({ orderBy: { nome: "asc" } });
-
   const ocupacao = await db.servo.groupBy({
     by: ["cercoHorario"],
     where: { missaoId: missao.id, status: "ATIVO", cercoHorario: { not: null } },
@@ -39,14 +37,14 @@ export default async function CercoPublicoPage({ params }: { params: Promise<{ s
           </p>
           <h1 className="font-[var(--font-spectral)] text-4xl text-[var(--paper)]">Cerco de Jericó</h1>
           <p className="text-sm text-[var(--paper)]/70 mt-3 max-w-md mx-auto">
-            Vigília de oração de 24 horas diante do Santíssimo Sacramento. Preencha seu nome, escolha
-            seu setor e reserve 1 hora de adoração.
+            Vigília de oração de 24 horas diante do Santíssimo Sacramento. Digite seu nome, escolha
+            sua hora e reserve 1 hora de adoração.
           </p>
         </div>
 
         <CercoForm
           missaoId={missao.id}
-          setores={setores.map((s) => s.nome)}
+          maxPorHorario={missao.cercoMaxPorHorario}
           ocupados={Object.fromEntries(ocupados)}
         />
       </div>

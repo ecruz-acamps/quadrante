@@ -37,6 +37,7 @@ model Missao {
   valorExterna  Float  @default(80)
   valorCampista Float  @default(300)
   cercoPublicado Boolean @default(true)
+  cercoMaxPorHorario Int @default(15) // vagas por hora no Cerco de Jericó
   mes           Int?    // mês real do acampamento (1-12) — só para checagem de proximidade entre missões
   anoCalendario Int?    // ano-calendário real (ex: 2026) — não confundir com o campo `ano` (edição), que não muda
 

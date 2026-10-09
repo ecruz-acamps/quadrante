@@ -8,7 +8,8 @@ import { createSession, destroySession, requireUser, requireRole, requireCoorden
 import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole } from "./coordenador";
 import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
 import { normalizarNome } from "./nomes";
-import { FUNCOES, PAGAMENTOS } from "./constants";
+import { FUNCOES, PAGAMENTOS, HORARIOS_CERCO } from "./constants";
+import { reservarHorarioCerco } from "./cercoReserva";
 import { edicaoDe } from "./missoes";
 import { gerarCodigo6Digitos, checarConflitoServo } from "./conflitoServo";
 import { notificarPushbird } from "./notificacoes";
@@ -42,6 +43,13 @@ export async function logoutAction() {
 }
 
 // ---------- missões ----------
+// vagas por hora do Cerco: inteiro de 1 a 200; vazio/inválido cai no padrão (15)
+function vagasCercoDe(raw: FormDataEntryValue | null): number | null {
+  if (raw === null || String(raw).trim() === "") return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1 && n <= 200 ? n : null;
+}
+
 export async function criarMissao(formData: FormData) {
   await requireRole("SUPER");
   const mesRaw = formData.get("mes");
@@ -57,6 +65,7 @@ export async function criarMissao(formData: FormData) {
       valorInterna: Number(formData.get("valorInterna") || 160),
       valorExterna: Number(formData.get("valorExterna") || 80),
       valorCampista: Number(formData.get("valorCampista") || 300),
+      cercoMaxPorHorario: vagasCercoDe(formData.get("cercoMaxPorHorario")) ?? 15,
     },
   });
   await setMissaoAtiva(m.id);
@@ -71,6 +80,11 @@ export async function atualizarMissao(
   const id = Number(formData.get("id"));
   const mesRaw = formData.get("mes");
   const anoCalendarioRaw = formData.get("anoCalendario");
+  const vagasRaw = formData.get("cercoMaxPorHorario");
+  const vagas = vagasCercoDe(vagasRaw);
+  if (vagas === null && vagasRaw !== null && String(vagasRaw).trim() !== "") {
+    return { error: "As vagas por hora do Cerco devem ser um número inteiro de 1 a 200." };
+  }
   await db.missao.update({
     where: { id },
     data: {
@@ -83,9 +97,11 @@ export async function atualizarMissao(
       valorInterna: Number(formData.get("valorInterna") || 160),
       valorExterna: Number(formData.get("valorExterna") || 80),
       valorCampista: Number(formData.get("valorCampista") || 300),
+      ...(vagas !== null ? { cercoMaxPorHorario: vagas } : {}),
     },
   });
   revalidatePath("/missoes");
+  revalidatePath(`/cerco/${String(formData.get("cercoSlug")).toLowerCase().replace(/[^a-z0-9-]/g, "")}`);
   return { ok: true } as const;
 }
 
@@ -641,7 +657,6 @@ export async function marcarFormacao(formData: FormData) {
 }
 
 // ---------- cerco (público) ----------
-const CERCO_MAX_POR_HORARIO = 15;
 
 // autocomplete público do cerco: retorna SÓ nomes (nunca horário/setor de outra pessoa)
 export async function sugerirNomesCerco(missaoId: number, termo: string) {
@@ -661,11 +676,11 @@ export async function sugerirNomesCerco(missaoId: number, termo: string) {
 export async function inscreverCerco(_prev: unknown, formData: FormData) {
   const missaoId = Number(formData.get("missaoId"));
   const nome = String(formData.get("nome") || "").trim();
-  const setor = String(formData.get("setor") || "").trim();
   const horario = String(formData.get("horario") || "").trim();
-  if (!missaoId || !nome || !setor || !horario) {
-    return { error: "Preencha seu nome, setor e escolha um horário." };
+  if (!missaoId || !nome || !horario) {
+    return { error: "Preencha seu nome e escolha um horário." };
   }
+  if (!HORARIOS_CERCO.includes(horario)) return { error: "Horário inválido." };
   if (excedeuLimite(`cerco:inscricao:${await ipDoCliente()}`, 10, 10 * 60_000)) {
     return { error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." };
   }
@@ -681,37 +696,49 @@ export async function inscreverCerco(_prev: unknown, formData: FormData) {
   const existente = servosDaMissao.find(
     (s) => s.pessoa.nome.trim().toLowerCase() === nome.toLowerCase()
   );
-
-  const ocupacao = servosDaMissao.filter(
-    (s) => s.cercoHorario === horario && s.id !== existente?.id
-  ).length;
-  if (ocupacao >= CERCO_MAX_POR_HORARIO) {
-    return { error: "Esse horário já atingiu o limite de 15 pessoas. Escolha outro." };
-  }
-
   if (!existente) {
     return { error: "Nome não encontrado na lista de servos desta missão. Selecione seu nome nas sugestões." };
   }
-
-  if (existente.setor && existente.setor !== setor) {
-    return { error: `Você está cadastrado no setor "${existente.setor}". Selecione esse setor para se inscrever.` };
+  // o setor vem do cadastro do servo: a pessoa não precisa (nem pode) escolher
+  if (!existente.setor) {
+    return { error: "Seu cadastro está sem setor. Fale com a coordenação para ajustar." };
   }
 
-  await db.servo.update({
-    where: { id: existente.id },
-    data: { setor, cercoHorario: horario },
-  });
+  // reserva atômica: se lotou entre a tela e o envio, ninguém passa do limite
+  let reservou: boolean;
+  try {
+    reservou = await reservarHorarioCerco(db, {
+      servoId: existente.id,
+      missaoId,
+      horario,
+      max: missao.cercoMaxPorHorario,
+    });
+  } catch {
+    return { error: "Não foi possível registrar agora. Tente de novo em instantes." };
+  }
+  if (!reservou) {
+    return { error: `Esse horário já atingiu o limite de ${missao.cercoMaxPorHorario} pessoas. Escolha outro.` };
+  }
 
   notificarPushbird(
     "cerco",
     "Cerco de Jericó",
-    `${existente.pessoa.nome} (${setor}) escolheu ${horario}h`,
+    `${existente.pessoa.nome} (${existente.setor}) escolheu ${horario}h`,
     missao.nome
   );
 
   revalidatePath(`/cerco/${missao.cercoSlug}`);
   revalidatePath("/cerco-dashboard");
-  return { ok: true };
+  return {
+    ok: true,
+    comprovante: {
+      nome: existente.pessoa.nome,
+      setor: existente.setor,
+      horario,
+      missao: missao.nome,
+      registradoEm: new Date().toISOString(),
+    },
+  } as const;
 }
 
 // ---------- neocampistas ----------
