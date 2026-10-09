@@ -86,6 +86,7 @@ model Servo {
   funcao         String  @default("INTEGRANTE") // COORDENADOR | AUXILIAR | APOIO | INTEGRANTE
   camiseta       String?
   status         String  @default("ATIVO") // ATIVO | RECUSOU | DESISTIU
+  confirmado     Boolean @default(false) // coordenador de setor confirmou o "Sim" (ATIVO sem confirmar = ainda será chamado)
   formacao1      String? // SIM | Não
   formacao2      String?
   formacao3      String?

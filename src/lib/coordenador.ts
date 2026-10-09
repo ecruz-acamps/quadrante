@@ -23,6 +23,7 @@ export function dadosDoStatus(status: StatusServo, motivo?: string | null) {
   const texto = (motivo ?? "").trim().slice(0, MOTIVO_MAX) || null;
   return {
     status,
+    confirmado: status === "ATIVO",
     motivoRecusou: status === "RECUSOU" ? texto : null,
     motivoDesistiu: status === "DESISTIU" ? texto : null,
   };
@@ -32,4 +33,8 @@ export type Role = "SUPER" | "ADMIN" | "COORDENADOR";
 
 export function normalizarRole(v: unknown): Role {
   return v === "SUPER" || v === "COORDENADOR" ? v : "ADMIN";
+}
+
+export function camisetaValida(v: unknown, tamanhos: readonly string[]): v is string | null {
+  return v === null || (typeof v === "string" && tamanhos.includes(v));
 }

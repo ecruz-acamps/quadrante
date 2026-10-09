@@ -5,10 +5,10 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { createSession, destroySession, requireUser, requireRole, requireCoordenador, setMissaoAtiva } from "./auth";
-import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole } from "./coordenador";
+import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaValida } from "./coordenador";
 import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
 import { normalizarNome } from "./nomes";
-import { FUNCOES, PAGAMENTOS, HORARIOS_CERCO } from "./constants";
+import { FUNCOES, PAGAMENTOS, HORARIOS_CERCO, CAMISETAS } from "./constants";
 import { reservarHorarioCerco } from "./cercoReserva";
 import { edicaoDe } from "./missoes";
 import { gerarCodigo6Digitos, checarConflitoServo } from "./conflitoServo";
@@ -634,6 +634,22 @@ export async function marcarStatusServo(servoId: number, status: string, motivo?
   revalidatePath("/meu-setor");
   revalidatePath("/servos");
   revalidatePath("/registros");
+  return { ok: true } as const;
+}
+
+// coordenador altera só a camiseta dos servos do próprio setor
+export async function atualizarCamisetaServo(servoId: number, camiseta: string | null) {
+  const { setor, missaoIds } = await requireCoordenador();
+  if (!Number.isSafeInteger(servoId) || servoId <= 0 || servoId > 2147483647) return { error: "Servo inválido." } as const;
+  if (!camisetaValida(camiseta, CAMISETAS)) return { error: "Tamanho inválido." } as const;
+  const servo = await db.servo.findUnique({ where: { id: servoId }, select: { id: true, setor: true, missaoId: true } });
+  if (!servo || !podeMarcarServo({ setor, missaoIds }, servo)) {
+    return { error: "Servo não encontrado no seu setor." } as const;
+  }
+  await db.servo.update({ where: { id: servo.id }, data: { camiseta } });
+  revalidatePath("/meu-setor");
+  revalidatePath("/servos");
+  revalidatePath("/camisetas");
   return { ok: true } as const;
 }
 

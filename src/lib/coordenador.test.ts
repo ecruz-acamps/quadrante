@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, MOTIVO_MAX } from "./coordenador";
+import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaValida, MOTIVO_MAX } from "./coordenador";
 
 test("statusValido aceita só os três status exatos", () => {
   for (const s of ["ATIVO", "RECUSOU", "DESISTIU"]) assert.equal(statusValido(s), true);
@@ -25,12 +25,12 @@ test("podeMarcarServo compara o setor exatamente (sem ignorar maiúscula)", () =
 });
 
 test("dadosDoStatus: ATIVO limpa os dois motivos", () => {
-  assert.deepEqual(dadosDoStatus("ATIVO", "qualquer"), { status: "ATIVO", motivoRecusou: null, motivoDesistiu: null });
+  assert.deepEqual(dadosDoStatus("ATIVO", "qualquer"), { status: "ATIVO", confirmado: true, motivoRecusou: null, motivoDesistiu: null });
 });
 
 test("dadosDoStatus: RECUSOU e DESISTIU gravam só o motivo do próprio status", () => {
-  assert.deepEqual(dadosDoStatus("RECUSOU", "viagem"), { status: "RECUSOU", motivoRecusou: "viagem", motivoDesistiu: null });
-  assert.deepEqual(dadosDoStatus("DESISTIU", "doença"), { status: "DESISTIU", motivoRecusou: null, motivoDesistiu: "doença" });
+  assert.deepEqual(dadosDoStatus("RECUSOU", "viagem"), { status: "RECUSOU", confirmado: false, motivoRecusou: "viagem", motivoDesistiu: null });
+  assert.deepEqual(dadosDoStatus("DESISTIU", "doença"), { status: "DESISTIU", confirmado: false, motivoRecusou: null, motivoDesistiu: "doença" });
 });
 
 test("dadosDoStatus: motivo com espaços, vazio ou ausente vira null", () => {
@@ -51,4 +51,11 @@ test("normalizarRole: só SUPER e COORDENADOR são preservados, o resto vira ADM
   assert.equal(normalizarRole("COORDENADOR"), "COORDENADOR");
   assert.equal(normalizarRole("ADMIN"), "ADMIN");
   for (const v of ["super", "", null, undefined, "ROOT", 3]) assert.equal(normalizarRole(v), "ADMIN");
+});
+
+test("camisetaValida: tamanho da lista ou null (limpar); o resto é recusado", () => {
+  const t = ["P", "M", "G"];
+  assert.equal(camisetaValida("M", t), true);
+  assert.equal(camisetaValida(null, t), true);
+  for (const v of ["", "XL", "m", undefined, 1, {}]) assert.equal(camisetaValida(v, t), false);
 });

@@ -2,6 +2,7 @@ import { requireCoordenador } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { FUNCOES } from "@/lib/constants";
 import StatusServoButtons from "./StatusServoButtons";
+import CamisetaSelect from "./CamisetaSelect";
 
 export default async function MeuSetorPage() {
   const { setor, missao } = await requireCoordenador();
@@ -54,11 +55,12 @@ export default async function MeuSetorPage() {
                   <td className="px-4 py-2">{s.pessoa.nome}</td>
                   <td className="px-4 py-2">{s.funcao}</td>
                   <td className="px-4 py-2">{s.pessoa.celular ?? "—"}</td>
-                  <td className="px-4 py-2">{s.camiseta ?? "—"}</td>
+                  <td className="px-4 py-2"><CamisetaSelect servoId={s.id} camiseta={s.camiseta} /></td>
                   <td className="px-4 py-2">
                     <StatusServoButtons
                       servoId={s.id}
                       status={s.status}
+                      confirmado={s.confirmado}
                       motivo={s.status === "DESISTIU" ? s.motivoDesistiu : s.status === "RECUSOU" ? s.motivoRecusou : null}
                     />
                   </td>

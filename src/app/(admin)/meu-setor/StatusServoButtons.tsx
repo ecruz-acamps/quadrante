@@ -12,7 +12,7 @@ const BOTOES: { status: Status; rotulo: string; pergunta: string | null; ativo: 
   { status: "DESISTIU", rotulo: "Desistiu", pergunta: "Por que a pessoa desistiu?", ativo: "bg-[var(--signal)]/10 border-[var(--signal)] text-[var(--signal)]" },
 ];
 
-export default function StatusServoButtons({ servoId, status, motivo }: { servoId: number; status: string; motivo: string | null }) {
+export default function StatusServoButtons({ servoId, status, confirmado, motivo }: { servoId: number; status: string; confirmado: boolean; motivo: string | null }) {
   const router = useRouter();
   const [pedindo, setPedindo] = useState<Status | null>(null);
   const [texto, setTexto] = useState("");
@@ -55,7 +55,7 @@ export default function StatusServoButtons({ servoId, status, motivo }: { servoI
             disabled={enviando}
             onClick={() => (b.pergunta ? setPedindo(b.status) : gravar(b.status))}
             className={`px-2 py-1 text-xs rounded border ${
-              status === b.status ? b.ativo : "border-[var(--line)] text-[var(--ink-soft)]/70 hover:border-[var(--ink)]"
+              (status === b.status && (b.status !== "ATIVO" || confirmado)) ? b.ativo : "border-[var(--line)] text-[var(--ink-soft)]/70 hover:border-[var(--ink)]"
             }`}
           >
             {b.rotulo}
