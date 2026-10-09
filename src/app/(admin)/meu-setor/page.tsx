@@ -2,6 +2,7 @@ import { requireCoordenador } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { FUNCOES } from "@/lib/constants";
 import StatusServoButtons from "./StatusServoButtons";
+import Link from "next/link";
 import ChamarButton from "../ChamarButton";
 import CamisetaSelect from "./CamisetaSelect";
 
@@ -54,7 +55,11 @@ export default async function MeuSetorPage() {
             <tbody className="divide-y divide-[var(--line)]">
               {servos.map((s) => (
                 <tr key={s.id}>
-                  <td className="px-4 py-2">{s.pessoa.nome}</td>
+                  <td className="px-4 py-2">
+                    <Link href={`/meu-setor/historico/${s.id}`} className="font-medium text-[var(--ink)] hover:text-[var(--brass)] hover:underline">
+                      {s.pessoa.nome}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2">{s.funcao}</td>
                   <td className="px-4 py-2">{s.pessoa.celular ?? "—"}</td>
                   <td className="px-4 py-2"><CamisetaSelect servoId={s.id} camiseta={s.camiseta} /></td>
