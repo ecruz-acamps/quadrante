@@ -7,6 +7,7 @@ import ChamarEvangelizacaoModal from "./ChamarEvangelizacaoModal";
 import SetorCard from "./SetorCard";
 import ReferenciaPanel from "./ReferenciaPanel";
 import { QuadranteDndProvider } from "./QuadranteDnd";
+import ChamarButton from "../ChamarButton";
 import { CamisetaInlineSelect, PagoInlineSelect, FuncaoInlineSelect, CercoInlineSelect } from "./ServoInlineEdit";
 import ExcluirDesistiuButtons from "./ExcluirDesistiuButtons";
 import { Icon } from "./icons";
@@ -243,6 +244,7 @@ export default async function ServosPage({
                       <PagoInlineSelect servoId={s.id} pago={s.pago} />
                     </Campo>
                     <div className="col-span-2 flex flex-wrap items-center justify-end gap-1 border-t border-[#eef0f5] pt-3 @4xl:col-span-1 @4xl:flex-nowrap @4xl:border-0 @4xl:pt-0">
+                      <ChamarButton nome={s.pessoa.nome} missaoNome={missao.nome} setor={s.setor} />
                       <Link
                         href={`/servos/${s.id}`}
                         className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--ink)] transition-colors hover:bg-[#eef1f8]"

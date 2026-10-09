@@ -2,6 +2,7 @@ import { requireCoordenador } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { FUNCOES } from "@/lib/constants";
 import StatusServoButtons from "./StatusServoButtons";
+import ChamarButton from "../ChamarButton";
 import CamisetaSelect from "./CamisetaSelect";
 
 export default async function MeuSetorPage() {
@@ -47,6 +48,7 @@ export default async function MeuSetorPage() {
                 <th className="text-left px-4 py-2">Celular</th>
                 <th className="text-left px-4 py-2">Camiseta</th>
                 <th className="text-left px-4 py-2">Vai servir?</th>
+                <th className="px-4 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line)]">
@@ -63,6 +65,9 @@ export default async function MeuSetorPage() {
                       confirmado={s.confirmado}
                       motivo={s.status === "DESISTIU" ? s.motivoDesistiu : s.status === "RECUSOU" ? s.motivoRecusou : null}
                     />
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <ChamarButton nome={s.pessoa.nome} missaoNome={missao.nome} setor={s.setor} />
                   </td>
                 </tr>
               ))}
