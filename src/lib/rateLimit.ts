@@ -25,5 +25,12 @@ export function limparLimite(chave: string) {
 
 export async function ipDoCliente(): Promise<string> {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0].trim() || h.get("x-real-ip") || "desconhecido";
+  // atrás do Cloudflare, CF-Connecting-IP é definido pela borda e não pode ser forjado pelo cliente;
+  // X-Forwarded-For é só o último recurso (fora do túnel, em desenvolvimento)
+  return (
+    h.get("cf-connecting-ip")?.trim() ||
+    h.get("x-forwarded-for")?.split(",")[0].trim() ||
+    h.get("x-real-ip") ||
+    "desconhecido"
+  );
 }

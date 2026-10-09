@@ -43,20 +43,6 @@ export default async function ConfiguracoesPage({
           </a>
         </div>
 
-        <div className="card p-4 mt-4">
-          <p className="text-sm text-[var(--ink-soft)]/80 mb-4">
-            Baixa o arquivo <code>.env</code> atual (segredos: chave de sessão, credenciais do
-            login Google, etc). Contém dados sensíveis — guarde com o mesmo cuidado de uma senha
-            e nunca compartilhe ou suba para repositórios públicos.
-          </p>
-          <a
-            href="/api/backup/env"
-            className="inline-block rounded px-4 py-2 bg-[var(--brass)] text-[var(--ink)] font-medium"
-          >
-            Baixar .env
-          </a>
-        </div>
-
         {missao && (
           <div className="card p-4 mt-4">
             <p className="text-sm text-[var(--ink-soft)]/80 mb-4">

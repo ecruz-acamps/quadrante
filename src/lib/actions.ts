@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { createSession, destroySession, requireUser, requireRole, setMissaoAtiva, podeAcessarMissao } from "./auth";
+import { createSession, destroySession, requireUser, requireRole, setMissaoAtiva } from "./auth";
+import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
 import { normalizarNome } from "./nomes";
+import { FUNCOES, PAGAMENTOS } from "./constants";
 import { edicaoDe } from "./missoes";
 import { gerarCodigo6Digitos, checarConflitoServo } from "./conflitoServo";
 import { notificarPushbird } from "./notificacoes";
@@ -150,7 +152,8 @@ async function calcularSetorConsecutivo(pessoaId: number): Promise<{ setor: stri
 }
 
 export async function buscarPessoas(missaoId: number, nome: string) {
-  await requireUser();
+  const usuario = await requireUser();
+  if (!(await podeAcessarMissao(usuario, missaoId))) return [];
   const termo = nome.trim();
   if (termo.length < 2) return [];
 
@@ -191,7 +194,8 @@ export async function buscarPessoas(missaoId: number, nome: string) {
 
 // busca global (pessoas + neocampistas de qualquer missão) para o modal "Adicionar servo" por setor
 export async function buscarPessoasGlobal(missaoId: number, termo: string) {
-  await requireUser();
+  const usuario = await requireUser();
+  if (!(await podeAcessarMissao(usuario, missaoId))) return [];
   const t = termo.trim();
   if (t.length < 2) return [];
 
@@ -354,7 +358,9 @@ export async function listarMissoesComNeocampistas() {
 // puxa todos os neocampistas (situação OK) de uma missão de origem e os adiciona
 // como servos no setor Evangelização da missão de destino (a ativa no momento)
 export async function chamarEvangelizacao(missaoOrigemId: number, missaoDestinoId: number) {
-  await requireUser();
+  const usuario = await requireUser();
+  // a origem é só leitura (campistas de edições anteriores viram servos); o acesso exigido é ao destino, onde se grava
+  await exigirMissao(usuario, missaoDestinoId);
   const fichas = await db.neocampista.findMany({ where: { missaoId: missaoOrigemId, situacao: "OK" } });
 
   let adicionados = 0;
@@ -414,8 +420,9 @@ async function validarELiberarCodigo(pessoaId: number, missaoId: number, codigo:
 }
 
 export async function criarServo(_prevState: unknown, formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const missaoId = Number(formData.get("missaoId"));
+  if (!(await podeAcessarMissao(usuario, missaoId))) return { error: "Sem acesso a esta missão." };
   const status = String(formData.get("status") || "ATIVO");
   const s = (k: string) => {
     const v = formData.get(k);
@@ -470,8 +477,9 @@ export async function criarServo(_prevState: unknown, formData: FormData) {
 }
 
 export async function atualizarServo(_prevState: unknown, formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const id = Number(formData.get("id"));
+  if (!(await acessoRegistros(usuario, ["servo", id]))) return { error: "Sem acesso a este servo." };
   const servo = await db.servo.findUniqueOrThrow({ where: { id } });
   const status = String(formData.get("status") || "ATIVO");
   const s = (k: string) => {
@@ -519,22 +527,29 @@ export async function atualizarServoInline(
   servoId: number,
   dados: { camiseta?: string | null; pago?: boolean; funcao?: string; cercoHorario?: string | null; pagamentoForma?: string | null }
 ) {
-  await requireUser();
+  const usuario = await requireUser();
+  if (!(await acessoRegistros(usuario, ["servo", servoId]))) return { error: "Sem acesso a este servo." } as const;
   const { camiseta, pago, funcao, cercoHorario, pagamentoForma } = dados;
+  if (funcao !== undefined && !FUNCOES.includes(funcao)) return { error: "Função inválida." } as const;
+  if (pagamentoForma && !PAGAMENTOS.includes(pagamentoForma)) return { error: "Forma de pagamento inválida." } as const;
   await db.servo.update({ where: { id: servoId }, data: { camiseta, pago, funcao, cercoHorario, pagamentoForma } });
   revalidatePath("/servos");
   revalidatePath("/formacao");
+  return { ok: true } as const;
 }
 
 export async function excluirServo(formData: FormData) {
-  await requireUser();
-  await db.servo.delete({ where: { id: Number(formData.get("id")) } });
+  const usuario = await requireUser();
+  const id = Number(formData.get("id"));
+  await exigirRegistros(usuario, ["servo", id]);
+  await db.servo.delete({ where: { id } });
   revalidatePath("/servos");
 }
 
 // ---------- liberação de conflito de servo ----------
 export async function solicitarLiberacaoConflito(pessoaId: number, missaoId: number) {
-  await requireUser();
+  const usuario = await requireUser();
+  await exigirMissao(usuario, missaoId);
   const [pessoa, missaoDestino] = await Promise.all([
     db.pessoa.findUniqueOrThrow({ where: { id: pessoaId } }),
     db.missao.findUniqueOrThrow({ where: { id: missaoId } }),
@@ -559,10 +574,12 @@ export async function solicitarLiberacaoConflito(pessoaId: number, missaoId: num
 }
 
 export async function marcarDesistiu(formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
+  const id = Number(formData.get("id"));
+  await exigirRegistros(usuario, ["servo", id]);
   const motivo = String(formData.get("motivo") || "").trim();
   await db.servo.update({
-    where: { id: Number(formData.get("id")) },
+    where: { id },
     data: { status: "DESISTIU", motivoDesistiu: motivo || null },
   });
   revalidatePath("/servos");
@@ -570,10 +587,12 @@ export async function marcarDesistiu(formData: FormData) {
 }
 
 export async function marcarRecusou(formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
+  const id = Number(formData.get("id"));
+  await exigirRegistros(usuario, ["servo", id]);
   const motivo = String(formData.get("motivo") || "").trim();
   await db.servo.update({
-    where: { id: Number(formData.get("id")) },
+    where: { id },
     data: { status: "RECUSOU", motivoRecusou: motivo || null },
   });
   revalidatePath("/servos");
@@ -582,8 +601,9 @@ export async function marcarRecusou(formData: FormData) {
 
 // ---------- formação (3 formações por missão) ----------
 export async function marcarFormacao(formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const servoId = Number(formData.get("servoId"));
+  await exigirRegistros(usuario, ["servo", servoId]);
   const numero = Number(formData.get("numero")); // 1 | 2 | 3
   const presente = formData.get("presente") === "true";
   const motivo = String(formData.get("motivo") || "").trim();
@@ -699,8 +719,9 @@ function fichaData(formData: FormData) {
 }
 
 export async function criarFicha(formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const missaoId = Number(formData.get("missaoId"));
+  await exigirMissao(usuario, missaoId);
   const max = await db.neocampista.aggregate({ where: { missaoId }, _max: { numero: true } });
   await db.neocampista.create({
     data: { missaoId, numero: (max._max.numero || 0) + 1, ...fichaData(formData) },
@@ -709,25 +730,29 @@ export async function criarFicha(formData: FormData) {
 }
 
 export async function atualizarFicha(formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const id = Number(formData.get("id"));
+  await exigirRegistros(usuario, ["ficha", id]);
   await db.neocampista.update({ where: { id }, data: fichaData(formData) });
   revalidatePath("/fichas");
   redirect("/fichas");
 }
 
 export async function excluirFicha(formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const id = Number(formData.get("id"));
+  await exigirRegistros(usuario, ["ficha", id]);
   await db.fichaAlerta.deleteMany({ where: { OR: [{ origemId: id }, { alvoId: id }] } });
   await db.neocampista.delete({ where: { id } });
   revalidatePath("/fichas");
 }
 
 export async function adicionarAlerta(formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const origemId = Number(formData.get("origemId"));
   const alvoId = Number(formData.get("alvoId"));
+  // as duas fichas precisam ser da mesma missão a que o usuário tem acesso
+  await exigirRegistros(usuario, ["ficha", origemId], ["ficha", alvoId]);
   if (origemId && alvoId && origemId !== alvoId) {
     await db.fichaAlerta.upsert({
       where: { origemId_alvoId: { origemId, alvoId } },
@@ -740,18 +765,23 @@ export async function adicionarAlerta(formData: FormData) {
 }
 
 export async function removerAlerta(formData: FormData) {
-  await requireUser();
-  await db.fichaAlerta.delete({ where: { id: Number(formData.get("id")) } });
+  const usuario = await requireUser();
+  const id = Number(formData.get("id"));
+  await exigirRegistros(usuario, ["alerta", id]);
+  await db.fichaAlerta.delete({ where: { id } });
   revalidatePath("/fichas");
   revalidatePath("/tribos");
 }
 
 // ---------- tribos ----------
 export async function alocarTribo(_prev: unknown, formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const fichaId = Number(formData.get("fichaId"));
   const triboIdRaw = formData.get("triboId");
   const triboId = triboIdRaw ? Number(triboIdRaw) : null;
+  // ficha e tribo precisam ser da mesma missão a que o usuário tem acesso
+  const refs: [["ficha", number], ...Array<["tribo", number]>] = triboId ? [["ficha", fichaId], ["tribo", triboId]] : [["ficha", fichaId]];
+  if (!(await acessoRegistros(usuario, ...refs))) return { error: "Sem acesso a esta ficha ou tribo." };
 
   if (triboId) {
     // trava: nenhuma ficha-alerta pode estar na mesma tribo
@@ -778,8 +808,9 @@ function mediaLista(nums: number[]) {
 
 // sorteio balanceado de fichas sem tribo, respeitando pares de FichaAlerta
 export async function sortearTribos(_prev: unknown, formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const missaoId = Number(formData.get("missaoId"));
+  if (!(await podeAcessarMissao(usuario, missaoId))) return { error: "Sem acesso a esta missão." };
 
   const tribos = await db.tribo.findMany({
     where: { missaoId },
@@ -917,9 +948,11 @@ export async function sortearTribos(_prev: unknown, formData: FormData) {
 }
 
 export async function adicionarLiderTribo(formData: FormData) {
-  await requireUser();
+  const usuario = await requireUser();
   const triboId = Number(formData.get("triboId"));
   const servoId = Number(formData.get("servoId"));
+  // a tribo e o servo precisam ser da mesma missão a que o usuário tem acesso
+  await exigirRegistros(usuario, ["tribo", triboId], ["servo", servoId]);
   if (triboId && servoId) {
     await db.triboLider.upsert({
       where: { triboId_servoId: { triboId, servoId } },
@@ -931,8 +964,10 @@ export async function adicionarLiderTribo(formData: FormData) {
 }
 
 export async function removerLiderTribo(formData: FormData) {
-  await requireUser();
-  await db.triboLider.delete({ where: { id: Number(formData.get("id")) } });
+  const usuario = await requireUser();
+  const id = Number(formData.get("id"));
+  await exigirRegistros(usuario, ["liderTribo", id]);
+  await db.triboLider.delete({ where: { id } });
   revalidatePath("/tribos");
 }
 
@@ -985,8 +1020,8 @@ export async function criarUsuario(_prev: unknown, formData: FormData) {
   const role = String(formData.get("role") || "ADMIN") === "SUPER" ? "SUPER" : "ADMIN";
   const missaoIds = formData.getAll("missaoIds").map(Number).filter((n) => !Number.isNaN(n));
 
-  if (!nome || !email || senha.length < 4) {
-    return { error: "Preencha nome, e-mail e uma senha com pelo menos 4 caracteres." };
+  if (!nome || !email || senha.length < 10) {
+    return { error: "Preencha nome, e-mail e uma senha com pelo menos 10 caracteres." };
   }
   if (role === "ADMIN" && missaoIds.length === 0) {
     return { error: "Selecione ao menos uma missão para este usuário." };
@@ -1016,8 +1051,8 @@ export async function atualizarUsuario(_prev: unknown, formData: FormData) {
   if (role === "ADMIN" && missaoIds.length === 0) {
     return { error: "Selecione ao menos uma missão para este usuário." };
   }
-  if (novaSenha && novaSenha.length < 4) {
-    return { error: "A nova senha precisa ter pelo menos 4 caracteres." };
+  if (novaSenha && novaSenha.length < 10) {
+    return { error: "A nova senha precisa ter pelo menos 10 caracteres." };
   }
 
   const senhaHash = novaSenha ? await bcrypt.hash(novaSenha, 10) : undefined;

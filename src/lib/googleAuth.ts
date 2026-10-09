@@ -25,7 +25,6 @@ export function buildGoogleAuthUrl(state: string) {
       "openid",
       "email",
       "profile",
-      "https://www.googleapis.com/auth/admin.directory.user.readonly",
     ].join(" "),
     state,
     hd: process.env.GSUITE_DOMAIN || "",
@@ -92,21 +91,4 @@ export async function getGoogleUserInfo(accessToken: string) {
   });
   if (!res.ok) throw new Error(`Falha ao obter dados do usuário: ${await res.text()}`);
   return res.json() as Promise<{ email: string; email_verified: boolean; name: string; hd?: string }>;
-}
-
-// Consulta o Admin SDK Directory API para saber se o usuário é admin do Workspace.
-// Um usuário comum consegue ler o próprio registro; se a chamada falhar (API não
-// habilitada, escopo negado, etc.) tratamos como "não é admin" em vez de travar o login.
-export async function checkIsWorkspaceAdmin(accessToken: string, email: string): Promise<boolean> {
-  try {
-    const res = await fetch(
-      `https://admin.googleapis.com/admin/directory/v1/users/${encodeURIComponent(email)}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-    if (!res.ok) return false;
-    const data = (await res.json()) as { isAdmin?: boolean };
-    return Boolean(data.isAdmin);
-  } catch {
-    return false;
-  }
 }

@@ -86,21 +86,21 @@ export async function requireRole(role: "SUPER") {
   return user;
 }
 
-// ADMIN só acessa missões vinculadas a ele; SUPER acessa todas
-export async function podeAcessarMissao(user: { id: number; role: string }, missaoId: number) {
-  if (user.role === "SUPER") return true;
-  const vinculo = await db.usuarioMissao.findUnique({
-    where: { usuarioId_missaoId: { usuarioId: user.id, missaoId } },
-  });
-  return Boolean(vinculo);
-}
+// ADMIN só acessa missões vinculadas a ele; SUPER acessa todas (a regra mora em autorizacao.ts)
+export { podeAcessarMissao } from "./autorizacao";
 
 // missão ativa selecionada (cookie) — ADMIN só enxerga as missões vinculadas a ele
 const MISSAO_COOKIE = "quadrante_missao";
 
 export async function setMissaoAtiva(id: number) {
   const store = await cookies();
-  store.set(MISSAO_COOKIE, String(id), { maxAge: 60 * 60 * 24 * 365 });
+  store.set(MISSAO_COOKIE, String(id), {
+    maxAge: 60 * 60 * 24 * 365,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: cookieSecure(),
+    path: "/",
+  });
 }
 
 // missões que o usuário pode ver/editar. SUPER não é consultado aqui (sempre vê tudo).
