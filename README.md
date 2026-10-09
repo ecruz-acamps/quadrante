@@ -224,29 +224,49 @@ O que **só existe no servidor** (não está no GitHub):
 
 ### Backup manual
 
-Em **Configurações** (como SUPER) há links para baixar o banco (`/api/backup`) e o `.env`
-(`/api/backup/env`). Faça isso antes de mudanças grandes.
+Em **Configurações** (como SUPER) há um link para baixar o banco (`/api/backup`), gerado como snapshot
+consistente (`VACUUM INTO`) e verificado antes do download. Faça isso antes de mudanças grandes. O `.env`
+**não** é mais baixável pela aplicação: ele segue dentro do backup criptografado do Drive e deve ter uma
+cópia no seu cofre de senhas.
 
-### Backup automático para o Google Drive
+### Backup automático para o Google Drive (diário, criptografado)
 
-O script `scripts/backup-to-drive.ts` gera `quadrante-backup-AAAA-MM-DD-HHMM.tar.gz` (contendo
-`prisma/quadrante.db` e `.env`), envia para a pasta do Drive e mantém as **30 cópias mais recentes**.
+O script `scripts/backup-to-drive.ts` roda **todo dia às 03:00** e:
+
+1. tira um snapshot consistente do banco (`VACUUM INTO`) e confere `PRAGMA integrity_check`;
+2. compacta o snapshot + `.env` e **criptografa com gpg (AES256)**; a senha é `BACKUP_PASSPHRASE`, no `.env`;
+3. envia `quadrante-backup-AAAA-MM-DD-HHMM.tar.gz.gpg` ao Drive, confere o tamanho e mantém as **45 cópias mais recentes**;
+4. grava `/var/log/quadrante/ultimo-backup-ok`. Se algo falhar, manda **alerta no celular** (Pushbird) e sai com erro.
+
+Sem `BACKUP_PASSPHRASE` o script se recusa a enviar (nunca sobe backup sem criptografia).
+
+> ⚠️ **Guarde a `BACKUP_PASSPHRASE` no seu cofre de senhas, fora do servidor.** Sem ela, nenhum backup do Drive
+> pode ser aberto, nem por você: se o servidor morrer, a senha que estava no `.env` morre junto.
+
+Configuração:
 
 1. Em **Configurações**, clique em **Conectar Google Drive** (grava o refresh token no `.env`).
-2. Teste manualmente:
+2. Garanta a senha no `.env` (`BACKUP_PASSPHRASE="..."`, 16+ caracteres; gere com `openssl rand -base64 33`).
+3. Teste manualmente:
    ```bash
    npx tsx scripts/backup-to-drive.ts
    ```
-3. **Agende.** Está agendado no cron do servidor para os dias 1 e 16 de cada mês (aprox. a cada 15 dias). Linha usada (`crontab -e`):
+4. **Agende** (`crontab -e`). O segundo item é o alarme de silêncio: avisa no celular se não há backup bom há mais de 26 h
+   (cobre o caso de o cron ou o servidor nem rodarem o backup):
    ```cron
-   0 3 1,16 * * export PATH=/caminho/do/node/bin:/usr/bin:/bin; cd /caminho/para/quadrante && ./node_modules/.bin/tsx scripts/backup-to-drive.ts >> /var/log/quadrante/backup.log 2>&1
+   0 3 * * * export PATH=/caminho/do/node/bin:/usr/bin:/bin; cd /caminho/para/quadrante && ./node_modules/.bin/tsx scripts/backup-to-drive.ts >> /var/log/quadrante/backup.log 2>&1
+   0 9 * * * export PATH=/caminho/do/node/bin:/usr/bin:/bin; cd /caminho/para/quadrante && ./node_modules/.bin/tsx scripts/verificar-backup.ts >> /var/log/quadrante/backup.log 2>&1
    ```
 
-> ⚠️ **Confira de tempos em tempos se há arquivos recentes na pasta do Drive e olhe `/var/log/quadrante/backup.log`.**
-> O agendamento (cron) vive no servidor, não no repositório: ao trocar de máquina, recrie-o. O cron não enxerga o `node` do nvm sem o `export PATH`.
+**Teste de restauração** (antes de cada evento e a cada poucos meses): baixa o backup mais recente do Drive,
+descriptografa, extrai numa pasta temporária e confere o banco, sem tocar na produção:
 
-Guarde também uma cópia do `.env` num cofre de senhas, independente do Drive: o backup do Drive só é
-acessível com credenciais que estão no próprio `.env`.
+```bash
+npx tsx scripts/testar-restauracao.ts      # termina com "RESTAURAÇÃO OK."
+```
+
+> O agendamento (cron) vive no servidor, não no repositório: ao trocar de máquina, recrie-o. O cron não enxerga
+> o `node` do nvm sem o `export PATH`.
 
 ## Restaurar o servidor completo (passo a passo)
 
@@ -258,10 +278,11 @@ Cenário: o servidor foi perdido; você tem o GitHub e o backup no Drive.
    git clone https://github.com/ecruz-acamps/quadrante.git && cd quadrante
    npm ci
    ```
-3. **Backup:** baixe pelo navegador o `quadrante-backup-….tar.gz` mais recente da pasta do Drive e extraia
-   dentro do projeto:
+3. **Backup:** baixe pelo navegador o `quadrante-backup-….tar.gz.gpg` mais recente da pasta do Drive,
+   descriptografe com a `BACKUP_PASSPHRASE` (do seu cofre de senhas) e extraia dentro do projeto:
    ```bash
-   tar -xzf /caminho/quadrante-backup-AAAA-MM-DD-HHMM.tar.gz -C .
+   gpg --output backup.tar.gz --decrypt quadrante-backup-AAAA-MM-DD-HHMM.tar.gz.gpg   # pede a senha
+   tar -xzf backup.tar.gz -C .
    ```
    Isso recoloca `prisma/quadrante.db` e `.env` nos lugares certos.
 4. **Banco e cliente:**

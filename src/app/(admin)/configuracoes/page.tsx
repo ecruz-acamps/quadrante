@@ -59,9 +59,10 @@ export default async function ConfiguracoesPage({
 
         <div className="card p-4 mt-4">
           <p className="text-sm text-[var(--ink-soft)]/80 mb-2">
-            Backup automático a cada 15 dias (banco + .env compactados) enviado para uma pasta
-            própria no Google Drive, criada pelo Quadrante ("Backups Quadrante"). Autorize com
-            a conta Google que deve ficar dona dessa pasta.
+            Backup automático diário (banco + .env, criptografados) enviado para uma pasta
+            própria no Google Drive, criada pelo Quadrante (&quot;Backups Quadrante&quot;). Se o backup
+            falhar, você recebe um aviso no celular. Autorize com a conta Google que deve ficar
+            dona dessa pasta.
           </p>
           {drive === "conectado" && (
             <p className="text-sm text-green-700 mb-2">Google Drive conectado com sucesso.</p>

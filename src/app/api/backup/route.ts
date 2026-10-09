@@ -1,4 +1,6 @@
 import { requireRole } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { criarSnapshot, verificarSnapshot } from "@/lib/snapshotDb";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
@@ -12,23 +14,25 @@ function timestamp() {
 export async function GET() {
   await requireRole("SUPER");
 
-  const dbPath = path.join(process.cwd(), "prisma", "quadrante.db");
-  const tmpPath = path.join(os.tmpdir(), `quadrante-backup-${Date.now()}.db`);
+  const pasta = await fs.mkdtemp(path.join(os.tmpdir(), "qd-dl-"));
+  const copia = path.join(pasta, "quadrante.db");
 
   try {
-    await fs.copyFile(dbPath, tmpPath);
-    const bytes = await fs.readFile(tmpPath);
-    const filename = `quadrante-backup-${timestamp()}.db`;
+    // snapshot consistente (VACUUM INTO) em vez de copiar o arquivo com o app em uso
+    await criarSnapshot(db, copia);
+    const verificacao = await verificarSnapshot(copia);
+    if (!verificacao.ok) throw new Error(`snapshot reprovado: ${verificacao.detalhe}`);
+    const bytes = await fs.readFile(copia);
 
     return new Response(new Uint8Array(bytes), {
       headers: {
         "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `attachment; filename="quadrante-backup-${timestamp()}.db"`,
       },
     });
   } catch (err) {
     return new Response(`Falha ao gerar backup: ${(err as Error).message}`, { status: 500 });
   } finally {
-    await fs.unlink(tmpPath).catch(() => {});
+    await fs.rm(pasta, { recursive: true, force: true });
   }
 }

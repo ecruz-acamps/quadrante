@@ -31,3 +31,12 @@ export async function notificarPushbird(
 
   await Promise.all(dispositivos.map((d) => enviar(d.webhookUrl, title, message, subtitle)));
 }
+
+// Alerta operacional (ex.: backup falhou): vai para TODOS os aparelhos cadastrados e para o webhook do .env,
+// independentemente das opções de conflito/cerco de cada aparelho.
+export async function notificarOperacao(title: string, message: string) {
+  const dispositivos = await db.pushbirdDevice.findMany();
+  const urls = new Set(dispositivos.map((d) => d.webhookUrl));
+  if (process.env.PUSHBIRD_WEBHOOK_URL) urls.add(process.env.PUSHBIRD_WEBHOOK_URL);
+  await Promise.all([...urls].map((url) => enviar(url, title, message)));
+}
