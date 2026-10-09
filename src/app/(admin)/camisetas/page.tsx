@@ -1,8 +1,9 @@
-import { getMissaoAtiva } from "@/lib/auth";
+import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CAMISETAS } from "@/lib/constants";
 
 export default async function CamisetasPage() {
+  await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 

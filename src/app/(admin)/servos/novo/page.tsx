@@ -1,10 +1,11 @@
-import { getMissaoAtiva } from "@/lib/auth";
+import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { criarServo } from "@/lib/actions";
 import { db } from "@/lib/db";
 import ServoForm from "../ServoForm";
 import ServoFormClient from "../ServoFormClient";
 
 export default async function NovoServoPage() {
+  await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
   const setores = await db.setor.findMany({ orderBy: { nome: "asc" } });

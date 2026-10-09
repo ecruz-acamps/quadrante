@@ -1,4 +1,4 @@
-import { getMissaoAtiva } from "@/lib/auth";
+import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import CidadeCard from "./CidadeCard";
 
@@ -7,6 +7,7 @@ export default async function CidadesPage({
 }: {
   searchParams: Promise<{ cidade?: string }>;
 }) {
+  await requireUser();
   const { cidade } = await searchParams;
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;

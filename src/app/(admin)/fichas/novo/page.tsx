@@ -1,8 +1,9 @@
-import { getMissaoAtiva } from "@/lib/auth";
+import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { criarFicha } from "@/lib/actions";
 import FichaForm from "../FichaForm";
 
 export default async function NovaFichaPage() {
+  await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 

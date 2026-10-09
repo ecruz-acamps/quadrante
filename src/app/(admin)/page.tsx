@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { getMissaoAtiva } from "@/lib/auth";
+import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { HORARIOS_CERCO } from "@/lib/constants";
 import { IconUsers, IconClipboard, IconClock, IconAlert, IconCoin } from "./DashboardIcons";
 
 export default async function Home() {
+  await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) {
     return (

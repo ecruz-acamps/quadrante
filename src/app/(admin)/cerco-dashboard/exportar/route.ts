@@ -1,9 +1,10 @@
 import ExcelJS from "exceljs";
-import { getMissaoAtiva } from "@/lib/auth";
+import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { HORARIOS_CERCO } from "@/lib/constants";
 
 export async function GET() {
+  await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) return new Response("Nenhuma missão ativa.", { status: 400 });
 

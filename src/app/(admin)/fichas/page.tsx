@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { getMissaoAtiva } from "@/lib/auth";
+import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { excluirFicha, adicionarAlerta, removerAlerta } from "@/lib/actions";
 import VerEditarFichaButton from "./VerEditarFichaButton";
 
 export default async function FichasPage() {
+  await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 

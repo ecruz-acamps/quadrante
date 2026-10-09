@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { createSession, destroySession, requireUser, requireRole, setMissaoAtiva } from "./auth";
+import { createSession, destroySession, requireUser, requireRole, requireCoordenador, setMissaoAtiva } from "./auth";
+import { statusValido, podeMarcarServo, dadosDoStatus } from "./coordenador";
 import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
 import { normalizarNome } from "./nomes";
 import { FUNCOES, PAGAMENTOS } from "./constants";
@@ -597,6 +598,27 @@ export async function marcarRecusou(formData: FormData) {
   });
   revalidatePath("/servos");
   revalidatePath("/registros");
+}
+
+// ---------- coordenador: marca sim / não / desistiu nos servos do próprio setor ----------
+export async function marcarStatusServo(servoId: number, status: string, motivo?: string) {
+  const { setor, missaoIds } = await requireCoordenador();
+  if (!Number.isInteger(servoId)) return { error: "Servo inválido." } as const;
+  if (!statusValido(status)) return { error: "Status inválido." } as const;
+
+  const servo = await db.servo.findUnique({
+    where: { id: servoId },
+    select: { id: true, setor: true, missaoId: true },
+  });
+  if (!servo || !podeMarcarServo({ setor, missaoIds }, servo)) {
+    return { error: "Servo não encontrado no seu setor." } as const;
+  }
+
+  await db.servo.update({ where: { id: servo.id }, data: dadosDoStatus(status, motivo) });
+  revalidatePath("/meu-setor");
+  revalidatePath("/servos");
+  revalidatePath("/registros");
+  return { ok: true } as const;
 }
 
 // ---------- formação (3 formações por missão) ----------

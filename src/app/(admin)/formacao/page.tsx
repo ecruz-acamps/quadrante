@@ -1,4 +1,4 @@
-import { getMissaoAtiva } from "@/lib/auth";
+import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { FUNCOES } from "@/lib/constants";
 import SetorCard from "../servos/SetorCard";
@@ -6,6 +6,7 @@ import FormacaoToggle from "./FormacaoToggle";
 import { PagoInlineSelect, FormaPagamentoInlineSelect } from "../servos/ServoInlineEdit";
 
 export default async function FormacaoPage() {
+  await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 

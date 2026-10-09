@@ -1,4 +1,4 @@
-import { getMissaoAtiva } from "@/lib/auth";
+import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { HORARIOS_CERCO } from "@/lib/constants";
 import Link from "next/link";
@@ -7,6 +7,7 @@ import { IconClipboard, IconAlert, IconClock, IconCheck } from "../DashboardIcon
 const MINIMO_POR_HORARIO = 2;
 
 export default async function CercoDashboardPage() {
+  await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
