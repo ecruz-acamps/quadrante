@@ -22,16 +22,11 @@ export default async function Home() {
     );
   }
 
-  const [servos, fichas, comCerco, pagos, semHorario] = await Promise.all([
+  const [servos, fichas, comCerco, pagos] = await Promise.all([
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO" } }),
     db.neocampista.count({ where: { missaoId: missao.id } }),
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO", cercoHorario: { not: null } } }),
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO", pago: true } }),
-    db.servo.findMany({
-      where: { missaoId: missao.id, status: "ATIVO", cercoHorario: null },
-      include: { pessoa: true },
-      orderBy: { pessoa: { nome: "asc" } },
-    }),
   ]);
   const horariosOcupados = await db.servo.groupBy({
     by: ["cercoHorario"],
@@ -138,36 +133,6 @@ export default async function Home() {
           );
         })}
       </div>
-
-      {semHorario.length > 0 && (
-        <div className="kpi-card mt-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="kpi-icon" style={{ background: "var(--signal-soft)", color: "var(--signal)" }}>
-              <IconAlert className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="kpi-value text-2xl">{semHorario.length}</div>
-              <div className="kpi-label">Servos sem horário no Cerco</div>
-            </div>
-          </div>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {semHorario.map((s) => (
-              <li
-                key={s.id}
-                className="flex items-center justify-between gap-2 text-sm bg-[var(--signal-soft)] border border-[var(--signal)]/15 rounded-lg px-3 py-2"
-              >
-                <span className="truncate">
-                  <span className="font-medium text-[var(--ink-soft)]">{s.pessoa.nome}</span>{" "}
-                  <span className="text-[var(--ink-soft)]/50">— {s.setor}</span>
-                </span>
-                <span className="shrink-0 text-[0.65rem] uppercase tracking-wide font-semibold text-[var(--signal)]">
-                  pendente
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {horariosCriticos.length > 0 && (
         <div className="kpi-card mt-6">
