@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 // Cabeçalhos de segurança. A CSP aqui cobre só frame-ancestors (anti-clickjacking): uma CSP completa
 // para scripts exige nonce por requisição e fica para um passo à parte.
@@ -19,4 +20,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sem SENTRY_AUTH_TOKEN o build não envia source maps (os erros chegam, só que minificados).
+export default withSentryConfig(nextConfig, {
+  org: "acampamentos",
+  project: "quadrantes",
+  silent: true,
+  telemetry: false,
+});
