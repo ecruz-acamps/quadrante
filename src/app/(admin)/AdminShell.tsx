@@ -25,6 +25,7 @@ const NAV_ICONE: Record<string, string> = {
   "/duplicatas": "copy",
   "/missoes": "star",
   "/usuarios": "key",
+  "/gerador-fichas": "book",
   "/configuracoes": "settings",
 };
 

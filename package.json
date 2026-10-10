@@ -13,7 +13,9 @@
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "exceljs": "^4.4.0",
+    "jszip": "^3.10.2",
     "next": "^16.4.0",
+    "pdf-lib": "^1.17.1",
     "prisma": "^6.19.3",
     "react": "19.2.4",
     "react-dom": "19.2.4"
