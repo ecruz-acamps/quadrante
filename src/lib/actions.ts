@@ -785,20 +785,35 @@ function fichaData(formData: FormData) {
 
 export async function criarFicha(formData: FormData) {
   const usuario = await requireUser();
+  if (!String(formData.get("cpf") ?? "").trim()) throw new Error("CPF é obrigatório.");
   const missaoId = Number(formData.get("missaoId"));
   await exigirMissao(usuario, missaoId);
-  const max = await db.neocampista.aggregate({ where: { missaoId }, _max: { numero: true } });
+  let numero = Math.round(Number(formData.get("numero")));
+  if (!formData.get("numero") || !(numero > 0)) {
+    const max = await db.neocampista.aggregate({ where: { missaoId }, _max: { numero: true } });
+    numero = (max._max.numero || 0) + 1;
+  } else if (await db.neocampista.findUnique({ where: { missaoId_numero: { missaoId, numero } } })) {
+    throw new Error(`Já existe a ficha número ${numero} nesta missão.`);
+  }
   await db.neocampista.create({
-    data: { missaoId, numero: (max._max.numero || 0) + 1, ...fichaData(formData) },
+    data: { missaoId, numero, ...fichaData(formData) },
   });
   revalidatePath("/fichas");
 }
 
 export async function atualizarFicha(formData: FormData) {
   const usuario = await requireUser();
+  if (!String(formData.get("cpf") ?? "").trim()) throw new Error("CPF é obrigatório.");
   const id = Number(formData.get("id"));
   await exigirRegistros(usuario, ["ficha", id]);
-  await db.neocampista.update({ where: { id }, data: fichaData(formData) });
+  const numero = Math.round(Number(formData.get("numero")));
+  if (!(numero > 0)) throw new Error("Número da ficha inválido.");
+  const atual = await db.neocampista.findUniqueOrThrow({ where: { id } });
+  if (numero !== atual.numero) {
+    const dup = await db.neocampista.findUnique({ where: { missaoId_numero: { missaoId: atual.missaoId, numero } } });
+    if (dup) throw new Error(`Já existe a ficha número ${numero} nesta missão.`);
+  }
+  await db.neocampista.update({ where: { id }, data: { ...fichaData(formData), numero } });
   revalidatePath("/fichas");
   redirect("/fichas");
 }

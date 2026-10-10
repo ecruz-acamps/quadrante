@@ -6,6 +6,10 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
       <label className="text-sm">
+        Nº da ficha {ficha ? "*" : "(vazio = próximo)"}
+        <input name="numero" type="number" min={1} required={!!ficha} defaultValue={ficha?.numero ?? ""} className={sel} />
+      </label>
+      <label className="text-sm">
         Núcleo
         <input name="nucleo" required defaultValue={ficha?.nucleo} className={sel} />
       </label>
@@ -30,8 +34,8 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
         <input name="celular" defaultValue={ficha?.celular ?? ""} className={sel} />
       </label>
       <label className="text-sm">
-        CPF
-        <input name="cpf" defaultValue={ficha?.cpf ?? ""} className={sel} />
+        CPF *
+        <input name="cpf" required defaultValue={ficha?.cpf ?? ""} className={sel} />
       </label>
       <label className="text-sm">
         Idade
