@@ -43,6 +43,15 @@ export async function logoutAction() {
 }
 
 // ---------- missões ----------
+// campos usados nas fichas: data YYYY-MM-DD válida ou null; texto livre aparado ou null
+function dataIsoDe(raw: FormDataEntryValue | null): string | null {
+  const v = String(raw ?? "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+}
+function textoOuNull(raw: FormDataEntryValue | null): string | null {
+  return String(raw ?? "").trim().slice(0, 120) || null;
+}
+
 // vagas por hora do Cerco: inteiro de 1 a 200; vazio/inválido cai no padrão (15)
 function vagasCercoDe(raw: FormDataEntryValue | null): number | null {
   if (raw === null || String(raw).trim() === "") return null;
@@ -61,6 +70,10 @@ export async function criarMissao(formData: FormData) {
       ano: Number(formData.get("ano")),
       mes: mesRaw ? Number(mesRaw) : null,
       anoCalendario: anoCalendarioRaw ? Number(anoCalendarioRaw) : null,
+      dataInicio: dataIsoDe(formData.get("dataInicio")),
+      dataFim: dataIsoDe(formData.get("dataFim")),
+      pixChave: textoOuNull(formData.get("pixChave")),
+      contatoFinanceiro: textoOuNull(formData.get("contatoFinanceiro")),
       cercoSlug: String(formData.get("cercoSlug")).toLowerCase().replace(/[^a-z0-9-]/g, ""),
       valorInterna: Number(formData.get("valorInterna") || 160),
       valorExterna: Number(formData.get("valorExterna") || 80),
@@ -93,6 +106,10 @@ export async function atualizarMissao(
       ano: Number(formData.get("ano")),
       mes: mesRaw ? Number(mesRaw) : null,
       anoCalendario: anoCalendarioRaw ? Number(anoCalendarioRaw) : null,
+      dataInicio: dataIsoDe(formData.get("dataInicio")),
+      dataFim: dataIsoDe(formData.get("dataFim")),
+      pixChave: textoOuNull(formData.get("pixChave")),
+      contatoFinanceiro: textoOuNull(formData.get("contatoFinanceiro")),
       cercoSlug: String(formData.get("cercoSlug")).toLowerCase().replace(/[^a-z0-9-]/g, ""),
       valorInterna: Number(formData.get("valorInterna") || 160),
       valorExterna: Number(formData.get("valorExterna") || 80),

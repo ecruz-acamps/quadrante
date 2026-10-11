@@ -33,6 +33,16 @@ export default function EditarMissaoForm({ missao }: { missao: Missao }) {
         defaultValue={missao.anoCalendario ?? ""}
         className="input"
       />
+      <label className="text-sm">
+        Início (saída)
+        <input name="dataInicio" type="date" defaultValue={missao.dataInicio ?? ""} className="input mt-1" />
+      </label>
+      <label className="text-sm">
+        Encerramento
+        <input name="dataFim" type="date" defaultValue={missao.dataFim ?? ""} className="input mt-1" />
+      </label>
+      <input name="pixChave" placeholder="Chave PIX da inscrição (para as fichas)" defaultValue={missao.pixChave ?? ""} className="input" />
+      <input name="contatoFinanceiro" placeholder="Telefone do Setor Financeiro (para as fichas)" defaultValue={missao.contatoFinanceiro ?? ""} className="input" />
       <input name="cercoSlug" required defaultValue={missao.cercoSlug} className="input col-span-2" />
       <input name="valorInterna" type="number" step="0.01" defaultValue={missao.valorInterna} className="input" />
       <input name="valorExterna" type="number" step="0.01" defaultValue={missao.valorExterna} className="input" />

@@ -59,6 +59,16 @@ export default async function MissoesPage() {
           ))}
         </select>
         <input name="anoCalendario" type="number" placeholder="Ano-calendário (ex: 2026, opcional)" className="input" />
+        <label className="text-sm">
+          Início (saída)
+          <input name="dataInicio" type="date" className="input mt-1" />
+        </label>
+        <label className="text-sm">
+          Encerramento
+          <input name="dataFim" type="date" className="input mt-1" />
+        </label>
+        <input name="pixChave" placeholder="Chave PIX da inscrição (para as fichas)" className="input" />
+        <input name="contatoFinanceiro" placeholder="Telefone do Setor Financeiro (para as fichas)" className="input" />
         <input name="cercoSlug" required placeholder="Slug do cerco (ex: cercosenior22)" className="input col-span-2" />
         <input name="valorInterna" type="number" step="0.01" placeholder="Valor eq. interna (160)" className="input" />
         <input name="valorExterna" type="number" step="0.01" placeholder="Valor eq. externa (80)" className="input" />

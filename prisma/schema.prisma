@@ -40,6 +40,10 @@ model Missao {
   cercoMaxPorHorario Int @default(15) // vagas por hora no Cerco de Jericó
   mes           Int?    // mês real do acampamento (1-12) — só para checagem de proximidade entre missões
   anoCalendario Int?    // ano-calendário real (ex: 2026) — não confundir com o campo `ano` (edição), que não muda
+  dataInicio    String? // YYYY-MM-DD — saída do acampamento (usada nas fichas)
+  dataFim       String? // YYYY-MM-DD — encerramento do acampamento (usada nas fichas)
+  pixChave      String? // chave PIX da inscrição (usada nas fichas)
+  contatoFinanceiro String? // telefone do Setor Financeiro (usado nas fichas)
 
   servos       Servo[]
   neocampistas Neocampista[]

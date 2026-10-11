@@ -8,6 +8,9 @@ import JSZip from "jszip";
 const MODELO = path.join(process.cwd(), "assets", "ficha-modelo.pdf");
 const BRANCO = rgb(1, 1, 1);
 const PRETO = rgb(0, 0, 0);
+const VERMELHO = rgb(1, 0, 0);
+const AMARELO = rgb(1, 1, 0);
+const AZUL_CAIXA = rgb(145 / 255, 205 / 255, 219 / 255); // fundo das caixas de horário (página 4)
 
 // caixas do texto original (coordenadas do pdftotext, y de cima para baixo)
 type Caixa = { x0: number; y0: number; x1: number; y1: number };
@@ -18,35 +21,158 @@ const NUM_FICHA: Caixa[] = [
   { x0: 510.36, y0: 11.98, x1: 546.36, y1: 38.54 },
 ];
 
-function cobrir(page: PDFPage, c: Caixa, folga = 1.5) {
+function cobrir(page: PDFPage, c: Caixa, folga = 1.5, color = BRANCO) {
   const h = page.getHeight();
   page.drawRectangle({
     x: c.x0 - folga,
     y: h - c.y1 - folga,
     width: c.x1 - c.x0 + folga * 2,
     height: c.y1 - c.y0 + folga * 2,
-    color: BRANCO,
+    color,
   });
 }
 
 // substitui uma linha de texto centralizada na mesma posição horizontal do original
-function trocarLinhaCentralizada(page: PDFPage, c: Caixa, texto: string, font: PDFFont, size: number) {
-  cobrir(page, c, 2);
+function trocarLinhaCentralizada(page: PDFPage, c: Caixa, texto: string, font: PDFFont, size: number, fundo = BRANCO, alinhar: "centro" | "esquerda" = "centro") {
+  cobrir(page, c, fundo === BRANCO ? 2 : 0.5, fundo);
   const h = page.getHeight();
   const cx = (c.x0 + c.x1) / 2;
   const w = font.widthOfTextAtSize(texto, size);
   // linha de base ≈ borda inferior da caixa menos o descendente
   const y = h - c.y1 + (c.y1 - c.y0) * 0.22;
-  page.drawText(texto, { x: cx - w / 2, y, size, font, color: PRETO });
+  page.drawText(texto, { x: alinhar === "centro" ? cx - w / 2 : c.x0, y, size, font, color: PRETO });
 }
 
-export type Opcoes = { missao: string; data: string };
+export type Opcoes = {
+  missao: string;
+  data: string;
+  saida: string; // YYYY-MM-DD
+  encerramento: string; // YYYY-MM-DD
+  valor: number;
+  pix: string;
+  contato: string;
+};
 
-async function gerarFicha(modelo: Uint8Array, numero: number, { missao, data }: Opcoes) {
+const DIAS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+
+// "2026-04-29" → "29/04/2026 (quarta-feira)"
+export function dataComDiaSemana(iso: string) {
+  const [a, m, d] = iso.split("-");
+  const dia = DIAS[new Date(`${iso}T12:00:00Z`).getUTCDay()];
+  return `${d}/${m}/${a} (${dia})`;
+}
+
+const UNIDADES = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+const DEZENAS = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+const CENTENAS = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+
+// inteiro de 1 a 999 por extenso; fora disso devolve null
+export function extensoAte999(n: number): string | null {
+  if (!Number.isInteger(n) || n < 1 || n > 999) return null;
+  if (n === 100) return "cem";
+  const partes: string[] = [];
+  const c = Math.floor(n / 100);
+  const r = n % 100;
+  if (c) partes.push(CENTENAS[c]);
+  if (r) partes.push(r < 20 ? UNIDADES[r] : DEZENAS[Math.floor(r / 10)] + (r % 10 ? ` e ${UNIDADES[r % 10]}` : ""));
+  return partes.join(" e ");
+}
+
+// "R$ 300,00 (trezentos reais)"
+export function valorPorExtenso(valor: number) {
+  const base = `R$ ${valor.toFixed(2).replace(".", ",")}`;
+  const ext = extensoAte999(valor);
+  return ext ? `${base} (${ext} ${valor === 1 ? "real" : "reais"})` : base;
+}
+
+type Palavra = { t: string; font: PDFFont; cor: ReturnType<typeof rgb>; size: number };
+
+// reescreve o bloco amarelo "Observação:" (página 2) com valor, PIX e contato da missão, justificado
+function desenharObservacao(page: PDFPage, o: Opcoes, fontes: { timesBold: PDFFont; times: PDFFont; helvBold: PDFFont }) {
+  const X0 = 19;
+  const LARGURA = 553;
+  const TOPO = 420.3;
+  const ALTURA_LINHA = 11.5;
+  const MAX_LINHAS = 5;
+  const h = page.getHeight();
+
+  cobrir(page, { x0: X0, y0: TOPO - 1, x1: X0 + LARGURA + 4, y1: TOPO + MAX_LINHAS * ALTURA_LINHA + 1 }, 0);
+
+  const partes: { texto: string; font: PDFFont; cor: ReturnType<typeof rgb>; base: number }[] = [
+    { texto: "Observação:", font: fontes.timesBold, cor: PRETO, base: 11 },
+    {
+      texto:
+        "O Acampamento Sênior é para pessoas de 30 anos em diante ou no caso de já terem o sacramento do Matrimônio, porém que tenham mínimo de 20 anos. Nele acontecem atividades físicas leves. É proibida a participação de gestantes. O valor da inscrição é de",
+      font: fontes.times,
+      cor: PRETO,
+      base: 11,
+    },
+    {
+      texto: `${valorPorExtenso(o.valor)}. O pagamento poderá ser feito através de PIX ${o.pix} (Associação dos Campistas São Padre Pio) ou em Dinheiro com o Setor Financeiro através do contato: ${o.contato}.`,
+      font: fontes.helvBold,
+      cor: PRETO,
+      base: 10.5,
+    },
+    {
+      texto: `No caso de Pix, enviar COMPROVANTE IDENTIFICADO para ${o.contato}.`,
+      font: fontes.helvBold,
+      cor: VERMELHO,
+      base: 10.5,
+    },
+  ];
+
+  // reduz a fonte até caber em 5 linhas (chave PIX/contato longos)
+  let linhas: Palavra[][] = [];
+  for (let escala = 1; escala >= 0.7; escala -= 0.03) {
+    const palavras: Palavra[] = partes.flatMap((p) =>
+      p.texto.split(/\s+/).map((t) => ({ t, font: p.font, cor: p.cor, size: p.base * escala })),
+    );
+    linhas = [[]];
+    let usado = 0;
+    for (const w of palavras) {
+      const largura = w.font.widthOfTextAtSize(w.t, w.size);
+      const espaco = w.font.widthOfTextAtSize(" ", w.size);
+      const atual = linhas[linhas.length - 1];
+      if (atual.length && usado + espaco + largura > LARGURA) {
+        linhas.push([w]);
+        usado = largura;
+      } else {
+        usado += (atual.length ? espaco : 0) + largura;
+        atual.push(w);
+      }
+    }
+    if (linhas.length <= MAX_LINHAS) break;
+  }
+
+  linhas.forEach((linha, i) => {
+    const ultima = i === linhas.length - 1;
+    const larguras = linha.map((w) => w.font.widthOfTextAtSize(w.t, w.size));
+    const espacos = linha.map((w) => w.font.widthOfTextAtSize(" ", w.size));
+    const natural = larguras.reduce((a, b) => a + b, 0) + espacos.slice(0, -1).reduce((a, b) => a + b, 0);
+    const extra = !ultima && linha.length > 1 ? (LARGURA - natural) / (linha.length - 1) : 0;
+    const topo = TOPO + i * ALTURA_LINHA;
+    page.drawRectangle({
+      x: X0,
+      y: h - (topo + ALTURA_LINHA) + 0.3,
+      width: ultima ? natural : LARGURA,
+      height: ALTURA_LINHA,
+      color: AMARELO,
+    });
+    let x = X0;
+    linha.forEach((w, j) => {
+      page.drawText(w.t, { x, y: h - (topo + 9), size: w.size, font: w.font, color: w.cor });
+      x += larguras[j] + espacos[j] + extra;
+    });
+  });
+}
+
+async function gerarFicha(modelo: Uint8Array, numero: number, opcoes: Opcoes) {
+  const { missao, data, saida, encerramento } = opcoes;
   const doc = await PDFDocument.load(modelo);
   const bold = await doc.embedFont(StandardFonts.TimesRomanBold);
   const regular = await doc.embedFont(StandardFonts.TimesRoman);
   const boldItalic = await doc.embedFont(StandardFonts.TimesRomanBoldItalic);
+  const helvBold = await doc.embedFont(StandardFonts.HelveticaBold);
   const [p1, p2, p3, p4] = doc.getPages();
   const nFicha = String(numero).padStart(3, "0");
   const m = `${missao}º`;
@@ -64,6 +190,29 @@ async function gerarFicha(modelo: Uint8Array, numero: number, { missao, data }: 
   );
   // página 3: linha do anexo de medicações
   trocarLinhaCentralizada(p3, { x0: 131.04, y0: 64.48, x1: 464.52, y1: 78.19 }, `${m} ACAMPAMENTO SÊNIOR – ${data}.`, boldItalic, 12.5);
+
+  // página 2: observação com valor, PIX e contato do financeiro
+  desenharObservacao(p2, opcoes, { timesBold: bold, times: regular, helvBold });
+  // página 3: lembrete das medicações cita o dia da saída
+  const ddmm = saida.split("-").reverse().slice(0, 2).join("/");
+  trocarLinhaCentralizada(p3, { x0: 53.9, y0: 726.2, x1: 503.5, y1: 739.5 }, `· As medicações deverão estar em mãos na chegada no salão da Igreja Matriz no dia ${ddmm}.`, boldItalic, 12, BRANCO, "esquerda");
+  // página 4: horário de saída e encerramento (caixas azuis)
+  trocarLinhaCentralizada(
+    p4,
+    { x0: 103.3, y0: 453.1, x1: 493.5, y1: 466.5 },
+    `Horário de saída no dia ${dataComDiaSemana(saida)}, às 07:30 da manhã,`,
+    helvBold,
+    12,
+    AZUL_CAIXA,
+  );
+  trocarLinhaCentralizada(
+    p4,
+    { x0: 46.6, y0: 594.5, x1: 543.5, y1: 607.9 },
+    `O Encerramento do Acampamento será no dia ${dataComDiaSemana(encerramento)} às 17:30, no Salão`,
+    helvBold,
+    12,
+    AZUL_CAIXA,
+  );
 
   // número da ficha nas 4 páginas
   [p1, p2, p3, p4].forEach((page, i) => {
