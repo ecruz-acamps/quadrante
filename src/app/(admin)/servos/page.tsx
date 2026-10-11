@@ -10,6 +10,7 @@ import { QuadranteDndProvider } from "./QuadranteDnd";
 import ChamarButton from "../ChamarButton";
 import { CamisetaInlineSelect, PagoInlineSelect, FuncaoInlineSelect, CercoInlineSelect } from "./ServoInlineEdit";
 import ExcluirDesistiuButtons from "./ExcluirDesistiuButtons";
+import ExcluirIntegrantesButton from "./ExcluirIntegrantesButton";
 import { Icon } from "./icons";
 import { normalizarBusca } from "@/lib/busca";
 
@@ -76,6 +77,16 @@ export default async function ServosPage({
     (await db.servo.groupBy({ by: ["missaoId"], _count: true })).filter((g) => g._count > 0).map((g) => g.missaoId),
   );
   const sugerida = candidatas.find((m) => comServos.has(m.id));
+
+  const integrantesPorSetor = new Map(
+    (
+      await db.servo.groupBy({
+        by: ["setor"],
+        where: { missaoId: missao.id, status: "ATIVO", funcao: "INTEGRANTE" },
+        _count: true,
+      })
+    ).map((c) => [c.setor, c._count]),
+  );
 
   // veterania: total de missões de cada pessoa (todas as edições)
   const contagens = await db.servo.groupBy({
@@ -186,7 +197,16 @@ export default async function ServosPage({
           titulo={setorNome}
           quantidade={lista.length}
           setor={setorNome}
-          acao={<AdicionarServoModal missaoId={missao.id} setor={setorNome} />}
+          acao={
+            <div className="flex shrink-0 items-center gap-1">
+              <ExcluirIntegrantesButton
+                missaoId={missao.id}
+                setor={setorNome}
+                integrantes={integrantesPorSetor.get(setorNome) ?? 0}
+              />
+              <AdicionarServoModal missaoId={missao.id} setor={setorNome} />
+            </div>
+          }
         >
           {lista.length === 0 ? (
             <div className="qd-fade-in flex flex-col items-center gap-3 px-6 py-10 text-center">

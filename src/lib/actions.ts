@@ -563,6 +563,21 @@ export async function excluirServo(formData: FormData) {
   revalidatePath("/servos");
 }
 
+// apaga os INTEGRANTE ativos de um setor, mantendo coordenadores, auxiliares e apoio
+export async function excluirIntegrantesSetor(formData: FormData) {
+  const usuario = await requireUser();
+  const missaoId = Number(formData.get("missaoId"));
+  const setor = String(formData.get("setor") ?? "");
+  await exigirMissao(usuario, missaoId);
+  if (!setor) throw new Error("Setor inválido.");
+  const where = { missaoId, setor, funcao: "INTEGRANTE", status: "ATIVO" }; // preserva o histórico de desistências/recusas
+  await db.$transaction([
+    db.triboLider.deleteMany({ where: { servo: where } }),
+    db.servo.deleteMany({ where }),
+  ]);
+  revalidatePath("/servos");
+}
+
 // ---------- liberação de conflito de servo ----------
 export async function solicitarLiberacaoConflito(pessoaId: number, missaoId: number) {
   const usuario = await requireUser();
