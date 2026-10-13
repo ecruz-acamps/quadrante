@@ -12,7 +12,7 @@ import { FUNCOES, PAGAMENTOS, HORARIOS_CERCO, CAMISETAS } from "./constants";
 import { reservarHorarioCerco } from "./cercoReserva";
 import { edicaoDe } from "./missoes";
 import { gerarCodigo6Digitos, checarConflitoServo } from "./conflitoServo";
-import { notificarPushbird } from "./notificacoes";
+import { notificarPushbird, notificarQuadrante } from "./notificacoes";
 import { excedeuLimite, limparLimite, ipDoCliente } from "./rateLimit";
 
 // ---------- auth ----------
@@ -368,6 +368,8 @@ export async function adicionarServoRapido(formData: FormData) {
   await db.servo.create({
     data: { missaoId, pessoaId, setor, funcao: "INTEGRANTE", status: "ATIVO" },
   });
+  const pessoaAdd = await db.pessoa.findUnique({ where: { id: pessoaId }, select: { nome: true } });
+  await notificarQuadrante("adicionado", { nome: pessoaAdd?.nome ?? "—", setor, missaoId, autor: usuario.nome });
   revalidatePath("/servos");
   return { ok: true };
 }
@@ -505,7 +507,10 @@ export async function criarServo(_prevState: unknown, formData: FormData) {
       camiseta: s("camiseta"),
     },
   });
-  await db.servo.create({ data: { missaoId, pessoaId: pessoa.id, ...servoData(formData) } });
+  const servoCriado = await db.servo.create({ data: { missaoId, pessoaId: pessoa.id, ...servoData(formData) } });
+  if (servoCriado.status === "ATIVO") {
+    await notificarQuadrante("adicionado", { nome: pessoa.nome, setor: servoCriado.setor, missaoId, autor: usuario.nome });
+  }
   revalidatePath("/servos");
   return { ok: true } as const;
 }
@@ -576,7 +581,11 @@ export async function excluirServo(formData: FormData) {
   const usuario = await requireUser();
   const id = Number(formData.get("id"));
   await exigirRegistros(usuario, ["servo", id]);
+  const servo = await db.servo.findUnique({ where: { id }, include: { pessoa: { select: { nome: true } } } });
   await db.servo.delete({ where: { id } });
+  if (servo) {
+    await notificarQuadrante("excluido", { nome: servo.pessoa.nome, setor: servo.setor, missaoId: servo.missaoId, autor: usuario.nome });
+  }
   revalidatePath("/servos");
 }
 
@@ -588,10 +597,13 @@ export async function excluirIntegrantesSetor(formData: FormData) {
   await exigirMissao(usuario, missaoId);
   if (!setor) throw new Error("Setor inválido.");
   const where = { missaoId, setor, funcao: "INTEGRANTE", status: "ATIVO" }; // preserva o histórico de desistências/recusas
-  await db.$transaction([
+  const [, apagados] = await db.$transaction([
     db.triboLider.deleteMany({ where: { servo: where } }),
     db.servo.deleteMany({ where }),
   ]);
+  if (apagados.count > 0) {
+    await notificarQuadrante("excluido", { nome: "", setor, missaoId, autor: usuario.nome, quantidade: apagados.count });
+  }
   revalidatePath("/servos");
 }
 
@@ -627,10 +639,12 @@ export async function marcarDesistiu(formData: FormData) {
   const id = Number(formData.get("id"));
   await exigirRegistros(usuario, ["servo", id]);
   const motivo = String(formData.get("motivo") || "").trim();
-  await db.servo.update({
+  const servo = await db.servo.update({
     where: { id },
     data: { status: "DESISTIU", motivoDesistiu: motivo || null },
+    include: { pessoa: { select: { nome: true } } },
   });
+  await notificarQuadrante("desistiu", { nome: servo.pessoa.nome, setor: servo.setor, missaoId: servo.missaoId, autor: usuario.nome });
   revalidatePath("/servos");
   revalidatePath("/registros");
 }
@@ -640,17 +654,19 @@ export async function marcarRecusou(formData: FormData) {
   const id = Number(formData.get("id"));
   await exigirRegistros(usuario, ["servo", id]);
   const motivo = String(formData.get("motivo") || "").trim();
-  await db.servo.update({
+  const servo = await db.servo.update({
     where: { id },
     data: { status: "RECUSOU", motivoRecusou: motivo || null },
+    include: { pessoa: { select: { nome: true } } },
   });
+  await notificarQuadrante("recusou", { nome: servo.pessoa.nome, setor: servo.setor, missaoId: servo.missaoId, autor: usuario.nome });
   revalidatePath("/servos");
   revalidatePath("/registros");
 }
 
 // ---------- coordenador: marca sim / não / desistiu nos servos do próprio setor ----------
 export async function marcarStatusServo(servoId: number, status: string, motivo?: string) {
-  const { setor, missaoIds } = await requireCoordenador();
+  const { usuario, setor, missaoIds } = await requireCoordenador();
   if (!Number.isSafeInteger(servoId) || servoId <= 0 || servoId > 2147483647) return { error: "Servo inválido." } as const;
   if (!statusValido(status)) return { error: "Status inválido." } as const;
 
@@ -662,7 +678,16 @@ export async function marcarStatusServo(servoId: number, status: string, motivo?
     return { error: "Servo não encontrado no seu setor." } as const;
   }
 
-  await db.servo.update({ where: { id: servo.id }, data: dadosDoStatus(status, typeof motivo === "string" ? motivo : undefined) });
+  const atualizado = await db.servo.update({
+    where: { id: servo.id },
+    data: dadosDoStatus(status, typeof motivo === "string" ? motivo : undefined),
+    include: { pessoa: { select: { nome: true } } },
+  });
+  if (status === "RECUSOU" || status === "DESISTIU") {
+    await notificarQuadrante(status === "RECUSOU" ? "recusou" : "desistiu", {
+      nome: atualizado.pessoa.nome, setor: atualizado.setor, missaoId: atualizado.missaoId, autor: usuario.nome,
+    });
+  }
   revalidatePath("/meu-setor");
   revalidatePath("/servos");
   revalidatePath("/registros");
@@ -671,7 +696,7 @@ export async function marcarStatusServo(servoId: number, status: string, motivo?
 
 // coordenador altera só a camiseta dos servos do próprio setor
 export async function atualizarCamisetaServo(servoId: number, camiseta: string | null) {
-  const { setor, missaoIds } = await requireCoordenador();
+  const { usuario, setor, missaoIds } = await requireCoordenador();
   if (!Number.isSafeInteger(servoId) || servoId <= 0 || servoId > 2147483647) return { error: "Servo inválido." } as const;
   if (!camisetaValida(camiseta, CAMISETAS)) return { error: "Tamanho inválido." } as const;
   const servo = await db.servo.findUnique({ where: { id: servoId }, select: { id: true, setor: true, missaoId: true } });
@@ -1248,6 +1273,7 @@ export async function criarPushbirdDevice(formData: FormData) {
       webhookUrl,
       notificarConflito: formData.get("notificarConflito") === "on",
       notificarCerco: formData.get("notificarCerco") === "on",
+      notificarQuadrante: formData.get("notificarQuadrante") === "on",
     },
   });
   revalidatePath("/configuracoes");
@@ -1266,6 +1292,7 @@ export async function atualizarPushbirdDevice(formData: FormData) {
       webhookUrl,
       notificarConflito: formData.get("notificarConflito") === "on",
       notificarCerco: formData.get("notificarCerco") === "on",
+      notificarQuadrante: formData.get("notificarQuadrante") === "on",
     },
   });
   revalidatePath("/configuracoes");

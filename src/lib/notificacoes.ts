@@ -1,6 +1,6 @@
 import { db } from "./db";
 
-type TipoNotificacao = "conflito" | "cerco";
+type TipoNotificacao = "conflito" | "cerco" | "quadrante";
 
 async function enviar(url: string, title: string, message: string, subtitle?: string) {
   try {
@@ -20,7 +20,7 @@ export async function notificarPushbird(
   message: string,
   subtitle?: string
 ) {
-  const campo = tipo === "conflito" ? "notificarConflito" : "notificarCerco";
+  const campo = { conflito: "notificarConflito", cerco: "notificarCerco", quadrante: "notificarQuadrante" }[tipo];
   const dispositivos = await db.pushbirdDevice.findMany({ where: { [campo]: true } });
 
   if (dispositivos.length === 0) {
@@ -39,4 +39,33 @@ export async function notificarOperacao(title: string, message: string) {
   const urls = new Set(dispositivos.map((d) => d.webhookUrl));
   if (process.env.PUSHBIRD_WEBHOOK_URL) urls.add(process.env.PUSHBIRD_WEBHOOK_URL);
   await Promise.all([...urls].map((url) => enviar(url, title, message)));
+}
+
+type AcaoQuadrante = "adicionado" | "recusou" | "desistiu" | "excluido";
+
+const TITULO_QUADRANTE: Record<AcaoQuadrante, string> = {
+  adicionado: "Servo adicionado",
+  recusou: "Servo disse não",
+  desistiu: "Servo desistiu",
+  excluido: "Servo excluído",
+};
+
+// Avisa alterações no quadrante. Melhor-esforço: nunca deve quebrar a ação que o chamou.
+export async function notificarQuadrante(
+  acao: AcaoQuadrante,
+  info: { nome: string; setor: string; missaoId: number; autor: string; quantidade?: number }
+) {
+  try {
+    const missao = await db.missao.findUnique({ where: { id: info.missaoId }, select: { nome: true } });
+    const quem = info.quantidade ? `${info.quantidade} integrantes` : info.nome;
+    const local = `Setor ${info.setor} · ${missao?.nome ?? "missão"}`;
+    await notificarPushbird(
+      "quadrante",
+      `${TITULO_QUADRANTE[acao]}: ${quem}`,
+      `${quem}\n${local}\nPor ${info.autor}`,
+      local
+    );
+  } catch {
+    // ver comentário em enviar()
+  }
 }

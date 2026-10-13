@@ -9,14 +9,17 @@ type Device = {
   webhookUrl: string;
   notificarConflito: boolean;
   notificarCerco: boolean;
+  notificarQuadrante: boolean;
 };
 
 function CamposNotificacao({
   defaultConflito,
   defaultCerco,
+  defaultQuadrante,
 }: {
   defaultConflito: boolean;
   defaultCerco: boolean;
+  defaultQuadrante: boolean;
 }) {
   return (
     <div className="flex flex-wrap gap-4 text-sm text-[var(--ink)]">
@@ -27,6 +30,10 @@ function CamposNotificacao({
       <label className="flex items-center gap-2">
         <input type="checkbox" name="notificarCerco" defaultChecked={defaultCerco} />
         Cerco de Jericó (escolha de horário)
+      </label>
+      <label className="flex items-center gap-2">
+        <input type="checkbox" name="notificarQuadrante" defaultChecked={defaultQuadrante} />
+        Quadrante (adicionado, não, desistiu, excluído)
       </label>
     </div>
   );
@@ -53,7 +60,7 @@ function LinhaDispositivo({ device }: { device: Device }) {
           placeholder="https://pushbird.app/..."
           className="input w-full"
         />
-        <CamposNotificacao defaultConflito={device.notificarConflito} defaultCerco={device.notificarCerco} />
+        <CamposNotificacao defaultConflito={device.notificarConflito} defaultCerco={device.notificarCerco} defaultQuadrante={device.notificarQuadrante} />
         <div className="flex justify-end gap-2">
           <button type="button" onClick={() => setEditando(false)} className="btn-link text-sm">
             Cancelar
@@ -73,6 +80,7 @@ function LinhaDispositivo({ device }: { device: Device }) {
           {[
             device.notificarConflito && "Liberação de servo",
             device.notificarCerco && "Cerco de Jericó",
+            device.notificarQuadrante && "Quadrante",
           ]
             .filter(Boolean)
             .join(" · ") || "nenhuma notificação ativa"}
@@ -120,7 +128,7 @@ export default function PushbirdDevices({ devices }: { devices: Device[] }) {
         >
           <input name="nome" required placeholder="Nome do dispositivo (ex: celular do Erick)" className="input w-full" />
           <input name="webhookUrl" required placeholder="https://pushbird.app/..." className="input w-full" />
-          <CamposNotificacao defaultConflito defaultCerco />
+          <CamposNotificacao defaultConflito defaultCerco defaultQuadrante />
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setMostrarForm(false)} className="btn-link text-sm">
               Cancelar

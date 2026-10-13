@@ -13,6 +13,7 @@ model PushbirdDevice {
   webhookUrl        String
   notificarConflito Boolean @default(true) // liberação de servo (MFA de conflito ao adicionar)
   notificarCerco    Boolean @default(true) // pessoa escolheu horário no Cerco de Jericó
+  notificarQuadrante Boolean @default(true) // servo adicionado, recusou, desistiu ou excluído
 }
 
 model Usuario {
