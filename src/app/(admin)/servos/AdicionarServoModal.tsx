@@ -1,5 +1,6 @@
 "use client";
 
+import NeocampistaBadge from "./NeocampistaBadge";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SETORES_SEM_ALERTA_CONSECUTIVO } from "@/lib/constants";
@@ -173,6 +174,7 @@ export default function AdicionarServoModal({
                   <div className="text-sm font-medium text-[var(--ink)]">{selecionada.nome}</div>
                   <div className="text-xs text-[var(--ink-soft)]">
                     {[selecionada.cidade, `${selecionada.missoes} missões`].filter(Boolean).join(" · ")}
+{selecionada.neocampista && <> · <NeocampistaBadge info={selecionada.neocampista} /></>}
                     {selecionada.origem === "campista" && (
                       <span className="ml-2 text-[0.65rem] border border-[var(--brass)]/40 rounded px-1 py-px text-[var(--brass)]">
                         ex-campista
@@ -233,6 +235,7 @@ export default function AdicionarServoModal({
                           </div>
                           <div className="text-xs text-[var(--ink-soft)]">
                             {[p.cidade, `${p.missoes} missões`].filter(Boolean).join(" · ")}
+{p.neocampista && <> · <NeocampistaBadge info={p.neocampista} /></>}
                           </div>
                           {p.jaEhServoNaMissao && (
                             <div className="text-xs text-[var(--signal)] mt-0.5">já está no quadrante</div>

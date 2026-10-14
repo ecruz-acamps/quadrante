@@ -25,6 +25,17 @@ export const CORES_TRIBO = [
   "TRIBO MARROM",
 ];
 
+export const COR_TRIBO_HEX: Record<string, string> = {
+  "TRIBO AZUL": "#2255A4",
+  "TRIBO VERMELHA": "#B4342A",
+  "TRIBO VERDE": "#2E7D46",
+  "TRIBO AMARELA": "#D9A62E",
+  "TRIBO LARANJA": "#D2691E",
+  "TRIBO ROXA": "#6B3FA0",
+  "TRIBO PRETA": "#2A2A2A",
+  "TRIBO MARROM": "#6B4226",
+};
+
 export const MESES = [
   { value: 1, label: "Janeiro" },
   { value: 2, label: "Fevereiro" },

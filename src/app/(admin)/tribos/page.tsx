@@ -1,21 +1,10 @@
 import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { decimal } from "@/lib/format";
-import { CORES_TRIBO } from "@/lib/constants";
+import { CORES_TRIBO, COR_TRIBO_HEX as SWATCH } from "@/lib/constants";
 import { adicionarLiderTribo, removerLiderTribo } from "@/lib/actions";
 import AlocarFichaForm from "./AlocarFichaForm";
 import SortearTribosButton from "./SortearTribosButton";
-
-const SWATCH: Record<string, string> = {
-  "TRIBO AZUL": "#2255A4",
-  "TRIBO VERMELHA": "#B4342A",
-  "TRIBO VERDE": "#2E7D46",
-  "TRIBO AMARELA": "#D9A62E",
-  "TRIBO LARANJA": "#D2691E",
-  "TRIBO ROXA": "#6B3FA0",
-  "TRIBO PRETA": "#2A2A2A",
-  "TRIBO MARROM": "#6B4226",
-};
 
 async function garantirTribos(missaoId: number) {
   const existentes = await db.tribo.findMany({ where: { missaoId } });

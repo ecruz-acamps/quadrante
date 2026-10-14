@@ -226,6 +226,25 @@ export async function buscarPessoas(missaoId: number, nome: string) {
   );
 }
 
+// missão (e tribo) em que cada nome foi neocampista; vale a edição mais recente
+async function neocampistaPorNome(nomes: string[]) {
+  const fichas = await db.neocampista.findMany({
+    where: { nome: { in: nomes } },
+    select: { nome: true, missao: { select: { id: true, nome: true } }, tribo: { select: { nome: true } } },
+  });
+  const mapa = new Map<string, { missao: string; tribo: string | null; edicao: number }>();
+  for (const f of fichas) {
+    const chave = f.nome.trim().toLowerCase();
+    const edicao = edicaoDe(f.missao.nome);
+    const atual = mapa.get(chave);
+    if (!atual || edicao > atual.edicao) mapa.set(chave, { missao: f.missao.nome, tribo: f.tribo?.nome ?? null, edicao });
+  }
+  return (nome: string) => {
+    const r = mapa.get(nome.trim().toLowerCase());
+    return r ? { missao: r.missao, tribo: r.tribo } : null;
+  };
+}
+
 // busca global (pessoas + neocampistas de qualquer missão) para o modal "Adicionar servo" por setor
 export async function buscarPessoasGlobal(missaoId: number, termo: string) {
   const usuario = await requireUser();
@@ -249,6 +268,7 @@ export async function buscarPessoasGlobal(missaoId: number, termo: string) {
   });
   const jaServeNaMissao = new Set(servosNaMissao.map((s) => s.pessoaId));
 
+  const campistaDe = await neocampistaPorNome(pessoas.map((p) => p.nome));
   const resultadoPessoas = await Promise.all(
     pessoas.map(async (p) => ({
       origem: "pessoa" as const,
@@ -257,6 +277,7 @@ export async function buscarPessoasGlobal(missaoId: number, termo: string) {
       cidade: p.cidade,
       missoes: missoesPorPessoa.get(p.id) ?? 0,
       jaEhServoNaMissao: jaServeNaMissao.has(p.id),
+      neocampista: campistaDe(p.nome),
       setorConsecutivo: await calcularSetorConsecutivo(p.id),
     }))
   );
@@ -269,6 +290,7 @@ export async function buscarPessoasGlobal(missaoId: number, termo: string) {
     where: { nome: { contains: t } },
     take: 20,
     orderBy: { id: "desc" },
+    include: { missao: { select: { nome: true } }, tribo: { select: { nome: true } } },
   });
   const vistos = new Set<string>();
   const resultadoCampistas: Array<Omit<(typeof resultadoPessoas)[number], "origem"> & { origem: "campista" }> = [];
@@ -283,6 +305,10 @@ export async function buscarPessoasGlobal(missaoId: number, termo: string) {
       cidade: c.cidade,
       missoes: 0,
       jaEhServoNaMissao: false,
+      neocampista: {
+        missao: c.missao.nome,
+        tribo: c.tribo?.nome ?? null,
+      },
       setorConsecutivo: null,
     });
   }
