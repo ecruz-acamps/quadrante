@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser, getMissaoAtiva, getMissoesPermitidas } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { FUNCOES } from "@/lib/constants";
+import { FUNCOES, ordenarSetores } from "@/lib/constants";
 import AdicionarServoModal from "./AdicionarServoModal";
 import ChamarEvangelizacaoModal from "./ChamarEvangelizacaoModal";
 import SetorCard from "./SetorCard";
@@ -52,7 +52,7 @@ export default async function ServosPage({
     orderBy: [{ setor: "asc" }, { pessoa: { nome: "asc" } }],
   });
 
-  const setores = await db.setor.findMany({ orderBy: { nome: "asc" } });
+  const setores = await ordenarSetores(await db.setor.findMany({ orderBy: { nome: "asc" } }));
   const totalServos = await db.servo.count({ where: { missaoId: missao.id, status: "ATIVO" } });
 
   // painel de referência: outra edição ao lado (?ref=ID). ADMIN só enxerga as missões permitidas a ele.

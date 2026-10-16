@@ -7,6 +7,34 @@ export const CAMISETAS = ["PP", "P", "M", "G", "GG", "X1", "X2", "X3", "XG", "X4
 
 export const FUNCOES = ["COORDENADOR", "AUXILIAR", "APOIO", "INTEGRANTE"];
 
+// ordem de exibição dos setores no quadrante; setores fora da lista vão para o fim, por nome
+export const ORDEM_SETORES = [
+  "DIRETOR ESPIRITUAL",
+  "CONDUÇÃO/PREGADOR",
+  "COORDENADORES DA MISSÃO",
+  "SECRETARIA",
+  "ANIMAÇÃO",
+  "TEATRO",
+  "MÚSICA",
+  "CAPELA",
+  "COZINHA",
+  "MANUTENÇÃO",
+  "TROPA DE ELITE",
+  "CANTINHO MARIANO",
+  "FARMÁCIA",
+  "LIGAÇÃO",
+  "LÍDERES",
+  "EVANGELIZAÇÃO",
+];
+
+export function ordenarSetores<T extends { nome: string }>(setores: T[]): T[] {
+  const idx = (n: string) => {
+    const i = ORDEM_SETORES.indexOf(n);
+    return i === -1 ? ORDEM_SETORES.length : i;
+  };
+  return [...setores].sort((a, b) => idx(a.nome) - idx(b.nome) || a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
 // setores em que servir várias vezes seguidas é normal: não geram o alerta de "mais de 2 vezes no mesmo setor"
 export const SETORES_SEM_ALERTA_CONSECUTIVO = ["DIRETOR ESPIRITUAL"];
 

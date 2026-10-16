@@ -1,3 +1,4 @@
+import { ordenarSetores } from "@/lib/constants";
 import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { criarServo } from "@/lib/actions";
 import { db } from "@/lib/db";
@@ -8,7 +9,7 @@ export default async function NovoServoPage() {
   await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
-  const setores = await db.setor.findMany({ orderBy: { nome: "asc" } });
+  const setores = await ordenarSetores(await db.setor.findMany({ orderBy: { nome: "asc" } }));
 
   return (
     <div className="max-w-3xl">

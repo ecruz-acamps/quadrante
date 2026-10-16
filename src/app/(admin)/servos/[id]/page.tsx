@@ -1,3 +1,4 @@
+import { ordenarSetores } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { acessoRegistros } from "@/lib/autorizacao";
@@ -12,7 +13,7 @@ export default async function EditarServoPage({ params }: { params: Promise<{ id
   if (!(await acessoRegistros(usuario, ["servo", Number(id)]))) notFound();
   const servo = await db.servo.findUnique({ where: { id: Number(id) }, include: { pessoa: true } });
   if (!servo) notFound();
-  const setores = await db.setor.findMany({ orderBy: { nome: "asc" } });
+  const setores = await ordenarSetores(await db.setor.findMany({ orderBy: { nome: "asc" } }));
 
   return (
     <div className="max-w-3xl">

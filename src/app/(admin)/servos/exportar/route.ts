@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { requireUser, getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { FUNCOES } from "@/lib/constants";
+import { FUNCOES, ordenarSetores } from "@/lib/constants";
 
 // Quadrante de servos em Excel, uma aba por setor — para os coordenadores fazerem os chamados.
 // Só colunas de contato/logística: sem CPF, endereço completo, pagamento ou observações.
@@ -29,7 +29,7 @@ export async function GET() {
       where: { missaoId: missao.id, status: "ATIVO" },
       include: { pessoa: true },
     }),
-    db.setor.findMany({ orderBy: { nome: "asc" } }),
+    db.setor.findMany({ orderBy: { nome: "asc" } }).then(ordenarSetores),
   ]);
 
   const porSetor = new Map<string, typeof servos>();
