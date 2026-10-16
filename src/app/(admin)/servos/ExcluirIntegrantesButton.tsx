@@ -45,7 +45,7 @@ export default function ExcluirIntegrantesButton({
           setErro("");
           setAberto(true);
         }}
-        className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-[#8a92a8] transition-colors hover:bg-[var(--signal-soft)] hover:text-[var(--signal)]"
+        className="hidden shrink-0 sm:block rounded-md px-2 py-1 text-xs font-medium text-[#8a92a8] transition-colors hover:bg-[var(--signal-soft)] hover:text-[var(--signal)]"
       >
         Excluir integrantes
       </button>
