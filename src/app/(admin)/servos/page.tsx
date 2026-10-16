@@ -197,6 +197,7 @@ export default async function ServosPage({
           titulo={setorNome}
           quantidade={lista.length}
           setor={setorNome}
+          iniciarAberto={Boolean(setor || q)}
           acao={
             <div className="flex shrink-0 items-center gap-1">
               <ExcluirIntegrantesButton

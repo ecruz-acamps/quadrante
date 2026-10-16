@@ -13,15 +13,17 @@ export default function SetorCard({
   setor,
   quantidade,
   acao,
+  iniciarAberto = false,
   children,
 }: {
   titulo: string; // com `quantidade`, é só o nome do setor; sem ela, é exibido como veio (ex.: "NOME (3)")
   quantidade?: number;
   setor?: string; // destino de um nome solto sobre o card; sem ele o card não aceita soltar
   acao: React.ReactNode;
+  iniciarAberto?: boolean; // por padrão o card nasce minimizado
   children: React.ReactNode;
 }) {
-  const [aberto, setAberto] = useState(true);
+  const [aberto, setAberto] = useState(iniciarAberto);
   const [sobre, setSobre] = useState(false);
   const [busca, setBusca] = useState("");
   const [visiveis, setVisiveis] = useState<number | null>(null);
