@@ -264,9 +264,9 @@ export async function buscarPessoasGlobal(missaoId: number, termo: string) {
   const missoesPorPessoa = new Map(contagens.map((c) => [c.pessoaId, c._count]));
   const servosNaMissao = await db.servo.findMany({
     where: { missaoId, pessoaId: { in: pessoas.map((p) => p.id) } },
-    select: { pessoaId: true },
+    select: { pessoaId: true, status: true },
   });
-  const jaServeNaMissao = new Set(servosNaMissao.map((s) => s.pessoaId));
+  const statusNaMissao = new Map(servosNaMissao.map((s) => [s.pessoaId, s.status]));
 
   const campistaDe = await neocampistaPorNome(pessoas.map((p) => p.nome));
   const resultadoPessoas = await Promise.all(
@@ -276,7 +276,8 @@ export async function buscarPessoasGlobal(missaoId: number, termo: string) {
       nome: p.nome,
       cidade: p.cidade,
       missoes: missoesPorPessoa.get(p.id) ?? 0,
-      jaEhServoNaMissao: jaServeNaMissao.has(p.id),
+      jaEhServoNaMissao: statusNaMissao.has(p.id),
+      statusNaMissao: statusNaMissao.get(p.id) ?? null,
       neocampista: campistaDe(p.nome),
       setorConsecutivo: await calcularSetorConsecutivo(p.id),
     }))
@@ -305,6 +306,7 @@ export async function buscarPessoasGlobal(missaoId: number, termo: string) {
       cidade: c.cidade,
       missoes: 0,
       jaEhServoNaMissao: false,
+      statusNaMissao: null,
       neocampista: {
         missao: c.missao.nome,
         tribo: c.tribo?.nome ?? null,

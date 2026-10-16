@@ -238,7 +238,13 @@ export default function AdicionarServoModal({
 {p.neocampista && <> · <NeocampistaBadge info={p.neocampista} /></>}
                           </div>
                           {p.jaEhServoNaMissao && (
-                            <div className="text-xs text-[var(--signal)] mt-0.5">já está no quadrante</div>
+                            <div className="text-xs text-[var(--signal)] mt-0.5">
+                              {p.statusNaMissao === "RECUSOU"
+                                ? "recusou nesta missão"
+                                : p.statusNaMissao === "DESISTIU"
+                                  ? "desistiu nesta missão"
+                                  : "já está no quadrante"}
+                            </div>
                           )}
                         </button>
                       </li>
