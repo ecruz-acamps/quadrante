@@ -24,9 +24,15 @@ export default function ServoBusca({
     onChangeNome(valor);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
-      const resultado = await buscarPessoas(missaoId, valor);
-      setSugestoes(resultado);
-      setAberto(resultado.length > 0);
+      try {
+        const resultado = await buscarPessoas(missaoId, valor);
+        setSugestoes(resultado);
+        setAberto(resultado.length > 0);
+      } catch {
+        // falha de rede/túnel: a busca é só uma sugestão, então fecha a lista em vez de estourar
+        setSugestoes([]);
+        setAberto(false);
+      }
     }, 300);
   }
 
