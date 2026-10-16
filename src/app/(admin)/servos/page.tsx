@@ -163,7 +163,7 @@ export default async function ServosPage({
       <div className="qd-surface mb-6 flex flex-wrap items-center justify-between gap-4 p-3 sm:p-4">
         <form className="flex w-full flex-wrap gap-2.5 lg:w-auto lg:flex-1">
           {refMissao && <input type="hidden" name="ref" value={refMissao.id} />}
-          <div className="relative w-full sm:w-auto sm:min-w-64 sm:flex-1 sm:max-w-sm">
+          <div className="relative hidden w-full sm:block sm:w-auto sm:min-w-64 sm:flex-1 sm:max-w-sm">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa1b5]">
               <Icon name="search" className="h-4 w-4" />
             </span>

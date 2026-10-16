@@ -91,7 +91,7 @@ export default function SetorCard({
           >
             <Icon name="chevron" className="h-4 w-4" />
           </span>
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${visual.cor}`}>
+          <span className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:flex ${visual.cor}`}>
             <Icon name={visual.icone} className="h-[18px] w-[18px]" />
           </span>
           <span className="truncate text-[0.8125rem] font-semibold tracking-wide text-[var(--ink)]">{titulo}</span>
@@ -112,7 +112,7 @@ export default function SetorCard({
             }}
             placeholder="Buscar neste setor…"
             aria-label={`Buscar servo no setor ${titulo}`}
-            className="qd-field !w-40 shrink-0 !py-1.5 text-sm sm:!w-52"
+            className="qd-field hidden !w-40 shrink-0 !py-1.5 text-sm sm:block sm:!w-52"
           />
         )}
         {acao}
