@@ -1,9 +1,10 @@
 import ExcelJS from "exceljs";
+import JSZip from "jszip";
 import { requireUser, getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { FUNCOES, ordenarSetores } from "@/lib/constants";
 
-// Quadrante de servos em Excel, uma aba por setor — para os coordenadores fazerem os chamados.
+// Quadrante de servos em Excel, um arquivo por setor (entregues num .zip) — para os coordenadores fazerem os chamados.
 // Só colunas de contato/logística: sem CPF, endereço completo, pagamento ou observações.
 const COLUNAS = [
   { header: "NOME", width: 38 },
@@ -44,18 +45,20 @@ export async function GET() {
     return i === -1 ? FUNCOES.length : i;
   };
 
-  const wb = new ExcelJS.Workbook();
-  const usadas = new Set<string>();
+  const zip = new JSZip();
+  const usados = new Set<string>();
   for (const [setor, lista] of porSetor) {
     if (lista.length === 0) continue;
     lista.sort((a, b) => idxFuncao(a.funcao) - idxFuncao(b.funcao) || a.pessoa.nome.localeCompare(b.pessoa.nome));
 
-    // nome de aba: até 31 caracteres, sem \ / ? * [ ] : e único
-    let nomeAba = setor.replace(/[\\/?*[\]:]/g, "-").slice(0, 31) || "Setor";
-    for (let i = 2; usadas.has(nomeAba.toLowerCase()); i++) nomeAba = `${nomeAba.slice(0, 28)} ${i}`;
-    usadas.add(nomeAba.toLowerCase());
+    // nome de arquivo/aba: sem \ / ? * [ ] : e único
+    const base = setor.replace(/[\\/?*[\]:"<>|]/g, "-").trim() || "Setor";
+    let nomeArquivo = base;
+    for (let i = 2; usados.has(nomeArquivo.toLowerCase()); i++) nomeArquivo = `${base} ${i}`;
+    usados.add(nomeArquivo.toLowerCase());
 
-    const ws = wb.addWorksheet(nomeAba, { views: [{ state: "frozen", ySplit: 2 }] });
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(nomeArquivo.slice(0, 31), { views: [{ state: "frozen", ySplit: 2 }] });
     ws.columns = COLUNAS.map((c) => ({ width: c.width }));
 
     const coord = lista.filter((s) => s.funcao === "COORDENADOR").length;
@@ -88,16 +91,18 @@ export async function GET() {
       ]);
     }
     ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: COLUNAS.length } };
+
+    zip.file(`${nomeArquivo}.xlsx`, await wb.xlsx.writeBuffer());
   }
 
-  if (wb.worksheets.length === 0) return new Response("Nenhum servo ativo no quadrante.", { status: 400 });
+  if (Object.keys(zip.files).length === 0) return new Response("Nenhum servo ativo no quadrante.", { status: 400 });
 
-  const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+  const buffer = await zip.generateAsync({ type: "nodebuffer" });
   const arquivo = missao.nome.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
   return new Response(new Uint8Array(buffer), {
     headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="quadrante-${arquivo || missao.id}.xlsx"`,
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="quadrante-${arquivo || missao.id}.zip"`,
     },
   });
 }
