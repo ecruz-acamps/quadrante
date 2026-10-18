@@ -3,6 +3,7 @@
 import { PrismaClient } from "@prisma/client";
 import { normalizarCidade } from "../src/lib/cidades";
 import { CIDADES_SC } from "./cidades-sc";
+import { PARES_GRANDE_FLORIANOPOLIS, REGIAO_GRANDE_FLORIANOPOLIS } from "./vizinhanca-grande-floripa";
 
 const db = new PrismaClient();
 
@@ -20,23 +21,10 @@ const APELIDOS_EXTRAS: Record<string, string[]> = {
   "Florianópolis": ["floripa"],
 };
 
-// rascunho — conferir
+// Grande Florianópolis: divisas do IBGE + pares da coordenação (ver vizinhanca-grande-floripa.ts).
+// Fora dessa região só ficam os pares abaixo (rascunho — conferir).
 const VIZINHANCA: [string, string][] = [
-  ["Florianópolis", "São José"],
-  ["Florianópolis", "Biguaçu"],
-  ["São José", "Biguaçu"],
-  ["São José", "Palhoça"],
-  ["São José", "Santo Amaro da Imperatriz"],
-  ["Palhoça", "Santo Amaro da Imperatriz"],
-  ["Palhoça", "Águas Mornas"],
-  ["Santo Amaro da Imperatriz", "Águas Mornas"],
-  ["Santo Amaro da Imperatriz", "Anitápolis"],
-  ["Águas Mornas", "Rancho Queimado"],
-  ["Águas Mornas", "Anitápolis"],
-  ["Anitápolis", "Rancho Queimado"],
-  ["Anitápolis", "Angelina"],
-  ["Anitápolis", "Leoberto Leal"],
-  ["Angelina", "Rancho Queimado"],
+  ...PARES_GRANDE_FLORIANOPOLIS,
   ["Armazém", "Anitápolis"],
   ["Armazém", "Laguna"],
 ];
@@ -53,6 +41,15 @@ async function main() {
         update: {},
         create: { apelido, cidadeId: c.id },
       });
+    }
+  }
+  // a região é autoridade: pares entre duas cidades da região que não estão na lista (rascunho antigo) saem
+  const regiaoIds = REGIAO_GRANDE_FLORIANOPOLIS.map((n) => ids.get(n)!);
+  const validos = new Set(VIZINHANCA.flatMap(([a, b]) => [`${ids.get(a)}-${ids.get(b)}`, `${ids.get(b)}-${ids.get(a)}`]));
+  const internos = await db.cidadeVizinha.findMany({ where: { cidadeId: { in: regiaoIds }, vizinhaId: { in: regiaoIds } } });
+  for (const p of internos) {
+    if (!validos.has(`${p.cidadeId}-${p.vizinhaId}`)) {
+      await db.cidadeVizinha.delete({ where: { cidadeId_vizinhaId: { cidadeId: p.cidadeId, vizinhaId: p.vizinhaId } } });
     }
   }
   for (const [a, b] of VIZINHANCA) {
