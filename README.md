@@ -59,6 +59,7 @@ Itens do menu lateral do painel administrativo:
 | **Por Setor / Por Cidade** | Visões agregadas da missão. |
 | **Fichas (Neocampistas)** | Cadastro dos campistas novos, com alertas de possíveis duplicatas entre fichas. |
 | **Tribos** | Divisão dos neocampistas em tribos e seus líderes. |
+| **Evangelização** (v1.2) | Equipes de 3 (com carro) formadas pelas cidades dos servos, sorteio de 3 a 4 casas de neocampistas por equipe sem nunca mandar a equipe à cidade de um membro, tela de cidades/vizinhança, fechar a distribuição (só o SUPER reabre) e folhas de impressão por equipe. |
 | **Financeiro** | Valores por categoria (interna, externa, campista), pagos e pendentes. |
 | **Não / Desistências / Faltas** | Quem recusou, desistiu ou faltou, com motivo. |
 | **Pessoas** | Cadastro único de pessoas e histórico de missões de cada uma. |
@@ -86,7 +87,7 @@ Nada desta lista está em produção. Cada item tem spec e plano em `docs/superp
 
 | Item | Situação |
 |---|---|
-| **v1.2: Evangelização** (equipes de visita e sorteio das casas dos neocampistas por cidade) | Em desenvolvimento, ainda não publicada. Spec e plano prontos. Equipes de 3 pessoas (com carro), 3 a 4 casas por equipe, e uma equipe nunca visita a cidade de um dos seus membros. |
+| **v1.2: Evangelização** (equipes de visita e sorteio das casas dos neocampistas por cidade) | Implementada e testada, **ainda não publicada em produção** (a migração do banco já foi aplicada, é só acréscimo). Falta conferir a tabela de vizinhança entre cidades (rascunho em `scripts/seed-cidades.ts`). Equipes de 3 pessoas (com carro), 3 a 4 casas por equipe, e uma equipe nunca visita a cidade de um dos seus membros. |
 | **Coordenador em `/meu-setor`** (login que só enxerga o próprio setor) | Adiado; spec e plano prontos. |
 | **Candidatos a servir em `/servir/<slug>`** (substitui o Google Forms de disponibilidade) | Adiado para 2027; spec e plano prontos. |
 
