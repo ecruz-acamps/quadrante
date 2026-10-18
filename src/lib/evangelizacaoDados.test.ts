@@ -162,3 +162,120 @@ test("sem equipes ou sem servos o sorteio não quebra", async () => {
   assert.equal(r.alocacao.size, 0);
   assert.deepEqual(await m.aplicarSugestaoEquipes(missao.id), { equipes: 0 });
 });
+
+// ---------- operações (Task 7): o id vem do navegador, a missão vem do banco ----------
+async function ops() {
+  return import("./evangelizacaoOps");
+}
+async function cenarioOps(slug: string) {
+  const { missao } = await cenario(slug);
+  await m.aplicarSugestaoEquipes(missao.id);
+  const equipes = await db.equipeEvangelizacao.findMany({ where: { missaoId: missao.id }, orderBy: { id: "asc" } });
+  const servo = (await db.servo.findFirst({ where: { missaoId: missao.id } }))!;
+  const ficha = (await db.neocampista.findFirst({ where: { missaoId: missao.id, numero: 1 } }))!;
+  const u = (email: string, role: string) => db.usuario.create({ data: { nome: email, email: `${slug}-${email}`, role } });
+  const superU = await u("super", "SUPER");
+  const admin = await u("admin", "ADMIN");
+  await db.usuarioMissao.create({ data: { usuarioId: admin.id, missaoId: missao.id } });
+  const intruso = await u("intruso", "ADMIN");
+  return {
+    missao, equipes, servo, ficha,
+    superUser: { id: superU.id, role: "SUPER" },
+    admin: { id: admin.id, role: "ADMIN" },
+    intruso: { id: intruso.id, role: "ADMIN" },
+  };
+}
+
+test("moverCasa recusa equipe de outra missão e fixa a casa na equipe certa", async () => {
+  const o = await ops();
+  const a = await cenarioOps("ops-a");
+  const b = await cenarioOps("ops-b");
+  await assert.rejects(o.moverCasa(a.superUser, a.ficha.id, b.equipes[0].id), /outra missão|Sem permissão/);
+  await o.moverCasa(a.admin, a.ficha.id, a.equipes[0].id);
+  const f = await db.neocampista.findUnique({ where: { id: a.ficha.id } });
+  assert.equal(f!.equipeEvangelizacaoId, a.equipes[0].id);
+  assert.equal(f!.casaFixada, true);
+  await o.moverCasa(a.admin, a.ficha.id, null);
+  const solta = await db.neocampista.findUnique({ where: { id: a.ficha.id } });
+  assert.deepEqual([solta!.equipeEvangelizacaoId, solta!.casaFixada], [null, false]);
+});
+
+test("usuário sem acesso à missão é recusado em toda operação", async () => {
+  const o = await ops();
+  const a = await cenarioOps("ops-acesso");
+  const x = a.intruso;
+  await assert.rejects(o.marcarTemCarro(x, a.servo.id, true), /Sem permissão/);
+  await assert.rejects(o.sugerirEquipes(x, a.missao.id), /Sem permissão/);
+  await assert.rejects(o.criarEquipe(x, a.missao.id), /Sem permissão/);
+  await assert.rejects(o.apagarEquipe(x, a.equipes[0].id), /Sem permissão/);
+  await assert.rejects(o.moverServoEquipe(x, a.servo.id, a.equipes[0].id), /Sem permissão/);
+  await assert.rejects(o.rodarSorteio(x, a.missao.id), /Sem permissão/);
+  await assert.rejects(o.moverCasa(x, a.ficha.id, a.equipes[0].id), /Sem permissão/);
+  await assert.rejects(o.limparFixacoes(x, a.missao.id), /Sem permissão/);
+  await assert.rejects(o.fecharDistribuicao(x, a.missao.id), /Sem permissão/);
+  await assert.rejects(o.moverCasa(a.superUser, -1, a.equipes[0].id), /Sem permissão/);
+});
+
+test("fechada a distribuição, toda escrita é recusada; só SUPER reabre", async () => {
+  const o = await ops();
+  const a = await cenarioOps("ops-fechada");
+  await o.fecharDistribuicao(a.admin, a.missao.id);
+  const fechada = /Distribuição fechada/;
+  await assert.rejects(o.marcarTemCarro(a.admin, a.servo.id, true), fechada);
+  await assert.rejects(o.sugerirEquipes(a.admin, a.missao.id), fechada);
+  await assert.rejects(o.criarEquipe(a.admin, a.missao.id), fechada);
+  await assert.rejects(o.apagarEquipe(a.admin, a.equipes[0].id), fechada);
+  await assert.rejects(o.moverServoEquipe(a.admin, a.servo.id, a.equipes[1].id), fechada);
+  await assert.rejects(o.rodarSorteio(a.admin, a.missao.id), fechada);
+  await assert.rejects(o.moverCasa(a.admin, a.ficha.id, a.equipes[0].id), fechada);
+  await assert.rejects(o.limparFixacoes(a.admin, a.missao.id), fechada);
+  await assert.rejects(o.reabrirDistribuicao(a.admin, a.missao.id), /SUPER/);
+  await o.reabrirDistribuicao(a.superUser, a.missao.id);
+  await o.criarEquipe(a.admin, a.missao.id);
+  assert.equal(await db.equipeEvangelizacao.count({ where: { missaoId: a.missao.id } }), 3);
+});
+
+test("moverServoEquipe recusa equipe de outra missão; criar e apagar equipe soltam membros", async () => {
+  const o = await ops();
+  const a = await cenarioOps("ops-servo-a");
+  const b = await cenarioOps("ops-servo-b");
+  await assert.rejects(o.moverServoEquipe(a.superUser, a.servo.id, b.equipes[0].id), /outra missão/);
+  await o.moverServoEquipe(a.admin, a.servo.id, null);
+  assert.equal((await db.servo.findUnique({ where: { id: a.servo.id } }))!.equipeEvangelizacaoId, null);
+  await o.apagarEquipe(a.admin, a.equipes[1].id);
+  assert.equal(await db.servo.count({ where: { missaoId: a.missao.id, equipeEvangelizacaoId: a.equipes[1].id } }), 0);
+  await o.marcarTemCarro(a.admin, a.servo.id, true);
+  assert.equal((await db.servo.findUnique({ where: { id: a.servo.id } }))!.temCarro, true);
+});
+
+test("limparFixacoes tira a fixação sem mexer na equipe", async () => {
+  const o = await ops();
+  const a = await cenarioOps("ops-limpar");
+  await o.moverCasa(a.admin, a.ficha.id, a.equipes[0].id);
+  await o.limparFixacoes(a.admin, a.missao.id);
+  const f = await db.neocampista.findUnique({ where: { id: a.ficha.id } });
+  assert.deepEqual([f!.casaFixada, f!.equipeEvangelizacaoId], [false, a.equipes[0].id]);
+});
+
+test("associarApelidoCidade grava apelido normalizado e recusa conflito", async () => {
+  const o = await ops();
+  await o.associarApelidoCidade("Pal. - SC", ids.pal);
+  assert.equal((await db.cidadeApelido.findUnique({ where: { apelido: "pal" } }))!.cidadeId, ids.pal);
+  await o.associarApelidoCidade("PAL", ids.pal); // mesmo destino: ok
+  await assert.rejects(o.associarApelidoCidade("pal", ids.sj), /já aponta/);
+  await assert.rejects(o.associarApelidoCidade("   ", ids.pal), /vazio|inválid/i);
+  await assert.rejects(o.associarApelidoCidade("abc", 99999), /não existe|inválid/i);
+});
+
+test("salvarVizinhanca grava nos dois sentidos e substitui a lista anterior", async () => {
+  const o = await ops();
+  const c = await db.cidade.create({ data: { nome: "Biguaçu-teste" } });
+  await o.salvarVizinhanca(c.id, [ids.pal, ids.sj, c.id]);
+  assert.equal(await db.cidadeVizinha.count({ where: { cidadeId: c.id } }), 2);
+  assert.equal(await db.cidadeVizinha.count({ where: { vizinhaId: c.id } }), 2);
+  await o.salvarVizinhanca(c.id, [ids.pal]);
+  assert.equal(await db.cidadeVizinha.count({ where: { cidadeId: c.id } }), 1);
+  assert.equal(await db.cidadeVizinha.count({ where: { vizinhaId: c.id } }), 1);
+  // a vizinhança pré-existente entre Palhoça e São José não foi tocada
+  assert.equal(await db.cidadeVizinha.count({ where: { cidadeId: ids.pal, vizinhaId: ids.sj } }), 1);
+});
