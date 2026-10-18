@@ -54,3 +54,9 @@ export async function associarApelidoCidade(texto: string, cidadeId: number) {
 export async function salvarVizinhanca(cidadeId: number, vizinhasIds: number[]) {
   return executar(() => ops.salvarVizinhanca(cidadeId, vizinhasIds));
 }
+export async function criarCidadeDeGrafia(texto: string) {
+  return executar(() => ops.criarCidadeDeGrafia(texto));
+}
+export async function removerApelidoCidade(apelidoId: number) {
+  return executar(() => ops.removerApelidoCidade(apelidoId));
+}

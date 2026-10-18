@@ -22,6 +22,8 @@ export function validarCasa(equipe: EquipeSorteio, casaCidadeId: number | null):
   return "OK";
 }
 
+const chaveBairro = (c: CasaSorteio) => (c.bairro ?? "").trim().toLowerCase();
+
 function embaralhar<T>(lista: T[], rng: () => number): T[] {
   const r = [...lista];
   for (let i = r.length - 1; i > 0; i--) {
@@ -60,12 +62,14 @@ export function sortearCasas(
     for (const c of livres) pendencias.push({ casaId: c.id, motivo: "SEM_EQUIPE_PERMITIDA" });
   } else {
     const fixadasElegiveis = elegiveis.reduce((n, e) => n + (carga.get(e.id) ?? 0), 0);
-    const teto = Math.ceil((fixadasElegiveis + livres.length) / elegiveis.length);
+    const total = fixadasElegiveis + livres.length;
+    const teto = Math.ceil(total / elegiveis.length);
+    const piso = Math.floor(total / elegiveis.length);
 
     // grupos cidade+bairro andam juntos; as cidades mais restritas (menos equipes permitidas) vão primeiro
     const grupos = new Map<string, CasaSorteio[]>();
     for (const c of livres) {
-      const k = `${c.cidadeId}|${(c.bairro ?? "").trim().toLowerCase()}`;
+      const k = `${c.cidadeId}|${chaveBairro(c)}`;
       grupos.set(k, [...(grupos.get(k) ?? []), c]);
     }
     const permitidas = (cidadeId: number) =>
@@ -82,8 +86,10 @@ export function sortearCasas(
         continue;
       }
       const menor = Math.min(...permitidasEq.map((e) => carga.get(e.id)!));
+      // equilíbrio (prioridade 2) vem antes de vizinhança e bairro: enquanto alguma permitida está abaixo do piso, só ela recebe
+      const folga = menor < piso ? 0 : 1;
       let candidatas = permitidasEq.filter(
-        (e) => carga.get(e.id)! < teto && carga.get(e.id)! <= menor + 1
+        (e) => carga.get(e.id)! < teto && carga.get(e.id)! <= menor + folga
       );
       if (candidatas.length === 0) candidatas = permitidasEq.filter((e) => carga.get(e.id)! === menor);
       const pontuada = candidatas.map((e) => {
@@ -92,7 +98,8 @@ export function sortearCasas(
           e,
           vizinha: e.cidades.some((m) => saoVizinhas(viz, m, c.cidadeId)) ? 1 : 0,
           mesmaCidade: mesmas.some((o) => o.cidadeId === c.cidadeId) ? 1 : 0,
-          mesmoBairro: c.bairro && mesmas.some((o) => o.bairro === c.bairro) ? 1 : 0,
+          mesmoBairro:
+            chaveBairro(c) && mesmas.some((o) => o.cidadeId === c.cidadeId && chaveBairro(o) === chaveBairro(c)) ? 1 : 0,
           carga: carga.get(e.id)!,
           sorte: rng(),
         };

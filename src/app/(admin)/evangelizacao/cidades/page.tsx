@@ -2,18 +2,24 @@ import Link from "next/link";
 import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { carregarPainel } from "@/lib/evangelizacaoDados";
-import { AssociarApelido, EditorVizinhanca } from "./Formularios";
+import { ApelidosDaCidade, AssociarApelido, EditorVizinhanca } from "./Formularios";
 
-export default async function CidadesEvangelizacaoPage() {
+export default async function CidadesEvangelizacaoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cidade?: string }>;
+}) {
   await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
+  const { cidade: cidadeParam } = await searchParams;
   const [painel, cidades] = await Promise.all([
     carregarPainel(missao.id),
-    db.cidade.findMany({ orderBy: { nome: "asc" }, include: { vizinhas: true } }),
+    db.cidade.findMany({ orderBy: { nome: "asc" }, include: { vizinhas: true, apelidos: { orderBy: { apelido: "asc" } } } }),
   ]);
   const lista = cidades.map((c) => ({ id: c.id, nome: c.nome }));
+  const escolhida = cidades.find((c) => String(c.id) === cidadeParam) ?? null;
 
   return (
     <div>
@@ -55,11 +61,32 @@ export default async function CidadesEvangelizacaoPage() {
           vizinhas antes de confiar na preferência por cidade próxima.
         </p>
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        {cidades.map((c) => (
-          <EditorVizinhanca key={c.id} cidade={{ id: c.id, nome: c.nome }} cidades={lista} vizinhasIds={c.vizinhas.map((v) => v.vizinhaId)} />
-        ))}
-      </div>
+      <form className="mb-4 flex flex-wrap items-center gap-2" method="get">
+        <label className="text-sm" htmlFor="cidade">
+          Cidade
+        </label>
+        <select id="cidade" name="cidade" defaultValue={escolhida?.id ?? ""} className="input py-1 text-sm">
+          <option value="">Escolha uma cidade...</option>
+          {cidades.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nome}
+              {c.vizinhas.length ? ` (${c.vizinhas.length} vizinhas)` : ""}
+            </option>
+          ))}
+        </select>
+        <button className="btn-primary text-xs px-3 py-1">Abrir</button>
+      </form>
+      {escolhida && (
+        <div>
+          <EditorVizinhanca
+            key={`${escolhida.id}:${escolhida.vizinhas.map((v) => v.vizinhaId).sort((a, b) => a - b).join(",")}`}
+            cidade={{ id: escolhida.id, nome: escolhida.nome }}
+            cidades={lista}
+            vizinhasIds={escolhida.vizinhas.map((v) => v.vizinhaId)}
+          />
+          <ApelidosDaCidade key={`ap-${escolhida.id}:${escolhida.apelidos.length}`} apelidos={escolhida.apelidos.map((a) => ({ id: a.id, apelido: a.apelido }))} />
+        </div>
+      )}
     </div>
   );
 }

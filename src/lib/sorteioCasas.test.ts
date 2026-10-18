@@ -115,3 +115,19 @@ test("com casas fixadas contam na carga: o resto se distribui em volta delas", (
   assert.deepEqual([carga(r.alocacao, 1), carga(r.alocacao, 2)].sort(), [3, 4]);
   for (const id of [1, 2, 3]) assert.equal(r.alocacao.get(id), 1);
 });
+
+test("sem restrições, a carga das equipes nunca difere em mais de 1 (3E <= N <= 4E)", () => {
+  const bairros = ["Centro", "Centro", "Barra", "Pagani", null];
+  for (let seed = 1; seed <= 300; seed++) {
+    const rng = lcg(seed);
+    const E = 2 + Math.floor(rng() * 7);
+    const N = 3 * E + Math.floor(rng() * (E + 1));
+    const equipes = Array.from({ length: E }, (_, i) => eq(i + 1, [BIG, BIG, BIG]));
+    const casas = Array.from({ length: N }, (_, i) =>
+      casa(i + 1, rng() < 0.7 ? PAL : SA, { bairro: bairros[Math.floor(rng() * bairros.length)] })
+    );
+    const r = sortearCasas(equipes, casas, viz, lcg(seed + 1000));
+    const cargas = equipes.map((e) => carga(r.alocacao, e.id));
+    assert.ok(Math.max(...cargas) - Math.min(...cargas) <= 1, `E=${E} N=${N} cargas=${cargas}`);
+  }
+});

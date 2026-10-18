@@ -127,3 +127,22 @@ export async function salvarVizinhanca(cidadeId: number, vizinhasIds: number[]) 
     }),
   ]);
 }
+
+// cidade que não está na lista (outro estado, por exemplo): cria a cidade canônica e o apelido da grafia
+export async function criarCidadeDeGrafia(texto: string): Promise<number> {
+  const nome = String(texto ?? "").trim();
+  const apelido = normalizarCidade(nome);
+  if (!apelido) throw new Error("Texto vazio.");
+  if ((await db.cidade.findUnique({ where: { nome } })) || (await db.cidadeApelido.findUnique({ where: { apelido } }))) {
+    throw new Error("Essa cidade já existe: associe a grafia a ela.");
+  }
+  const c = await db.cidade.create({ data: { nome, apelidos: { create: { apelido } } } });
+  return c.id;
+}
+
+export async function removerApelidoCidade(apelidoId: number) {
+  if (!inteiroPositivo(apelidoId) || !(await db.cidadeApelido.findUnique({ where: { id: apelidoId } }))) {
+    throw new Error("Apelido inválido (não existe).");
+  }
+  await db.cidadeApelido.delete({ where: { id: apelidoId } });
+}

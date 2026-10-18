@@ -279,3 +279,24 @@ test("salvarVizinhanca grava nos dois sentidos e substitui a lista anterior", as
   // a vizinhança pré-existente entre Palhoça e São José não foi tocada
   assert.equal(await db.cidadeVizinha.count({ where: { cidadeId: ids.pal, vizinhaId: ids.sj } }), 1);
 });
+
+test("criarCidadeDeGrafia cria a cidade e o apelido; recusa nome repetido", async () => {
+  const o = await ops();
+  const id = await o.criarCidadeDeGrafia("Passo Fundo - RS");
+  const c = await db.cidade.findUnique({ where: { id } });
+  assert.equal(c!.nome, "Passo Fundo - RS");
+  assert.equal((await db.cidadeApelido.findUnique({ where: { apelido: "passo fundo rs" } }))!.cidadeId, id);
+  await assert.rejects(o.criarCidadeDeGrafia("Passo Fundo - RS"), /já existe/);
+  await assert.rejects(o.criarCidadeDeGrafia("   "), /vazio/);
+});
+
+test("removerApelidoCidade desfaz uma associação errada e preserva o resto", async () => {
+  const o = await ops();
+  await o.associarApelidoCidade("S. José", ids.pal); // engano
+  const ap = await db.cidadeApelido.findUnique({ where: { apelido: "s jose" } });
+  assert.ok(ap);
+  await o.removerApelidoCidade(ap!.id);
+  assert.equal(await db.cidadeApelido.findUnique({ where: { apelido: "s jose" } }), null);
+  assert.equal((await db.cidadeApelido.findUnique({ where: { apelido: "palhoca" } }))!.cidadeId, ids.pal);
+  await assert.rejects(o.removerApelidoCidade(999999), /não existe|inválid/i);
+});

@@ -45,3 +45,6 @@ prisma/*.db.bak-*
 *.tsbuildinfo
 next-env.d.ts
 logs/
+
+# estado local de ferramentas
+.omc/
