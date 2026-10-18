@@ -1,8 +1,48 @@
+"use client";
+
+import { useRef, useState } from "react";
 import { PAGAMENTOS, CAMISETAS } from "@/lib/constants";
+import { cepDeTexto, formatarCep, interpretarViaCep } from "@/lib/cep";
 import type { Neocampista } from "@prisma/client";
 
 export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
   const sel = "input";
+  const enderecoRef = useRef<HTMLInputElement>(null);
+  const bairroRef = useRef<HTMLInputElement>(null);
+  const cidadeRef = useRef<HTMLInputElement>(null);
+  const consultaRef = useRef<AbortController | null>(null);
+  const [cepMsg, setCepMsg] = useState<string | null>(null);
+
+  // os campos são não controlados (defaultValue): preenche pelo ref, e só sobrescreve com o que o CEP trouxe
+  async function buscarCep(texto: string) {
+    const cep = cepDeTexto(texto);
+    if (!cep) {
+      consultaRef.current?.abort();
+      setCepMsg(null);
+      return;
+    }
+    consultaRef.current?.abort();
+    const controle = new AbortController();
+    consultaRef.current = controle;
+    setCepMsg("Buscando CEP...");
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: controle.signal });
+      if (!r.ok) throw new Error("falha");
+      const dados = interpretarViaCep(await r.json());
+      if (!dados) {
+        setCepMsg("CEP não encontrado.");
+        return;
+      }
+      if (dados.endereco && enderecoRef.current) enderecoRef.current.value = dados.endereco;
+      if (dados.bairro && bairroRef.current) bairroRef.current.value = dados.bairro;
+      if (cidadeRef.current) cidadeRef.current.value = dados.cidade;
+      setCepMsg(null);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setCepMsg("Não foi possível consultar o CEP agora. Preencha o endereço à mão.");
+    }
+  }
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
       <label className="text-sm">
@@ -18,16 +58,31 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
         <input name="nome" required defaultValue={ficha?.nome} className={sel} />
       </label>
       <label className="text-sm">
+        CEP
+        <input
+          inputMode="numeric"
+          autoComplete="postal-code"
+          placeholder="00000-000"
+          maxLength={9}
+          className={sel}
+          onChange={(e) => {
+            e.target.value = formatarCep(e.target.value);
+            buscarCep(e.target.value);
+          }}
+        />
+        {cepMsg && <span className="block text-xs text-[var(--ink-soft)]/70 mt-1">{cepMsg}</span>}
+      </label>
+      <label className="text-sm">
         Endereço
-        <input name="endereco" defaultValue={ficha?.endereco ?? ""} className={sel} />
+        <input ref={enderecoRef} name="endereco" defaultValue={ficha?.endereco ?? ""} className={sel} />
       </label>
       <label className="text-sm">
         Bairro
-        <input name="bairro" defaultValue={ficha?.bairro ?? ""} className={sel} />
+        <input ref={bairroRef} name="bairro" defaultValue={ficha?.bairro ?? ""} className={sel} />
       </label>
       <label className="text-sm">
         Cidade
-        <input name="cidade" defaultValue={ficha?.cidade ?? ""} className={sel} />
+        <input ref={cidadeRef} name="cidade" defaultValue={ficha?.cidade ?? ""} className={sel} />
       </label>
       <label className="text-sm">
         Celular
