@@ -13,6 +13,7 @@ const NAV = [
   ["/cidades", "Por Cidade", false],
   ["/fichas", "Fichas (Neocampistas)", false],
   ["/tribos", "Tribos", false],
+  ["/evangelizacao", "Evangelização", false],
   ["/financeiro", "Financeiro", false],
   ["/registros", "Não / Desistências / Faltas", false],
   ["/pessoas", "Pessoas", false],

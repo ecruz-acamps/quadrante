@@ -18,6 +18,7 @@ const NAV_ICONE: Record<string, string> = {
   "/cidades": "pin",
   "/fichas": "clipboard",
   "/tribos": "flag",
+  "/evangelizacao": "users",
   "/financeiro": "coin",
   "/registros": "ban",
   "/pessoas": "user",
