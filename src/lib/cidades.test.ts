@@ -14,6 +14,12 @@ test("normaliza pontuação e espaços", () => {
   assert.equal(normalizarCidade("Palhoça/SC"), "palhoca");
 });
 
+test("remove o sufixo SC mesmo sem hífen", () => {
+  assert.equal(normalizarCidade("Sto Amaro Imp. SC"), "sto amaro imp");
+  assert.equal(normalizarCidade("Palhoça SC"), "palhoca");
+  assert.equal(normalizarCidade("Sc"), "sc");
+});
+
 test("resolverCidade usa o mapa de apelidos", () => {
   const mapa = new Map([["palhoca", 1]]);
   assert.equal(resolverCidade("Palhoça - SC", mapa), 1);

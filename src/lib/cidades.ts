@@ -6,10 +6,10 @@ export function normalizarCidade(texto: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
-    .replace(/\s*[-/]\s*sc\s*$/, "")
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .replace(/^(.+?) sc$/, "$1");
 }
 
 export function resolverCidade(
