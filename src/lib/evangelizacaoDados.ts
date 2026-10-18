@@ -2,6 +2,8 @@ import { db } from "./db";
 import { chaveVizinha, resolverCidade, type MapaApelidos, type Vizinhanca } from "./cidades";
 import { formarEquipes, validarEquipe, type ServoEv, type TipoAvisoEquipe } from "./equipesEvangelizacao";
 import {
+  calcularCotas,
+  limitesPorCarros,
   sortearCasas,
   validarCasa,
   type CasaSorteio,
@@ -62,7 +64,11 @@ async function equipesParaSorteio(missaoId: number, mapa: MapaApelidos): Promise
   });
   return equipes
     .filter((e) => e.servos.length > 0)
-    .map((e) => ({ id: e.id, cidades: e.servos.map((s) => resolverCidade(s.pessoa.cidade, mapa)) }));
+    .map((e) => ({
+      id: e.id,
+      cidades: e.servos.map((s) => resolverCidade(s.pessoa.cidade, mapa)),
+      carros: e.servos.filter((s) => s.temCarro).length,
+    }));
 }
 
 export async function aplicarSorteio(
@@ -175,7 +181,17 @@ export async function carregarPainel(missaoId: number) {
       membros.map((x) => ({ id: x.id, cidadeId: x.cidadeId, temCarro: x.temCarro })),
       viz
     );
-    return { id: e.id, nome: e.nome, membros, avisos, casas };
+    return { id: e.id, nome: e.nome, membros, avisos, casas, carros: membros.filter((x) => x.temCarro).length };
+  });
+  // casas por equipe na proporção dos carros; equipe com cidade de membro desconhecida fica fora (não recebe casas)
+  const aptas = painelEquipes.filter((e) => !e.avisos.includes("CIDADE_DESCONHECIDA"));
+  const totalAptas = aptas.reduce((n, e) => n + e.casas.length, 0);
+  const carrosAptas = aptas.map((e) => e.carros);
+  const cotas = calcularCotas(carrosAptas, totalAptas);
+  const limites = limitesPorCarros(carrosAptas, totalAptas);
+  const painelComCotas = painelEquipes.map((e) => {
+    const i = aptas.findIndex((a) => a.id === e.id);
+    return { ...e, cota: i >= 0 ? cotas[i] : 0, limite: i >= 0 ? limites[i] : 0 };
   });
 
   const pendencias = fichas
@@ -212,11 +228,11 @@ export async function carregarPainel(missaoId: number) {
   return {
     fechada: missao?.evangelizacaoFechada ?? false,
     cidades,
-    equipes: painelEquipes,
+    equipes: painelComCotas,
     servosSemEquipe: servosLivres.map(membro),
     pendencias,
     cidadesDesconhecidas: [...desconhecidas.values()].sort((a, b) => b.fichas + b.servos - (a.fichas + a.servos)),
-    equipesAcimaDoLimite: painelEquipes.filter((e) => e.casas.length > 4).map((e) => e.id),
+    equipesAcimaDoLimite: painelComCotas.filter((e) => e.limite > 0 && e.casas.length > e.limite).map((e) => e.id),
     casasPorCidade: [...casasPorCidade.entries()].sort((a, b) => b[1] - a[1]),
   };
 }

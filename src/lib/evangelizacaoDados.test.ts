@@ -300,3 +300,17 @@ test("removerApelidoCidade desfaz uma associação errada e preserva o resto", a
   assert.equal((await db.cidadeApelido.findUnique({ where: { apelido: "palhoca" } }))!.cidadeId, ids.pal);
   await assert.rejects(o.removerApelidoCidade(999999), /não existe|inválid/i);
 });
+
+test("carregarPainel informa carros, cota e limite de cada equipe, somando o total de casas", async () => {
+  const { missao } = await cenario("cotas");
+  await m.aplicarSugestaoEquipes(missao.id);
+  await m.aplicarSorteio(missao.id, lcg(9));
+  const p = await m.carregarPainel(missao.id);
+  const totalCasas = p.equipes.reduce((n, e) => n + e.casas.length, 0);
+  assert.equal(p.equipes.reduce((n, e) => n + e.cota, 0), totalCasas);
+  for (const e of p.equipes) {
+    assert.equal(e.carros, e.membros.filter((x) => x.temCarro).length);
+    assert.ok(e.limite >= e.cota);
+  }
+  assert.ok(p.equipes.every((e) => e.carros === 1));
+});

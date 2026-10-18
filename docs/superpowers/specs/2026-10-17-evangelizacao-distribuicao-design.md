@@ -124,3 +124,7 @@ Telas novas em `(admin)`, com `requireUser()` na primeira linha, como o resto. A
 ## Testes esperados
 
 A lógica de formar equipes e de sortear é código puro, testado como o `chamado.ts`: impedimento por cidade (incluindo grafias diferentes), preferência por vizinha, equilíbrio de 3 a 4 casas, equipe sem carro, ficha sem cidade, casa sem equipe permitida, fixações respeitadas no novo sorteio e resultado diferente em sorteios repetidos.
+
+## Atualização (2026-10-18): casas por equipe seguem os carros
+
+Decisão da coordenação da Evangelização, que **substitui** a regra "3 a 4 casas por equipe": o total de casas é repartido entre as equipes **na proporção dos carros** de cada uma (equipe com mais carros recebe mais casas). Equipe sem carro não recebe casas enquanto houver equipe com carro; se nenhuma equipe tem carro marcado, a divisão é igual. Continua valendo: impedimento por cidade acima de tudo. Passar do limite (teto da parcela) só acontece por causa do impedimento e aparece como "Acima da cota de carros". Implementação: `calcularCotas`/`limitesPorCarros` em `src/lib/sorteioCasas.ts`.

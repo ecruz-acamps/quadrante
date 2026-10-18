@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chaveVizinha, type Vizinhanca } from "./cidades";
-import { sortearCasas, validarCasa, type CasaSorteio, type EquipeSorteio } from "./sorteioCasas";
+import { calcularCotas, sortearCasas, validarCasa, type CasaSorteio, type EquipeSorteio } from "./sorteioCasas";
 
 function lcg(seed: number) {
   let s = seed;
@@ -10,7 +10,7 @@ function lcg(seed: number) {
 // Palhoça=1, São José=2, Santo Amaro=3, Biguaçu=4; vizinhança 1–2, 1–3, 2–3, 2–4
 const PAL = 1, SJ = 2, SA = 3, BIG = 4;
 const viz: Vizinhanca = new Set([[1, 2], [1, 3], [2, 3], [2, 4]].map(([a, b]) => chaveVizinha(a, b)));
-const eq = (id: number, cidades: (number | null)[]): EquipeSorteio => ({ id, cidades });
+const eq = (id: number, cidades: (number | null)[], carros?: number): EquipeSorteio => ({ id, cidades, carros });
 const casa = (id: number, cidadeId: number | null, extra: Partial<CasaSorteio> = {}): CasaSorteio => ({
   id, cidadeId, bairro: null, fixadaEm: null, ...extra,
 });
@@ -96,15 +96,6 @@ test("mesmo rng repete o resultado e rngs diferentes podem variar nos empates", 
   assert.ok(distintos.size > 1);
 });
 
-test("mais casas que 4 por equipe lista as equipes acima do limite", () => {
-  const equipes = [eq(1, [BIG, BIG, BIG]), eq(2, [BIG, BIG, BIG])];
-  const casas = Array.from({ length: 11 }, (_, i) => casa(i + 1, PAL));
-  const r = sortearCasas(equipes, casas, viz, lcg(1));
-  assert.equal(r.alocacao.size, 11);
-  assert.deepEqual(r.equipesAcimaDoLimite.sort(), [1, 2].filter((id) => carga(r.alocacao, id) > 4));
-  assert.ok(r.equipesAcimaDoLimite.length >= 1);
-});
-
 test("com casas fixadas contam na carga: o resto se distribui em volta delas", () => {
   const equipes = [eq(1, [BIG, BIG, BIG]), eq(2, [BIG, BIG, BIG])];
   const casas = [
@@ -130,4 +121,46 @@ test("sem restrições, a carga das equipes nunca difere em mais de 1 (3E <= N <
     const cargas = equipes.map((e) => carga(r.alocacao, e.id));
     assert.ok(Math.max(...cargas) - Math.min(...cargas) <= 1, `E=${E} N=${N} cargas=${cargas}`);
   }
+});
+
+test("calcularCotas reparte o total na proporção dos carros, somando exatamente o total", () => {
+  assert.deepEqual(calcularCotas([1, 2, 3], 12), [2, 4, 6]);
+  assert.deepEqual(calcularCotas([0, 2], 5), [0, 5]);
+  assert.deepEqual(calcularCotas([0, 0], 5).reduce((a, b) => a + b, 0), 5);
+  assert.deepEqual(calcularCotas([], 5), []);
+  const c = calcularCotas([1, 1, 1], 10);
+  assert.equal(c.reduce((a, b) => a + b, 0), 10);
+  assert.deepEqual([...c].sort(), [3, 3, 4]);
+  for (let n = 0; n <= 30; n++) {
+    assert.equal(calcularCotas([1, 2, 2, 5], n).reduce((a, b) => a + b, 0), n);
+  }
+});
+
+test("a equipe com mais carros recebe mais casas, na proporção", () => {
+  const equipes = [eq(1, [BIG, BIG, BIG], 1), eq(2, [BIG, BIG, BIG], 3)];
+  const casas = Array.from({ length: 8 }, (_, i) => casa(i + 1, PAL));
+  for (let seed = 1; seed <= 20; seed++) {
+    const r = sortearCasas(equipes, casas, viz, lcg(seed));
+    assert.deepEqual([carga(r.alocacao, 1), carga(r.alocacao, 2)], [2, 6]);
+    assert.deepEqual(r.equipesAcimaDoLimite, []);
+  }
+});
+
+test("equipe sem carro não recebe casa quando as outras têm carro", () => {
+  const equipes = [eq(1, [BIG, BIG, BIG], 0), eq(2, [BIG, BIG, BIG], 2)];
+  const r = sortearCasas(equipes, Array.from({ length: 5 }, (_, i) => casa(i + 1, PAL)), viz, lcg(1));
+  assert.deepEqual([carga(r.alocacao, 1), carga(r.alocacao, 2)], [0, 5]);
+});
+
+test("se nenhuma equipe tem carro informado, divide igualmente", () => {
+  const equipes = [eq(1, [BIG, BIG, BIG], 0), eq(2, [BIG, BIG, BIG], 0)];
+  const r = sortearCasas(equipes, Array.from({ length: 6 }, (_, i) => casa(i + 1, PAL)), viz, lcg(1));
+  assert.deepEqual([carga(r.alocacao, 1), carga(r.alocacao, 2)], [3, 3]);
+});
+
+test("passar da cota por causa do impedimento aparece em equipesAcimaDoLimite", () => {
+  const equipes = [eq(1, [PAL, PAL, PAL], 1), eq(2, [BIG, BIG, BIG], 3)];
+  const r = sortearCasas(equipes, Array.from({ length: 8 }, (_, i) => casa(i + 1, PAL)), viz, lcg(1));
+  assert.equal(carga(r.alocacao, 2), 8);
+  assert.deepEqual(r.equipesAcimaDoLimite, [2]);
 });

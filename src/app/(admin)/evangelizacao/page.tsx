@@ -38,7 +38,7 @@ export default async function EvangelizacaoPage() {
     <div>
       <h1 className="page-title mb-2">Evangelização: equipes e casas</h1>
       <p className="text-sm text-[var(--ink-soft)]/70 mb-4">
-        Equipes de 3 com carro; cada equipe visita 3 a 4 casas e nunca a cidade de um dos seus membros.
+        Equipes de 3 com carro; as casas são repartidas na proporção dos carros de cada equipe (decisão da coordenação) e nenhuma equipe visita a cidade de um dos seus membros.
       </p>
 
       {travada && (
@@ -100,7 +100,12 @@ export default async function EvangelizacaoPage() {
         {p.equipes.map((e) => (
           <div key={e.id} className="table-shell">
             <div className="qd-card-head flex items-center justify-between">
-              <span>{e.nome}</span>
+              <span>
+                {e.nome}{" "}
+                <span className="text-xs font-normal text-[var(--ink-soft)]/70">
+                  {e.carros} carro(s) · cota {e.cota} casa(s) · {e.casas.length} sorteada(s)
+                </span>
+              </span>
               <ApagarEquipe equipeId={e.id} desabilitado={travada} />
             </div>
             {(e.avisos.length > 0 || p.equipesAcimaDoLimite.includes(e.id)) && (
@@ -108,7 +113,7 @@ export default async function EvangelizacaoPage() {
                 {e.avisos.map((a) => (
                   <Selo key={a} texto={AVISO_EQUIPE[a]} />
                 ))}
-                {p.equipesAcimaDoLimite.includes(e.id) && <Selo texto="Mais de 4 casas" />}
+                {p.equipesAcimaDoLimite.includes(e.id) && <Selo texto="Acima da cota de carros" />}
               </div>
             )}
             <div className="px-4 py-2 border-b border-[var(--line)]">

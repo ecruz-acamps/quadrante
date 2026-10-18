@@ -1,6 +1,7 @@
 import { saoVizinhas, type Vizinhanca } from "./cidades";
 
-export type EquipeSorteio = { id: number; cidades: (number | null)[] };
+// carros: quantos membros têm carro; define a cota de casas (omitido = 1, divisão igual)
+export type EquipeSorteio = { id: number; cidades: (number | null)[]; carros?: number };
 export type CasaSorteio = {
   id: number;
   cidadeId: number | null;
@@ -14,7 +15,35 @@ export type ResultadoSorteio = {
   equipesAcimaDoLimite: number[];
 };
 
-const LIMITE_POR_EQUIPE = 4;
+// Cota de casas por equipe, na proporção dos carros (decisão da coordenação da Evangelização).
+// Maior resto: a soma das cotas é sempre o total. Sem nenhum carro informado, divide igualmente.
+export function calcularCotas(carros: number[], total: number): number[] {
+  if (carros.length === 0) return [];
+  const soma = carros.reduce((a, b) => a + b, 0);
+  const pesos = soma > 0 ? carros : carros.map(() => 1);
+  const somaPesos = soma > 0 ? soma : carros.length;
+  const exatas = pesos.map((w) => (total * w) / somaPesos);
+  const cotas = exatas.map(Math.floor);
+  let faltam = total - cotas.reduce((a, b) => a + b, 0);
+  const porResto = exatas
+    .map((x, i) => ({ i, resto: x - Math.floor(x), peso: pesos[i] }))
+    .filter((x) => x.peso > 0)
+    .sort((a, b) => b.resto - a.resto || a.i - b.i);
+  for (let k = 0; faltam > 0 && porResto.length; k++, faltam--) cotas[porResto[k % porResto.length].i]++;
+  return cotas;
+}
+
+// Parcela fracionária de cada equipe (total * peso / soma dos pesos); o teto dela é o limite sem sobrar casa.
+function parcelasPorCarros(carros: number[], total: number): number[] {
+  const soma = carros.reduce((a, b) => a + b, 0);
+  const pesos = soma > 0 ? carros : carros.map(() => 1);
+  const somaPesos = soma > 0 ? soma : carros.length;
+  return pesos.map((w) => (somaPesos ? (total * w) / somaPesos : 0));
+}
+
+export function limitesPorCarros(carros: number[], total: number): number[] {
+  return parcelasPorCarros(carros, total).map((x) => Math.ceil(x - 1e-9));
+}
 
 export function validarCasa(equipe: EquipeSorteio, casaCidadeId: number | null): StatusCasa {
   if (casaCidadeId == null || equipe.cidades.some((c) => c == null)) return "CIDADE_DESCONHECIDA";
@@ -42,6 +71,8 @@ export function sortearCasas(
   const alocacao = new Map<number, number>();
   const pendencias: ResultadoSorteio["pendencias"] = [];
   const elegiveis = equipes.filter((e) => e.cidades.every((c) => c != null));
+  const cotaDe = new Map<number, number>(); // limite (teto da parcela)
+  const parcelaDe = new Map<number, number>();
   const carga = new Map(equipes.map((e) => [e.id, 0]));
   const casasDaEquipe = new Map(equipes.map((e) => [e.id, [] as CasaSorteio[]]));
 
@@ -63,8 +94,12 @@ export function sortearCasas(
   } else {
     const fixadasElegiveis = elegiveis.reduce((n, e) => n + (carga.get(e.id) ?? 0), 0);
     const total = fixadasElegiveis + livres.length;
-    const teto = Math.ceil(total / elegiveis.length);
-    const piso = Math.floor(total / elegiveis.length);
+    const carrosElegiveis = elegiveis.map((e) => e.carros ?? 1);
+    const parcelas = parcelasPorCarros(carrosElegiveis, total);
+    limitesPorCarros(carrosElegiveis, total).forEach((l, i) => {
+      cotaDe.set(elegiveis[i].id, l);
+      parcelaDe.set(elegiveis[i].id, parcelas[i]);
+    });
 
     // grupos cidade+bairro andam juntos; as cidades mais restritas (menos equipes permitidas) vão primeiro
     const grupos = new Map<string, CasaSorteio[]>();
@@ -85,13 +120,14 @@ export function sortearCasas(
         pendencias.push({ casaId: c.id, motivo: "SEM_EQUIPE_PERMITIDA" });
         continue;
       }
-      const menor = Math.min(...permitidasEq.map((e) => carga.get(e.id)!));
-      // equilíbrio (prioridade 2) vem antes de vizinhança e bairro: enquanto alguma permitida está abaixo do piso, só ela recebe
-      const folga = menor < piso ? 0 : 1;
-      let candidatas = permitidasEq.filter(
-        (e) => carga.get(e.id)! < teto && carga.get(e.id)! <= menor + folga
-      );
-      if (candidatas.length === 0) candidatas = permitidasEq.filter((e) => carga.get(e.id)! === menor);
+      // equilíbrio na proporção da cota (prioridade 2) vem antes de vizinhança e bairro:
+      // só recebem as equipes com menor proporção carga/cota; passou da cota de todas, pega a menos cheia
+      const cota = (e: EquipeSorteio) => cotaDe.get(e.id) ?? 0;
+      const proporcao = (e: EquipeSorteio) => carga.get(e.id)! / Math.max(parcelaDe.get(e.id) ?? 0, 0.5);
+      const comVaga = permitidasEq.filter((e) => carga.get(e.id)! < cota(e));
+      const base = comVaga.length ? comVaga : permitidasEq.filter((e) => cota(e) > 0).length ? permitidasEq.filter((e) => cota(e) > 0) : permitidasEq;
+      const menor = Math.min(...base.map(proporcao));
+      const candidatas = base.filter((e) => proporcao(e) <= menor + 1e-9);
       const pontuada = candidatas.map((e) => {
         const mesmas = casasDaEquipe.get(e.id)!;
         return {
@@ -116,8 +152,9 @@ export function sortearCasas(
     }
   }
 
+  // acima da cota: sobrou casa só por causa do impedimento de cidade
   const equipesAcimaDoLimite = equipes
-    .filter((e) => (carga.get(e.id) ?? 0) > LIMITE_POR_EQUIPE)
+    .filter((e) => cotaDe.has(e.id) && (carga.get(e.id) ?? 0) > cotaDe.get(e.id)!)
     .map((e) => e.id);
   return { alocacao, pendencias, equipesAcimaDoLimite };
 }
