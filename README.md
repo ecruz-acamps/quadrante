@@ -16,16 +16,17 @@ Produção: `https://quadrante.movimentocampista.com.br` (acesso restrito a quem
 
 1. [Para que serve](#para-que-serve)
 2. [Módulos do sistema](#módulos-do-sistema)
-3. [Tecnologias](#tecnologias)
-4. [Estrutura do projeto](#estrutura-do-projeto)
-5. [Instalação do zero](#instalação-do-zero)
-6. [Variáveis de ambiente (.env)](#variáveis-de-ambiente-env)
-7. [Rodando em desenvolvimento](#rodando-em-desenvolvimento)
-8. [Publicando em produção](#publicando-em-produção)
-9. [Backup e recuperação](#backup-e-recuperação)
-10. [Restaurar o servidor completo (passo a passo)](#restaurar-o-servidor-completo-passo-a-passo)
-11. [Operação do dia a dia](#operação-do-dia-a-dia)
-12. [Solução de problemas](#solução-de-problemas)
+3. [Roteiro (o que vem por aí)](#roteiro-o-que-vem-por-aí)
+4. [Tecnologias](#tecnologias)
+5. [Estrutura do projeto](#estrutura-do-projeto)
+6. [Instalação do zero](#instalação-do-zero)
+7. [Variáveis de ambiente (.env)](#variáveis-de-ambiente-env)
+8. [Rodando em desenvolvimento](#rodando-em-desenvolvimento)
+9. [Publicando em produção](#publicando-em-produção)
+10. [Backup e recuperação](#backup-e-recuperação)
+11. [Restaurar o servidor completo (passo a passo)](#restaurar-o-servidor-completo-passo-a-passo)
+12. [Operação do dia a dia](#operação-do-dia-a-dia)
+13. [Solução de problemas](#solução-de-problemas)
 
 ---
 
@@ -78,6 +79,16 @@ Itens do menu lateral do painel administrativo:
   liberação por código de 6 dígitos (`LiberacaoConflitoServo`).
 - Servir mais de 2 vezes seguidas no mesmo setor gera alerta (exceto Diretor Espiritual).
 - O Cerco tem 24 faixas de uma hora (`HORARIOS_CERCO` em `src/lib/constants.ts`).
+
+## Roteiro (o que vem por aí)
+
+Nada desta lista está em produção. Cada item tem spec e plano em `docs/superpowers/`.
+
+| Item | Situação |
+|---|---|
+| **v1.2: Evangelização** (equipes de visita e sorteio das casas dos neocampistas por cidade) | Em desenvolvimento, ainda não publicada. Spec e plano prontos. Equipes de 3 pessoas (com carro), 3 a 4 casas por equipe, e uma equipe nunca visita a cidade de um dos seus membros. |
+| **Coordenador em `/meu-setor`** (login que só enxerga o próprio setor) | Adiado; spec e plano prontos. |
+| **Candidatos a servir em `/servir/<slug>`** (substitui o Google Forms de disponibilidade) | Adiado para 2027; spec e plano prontos. |
 
 ## Tecnologias
 
