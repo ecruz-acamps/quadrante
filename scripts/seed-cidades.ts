@@ -2,6 +2,7 @@
 // Uso: npx tsx scripts/seed-cidades.ts
 import { PrismaClient } from "@prisma/client";
 import { normalizarCidade } from "../src/lib/cidades";
+import { CIDADES_SC } from "./cidades-sc";
 
 const db = new PrismaClient();
 
@@ -10,6 +11,9 @@ const CIDADES = [
   "Águas Mornas", "Anitápolis", "Rancho Queimado", "Angelina", "Leoberto Leal",
   "Armazém", "Laguna",
 ];
+
+// as 12 da região vêm primeiro; o resto de SC entra sem vizinhança (ainda só vale o impedimento)
+const TODAS = [...new Set([...CIDADES, ...CIDADES_SC])];
 
 const APELIDOS_EXTRAS: Record<string, string[]> = {
   "Santo Amaro da Imperatriz": ["santo amaro", "sto amaro", "sto amaro imp", "sto amaro imperatriz", "santo amaro da imp", "sto amaro da imp", "sto amaro da imperatriz", "s amaro da imperatriz", "s amaro da imp"],
@@ -39,7 +43,7 @@ const VIZINHANCA: [string, string][] = [
 
 async function main() {
   const ids = new Map<string, number>();
-  for (const nome of CIDADES) {
+  for (const nome of TODAS) {
     const c = await db.cidade.upsert({ where: { nome }, update: {}, create: { nome } });
     ids.set(nome, c.id);
     const apelidos = new Set([normalizarCidade(nome), ...(APELIDOS_EXTRAS[nome] ?? [])]);
