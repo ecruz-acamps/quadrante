@@ -38,3 +38,11 @@ export function normalizarRole(v: unknown): Role {
 export function camisetaValida(v: unknown, tamanhos: readonly string[]): v is string | null {
   return v === null || (typeof v === "string" && tamanhos.includes(v));
 }
+
+export const SETOR_EVANGELIZACAO = "EVANGELIZAÇÃO";
+
+// a Evangelização (equipes e casas) é do SUPER, do ADMIN e do coordenador do setor de Evangelização
+export function podeUsarEvangelizacao(user: { role: string; setor: string | null }): boolean {
+  if (user.role === "COORDENADOR") return user.setor === SETOR_EVANGELIZACAO;
+  return user.role === "SUPER" || user.role === "ADMIN";
+}

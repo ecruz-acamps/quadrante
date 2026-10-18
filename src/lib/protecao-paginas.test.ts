@@ -5,7 +5,7 @@ import { join, relative } from "node:path";
 
 // roda a partir da raiz do app (npm test)
 const RAIZ = join(process.cwd(), "src", "app", "(admin)");
-const EXIGE_AUTH = /\b(requireUser|requireRole|requireCoordenador)\(/;
+const EXIGE_AUTH = /\b(requireUser|requireRole|requireCoordenador|requireEvangelizacao)\(/;
 
 function arquivos(dir: string): string[] {
   return readdirSync(dir).flatMap((nome) => {

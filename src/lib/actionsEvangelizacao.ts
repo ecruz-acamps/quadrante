@@ -1,14 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser, requireRole } from "./auth";
+import { requireEvangelizacao, requireRole } from "./auth";
 import * as ops from "./evangelizacaoOps";
 
 type Resultado = { ok: true } | { error: string };
-type Usuario = Awaited<ReturnType<typeof requireUser>>;
+type Usuario = Awaited<ReturnType<typeof requireEvangelizacao>>["usuario"];
 
 async function executar(fn: (user: Usuario) => Promise<unknown>, exigeSuper = false): Promise<Resultado> {
-  const user = exigeSuper ? await requireRole("SUPER") : await requireUser();
+  const user = exigeSuper ? await requireRole("SUPER") : (await requireEvangelizacao()).usuario;
   try {
     await fn(user);
   } catch (e) {

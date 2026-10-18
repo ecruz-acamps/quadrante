@@ -1,4 +1,5 @@
 import { requireQualquerUsuario, getMissaoAtiva, getMissoesPermitidas, getContextoCoordenador } from "@/lib/auth";
+import { SETOR_EVANGELIZACAO } from "@/lib/coordenador";
 import { logoutAction, selecionarMissao } from "@/lib/actions";
 import { db } from "@/lib/db";
 import AdminShell from "./AdminShell";
@@ -31,7 +32,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const { missao: missaoCoord } = await getContextoCoordenador(user);
     return (
       <AdminShell
-        nav={[["/meu-setor", "Meu setor", false]]}
+        nav={
+          user.setor === SETOR_EVANGELIZACAO
+            ? [["/meu-setor", "Meu setor", false], ["/evangelizacao", "Evangelização", false]]
+            : [["/meu-setor", "Meu setor", false]]
+        }
         userNome={user.nome}
         missaoNome={missaoCoord?.nome ?? null}
         missaoId={missaoCoord?.id ?? null}

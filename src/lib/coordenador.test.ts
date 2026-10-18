@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaValida, MOTIVO_MAX } from "./coordenador";
+import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaValida, podeUsarEvangelizacao, MOTIVO_MAX } from "./coordenador";
 
 test("statusValido aceita só os três status exatos", () => {
   for (const s of ["ATIVO", "RECUSOU", "DESISTIU"]) assert.equal(statusValido(s), true);
@@ -58,4 +58,13 @@ test("camisetaValida: tamanho da lista ou null (limpar); o resto é recusado", (
   assert.equal(camisetaValida("M", t), true);
   assert.equal(camisetaValida(null, t), true);
   for (const v of ["", "XL", "m", undefined, 1, {}]) assert.equal(camisetaValida(v, t), false);
+});
+
+test("podeUsarEvangelizacao: SUPER e ADMIN sempre; coordenador só do setor EVANGELIZAÇÃO", () => {
+  assert.equal(podeUsarEvangelizacao({ role: "SUPER", setor: null }), true);
+  assert.equal(podeUsarEvangelizacao({ role: "ADMIN", setor: null }), true);
+  assert.equal(podeUsarEvangelizacao({ role: "COORDENADOR", setor: "EVANGELIZAÇÃO" }), true);
+  assert.equal(podeUsarEvangelizacao({ role: "COORDENADOR", setor: "COZINHA" }), false);
+  assert.equal(podeUsarEvangelizacao({ role: "COORDENADOR", setor: null }), false);
+  assert.equal(podeUsarEvangelizacao({ role: "COORDENADOR", setor: "Evangelização" }), false);
 });

@@ -50,7 +50,7 @@ export async function sugerirEquipes(user: Usuario, missaoId: number) {
 export async function criarEquipe(user: Usuario, missaoId: number) {
   await abrir(user, missaoId);
   const n = await db.equipeEvangelizacao.count({ where: { missaoId } });
-  await db.equipeEvangelizacao.create({ data: { missaoId, nome: `Equipe ${n + 1}` } });
+  await db.equipeEvangelizacao.create({ data: { missaoId, nome: `Equipe ${n + 1}`, manual: true } });
 }
 
 export async function apagarEquipe(user: Usuario, equipeId: number) {
@@ -63,7 +63,13 @@ export async function moverServoEquipe(user: Usuario, servoId: number, equipeId:
   const missaoId = await missaoDoServo(user, servoId);
   await exigirDistribuicaoAberta(missaoId);
   if (equipeId !== null) await exigirEquipeDaMissao(equipeId, missaoId);
-  await db.servo.update({ where: { id: servoId }, data: { equipeEvangelizacaoId: equipeId } });
+  const atual = await db.servo.findUniqueOrThrow({ where: { id: servoId }, select: { equipeEvangelizacaoId: true } });
+  const mexidas = [atual.equipeEvangelizacaoId, equipeId].filter((x): x is number => x !== null);
+  // mexer na composição à mão trava as equipes envolvidas: "Sugerir equipes" não as refaz
+  await db.$transaction([
+    db.servo.update({ where: { id: servoId }, data: { equipeEvangelizacaoId: equipeId } }),
+    db.equipeEvangelizacao.updateMany({ where: { id: { in: mexidas } }, data: { manual: true } }),
+  ]);
 }
 
 export async function rodarSorteio(user: Usuario, missaoId: number) {

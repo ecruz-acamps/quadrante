@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getMissaoAtiva, requireUser } from "@/lib/auth";
+import { requireEvangelizacao } from "@/lib/auth";
 import { carregarPainel } from "@/lib/evangelizacaoDados";
 import { BarraAcoes, CarroCheck, MoverSelect, ApagarEquipe } from "./Controles";
 
@@ -25,8 +25,7 @@ function Selo({ texto, perigo = true }: { texto: string; perigo?: boolean }) {
 }
 
 export default async function EvangelizacaoPage() {
-  const user = await requireUser();
-  const missao = await getMissaoAtiva();
+  const { usuario: user, missao } = await requireEvangelizacao();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
   const p = await carregarPainel(missao.id);
@@ -102,6 +101,7 @@ export default async function EvangelizacaoPage() {
             <div className="qd-card-head flex items-center justify-between">
               <span>
                 {e.nome}{" "}
+                {e.manual && <Selo texto="manual" perigo={false} />}{" "}
                 <span className="text-xs font-normal text-[var(--ink-soft)]/70">
                   {e.carros} carro(s) · cota {e.cota} casa(s) · {e.casas.length} sorteada(s)
                 </span>

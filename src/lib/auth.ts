@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import crypto from "crypto";
 import { db } from "./db";
+import { podeUsarEvangelizacao } from "./coordenador";
 
 const COOKIE = "quadrante_session";
 const SESSAO_MAX_SEGUNDOS = 60 * 60 * 24 * 7; // 7 dias; expiração validada no servidor
@@ -163,4 +164,15 @@ export const requireCoordenador = cache(async () => {
   const usuario = await requireQualquerUsuario();
   if (usuario.role !== "COORDENADOR") redirect("/");
   return { usuario, ...(await getContextoCoordenador(usuario)) };
+});
+
+// Evangelização (equipes e casas): SUPER e ADMIN com a missão ativa; coordenador do setor de Evangelização
+// com a missão dele. Coordenador de outro setor volta para /meu-setor.
+export const requireEvangelizacao = cache(async () => {
+  const usuario = await requireQualquerUsuario();
+  if (!podeUsarEvangelizacao(usuario)) redirect(usuario.role === "COORDENADOR" ? "/meu-setor" : "/");
+  if (usuario.role === "COORDENADOR") {
+    return { usuario, missao: (await getContextoCoordenador(usuario)).missao };
+  }
+  return { usuario, missao: await getMissaoAtiva() };
 });

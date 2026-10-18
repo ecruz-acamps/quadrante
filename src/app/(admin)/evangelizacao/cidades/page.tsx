@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getMissaoAtiva, requireUser } from "@/lib/auth";
+import { requireEvangelizacao } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { carregarPainel } from "@/lib/evangelizacaoDados";
 import { ApelidosDaCidade, AssociarApelido, EditorVizinhanca } from "./Formularios";
@@ -9,8 +9,7 @@ export default async function CidadesEvangelizacaoPage({
 }: {
   searchParams: Promise<{ cidade?: string }>;
 }) {
-  await requireUser();
-  const missao = await getMissaoAtiva();
+  const { missao } = await requireEvangelizacao();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
   const { cidade: cidadeParam } = await searchParams;

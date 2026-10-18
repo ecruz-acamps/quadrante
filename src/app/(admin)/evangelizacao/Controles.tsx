@@ -76,7 +76,7 @@ export function BarraAcoes({
         rotulo="Sugerir equipes"
         ocupado="Montando..."
         desabilitado={fechada}
-        confirmar="Montar as equipes de novo? As equipes atuais, a troca de membros e as casas fixadas serão apagadas."
+        confirmar="Montar as equipes de novo? As equipes automáticas serão refeitas e as casas fixadas nelas, soltas. Equipes criadas ou editadas à mão (marcadas “manual”) ficam como estão."
         acao={() => sugerirEquipes(missaoId)}
       />
       <BotaoAcao

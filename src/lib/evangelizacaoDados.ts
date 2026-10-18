@@ -37,7 +37,11 @@ const servosElegiveis = (missaoId: number) =>
 
 export async function aplicarSugestaoEquipes(missaoId: number): Promise<{ equipes: number }> {
   await exigirDistribuicaoAberta(missaoId);
-  const [{ mapa, viz }, servos] = await Promise.all([carregarMapaCidades(), servosElegiveis(missaoId)]);
+  const manuais = await db.equipeEvangelizacao.findMany({ where: { missaoId, manual: true }, select: { id: true } });
+  const idsManuais = manuais.map((e) => e.id);
+  const [{ mapa, viz }, todos] = await Promise.all([carregarMapaCidades(), servosElegiveis(missaoId)]);
+  // equipes criadas ou editadas à mão ficam como estão, com seus membros
+  const servos = todos.filter((s) => s.equipeEvangelizacaoId === null || !idsManuais.includes(s.equipeEvangelizacaoId));
   const entrada: ServoEv[] = servos.map((s) => ({
     id: s.id,
     cidadeId: resolverCidade(s.pessoa.cidade, mapa),
@@ -45,11 +49,16 @@ export async function aplicarSugestaoEquipes(missaoId: number): Promise<{ equipe
   }));
   const { equipes } = formarEquipes(entrada, viz);
   await db.$transaction(async (tx) => {
-    // apagar as equipes solta membros e casas (SetNull); fixações perdem o sentido
-    await tx.neocampista.updateMany({ where: { missaoId }, data: { casaFixada: false } });
-    await tx.equipeEvangelizacao.deleteMany({ where: { missaoId } });
+    // apagar as equipes automáticas solta membros e casas (SetNull); fixações delas perdem o sentido
+    await tx.neocampista.updateMany({
+      where: { missaoId, OR: [{ equipeEvangelizacaoId: null }, { equipeEvangelizacaoId: { notIn: idsManuais } }] },
+      data: { casaFixada: false },
+    });
+    await tx.equipeEvangelizacao.deleteMany({ where: { missaoId, manual: false } });
     for (let i = 0; i < equipes.length; i++) {
-      const eq = await tx.equipeEvangelizacao.create({ data: { missaoId, nome: `Equipe ${i + 1}` } });
+      const eq = await tx.equipeEvangelizacao.create({
+        data: { missaoId, nome: `Equipe ${idsManuais.length + i + 1}` },
+      });
       await tx.servo.updateMany({ where: { id: { in: equipes[i] } }, data: { equipeEvangelizacaoId: eq.id } });
     }
   });
@@ -181,7 +190,7 @@ export async function carregarPainel(missaoId: number) {
       membros.map((x) => ({ id: x.id, cidadeId: x.cidadeId, temCarro: x.temCarro })),
       viz
     );
-    return { id: e.id, nome: e.nome, membros, avisos, casas, carros: membros.filter((x) => x.temCarro).length };
+    return { id: e.id, nome: e.nome, manual: e.manual, membros, avisos, casas, carros: membros.filter((x) => x.temCarro).length };
   });
   // casas por equipe na proporção dos carros; equipe com cidade de membro desconhecida fica fora (não recebe casas)
   const aptas = painelEquipes.filter((e) => !e.avisos.includes("CIDADE_DESCONHECIDA"));

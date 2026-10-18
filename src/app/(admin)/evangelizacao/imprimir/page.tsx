@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { getMissaoAtiva, requireUser } from "@/lib/auth";
+import { requireEvangelizacao } from "@/lib/auth";
 import { carregarPainel } from "@/lib/evangelizacaoDados";
 import BotaoImprimir from "./BotaoImprimir";
 
 export default async function ImprimirEvangelizacaoPage() {
-  await requireUser();
-  const missao = await getMissaoAtiva();
+  const { missao } = await requireEvangelizacao();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
   const p = await carregarPainel(missao.id);

@@ -270,9 +270,10 @@ model CidadeVizinha {
 }
 
 model EquipeEvangelizacao {
-  id       Int    @id @default(autoincrement())
+  id       Int     @id @default(autoincrement())
   missaoId Int
   nome     String
+  manual   Boolean @default(false) // criada ou editada à mão: "Sugerir equipes" não apaga nem refaz
 
   missao Missao        @relation(fields: [missaoId], references: [id], onDelete: Cascade)
   servos Servo[]       @relation("servosEquipe")

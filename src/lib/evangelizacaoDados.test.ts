@@ -314,3 +314,58 @@ test("carregarPainel informa carros, cota e limite de cada equipe, somando o tot
   }
   assert.ok(p.equipes.every((e) => e.carros === 1));
 });
+
+// ---------- equipes manuais e coordenador ----------
+test("equipe criada à mão sobrevive a 'Sugerir equipes', com seus membros", async () => {
+  const o = await ops();
+  const a = await cenarioOps("manual-sug");
+  await o.criarEquipe(a.admin, a.missao.id);
+  const todas = await db.equipeEvangelizacao.findMany({ where: { missaoId: a.missao.id }, orderBy: { id: "asc" } });
+  const manual = todas[todas.length - 1];
+  assert.equal(manual.manual, true);
+  assert.equal(todas.filter((e) => e.manual).length, 1);
+  const servoNaManual = await db.servo.findFirst({ where: { missaoId: a.missao.id, equipeEvangelizacao: { manual: false } } });
+  await o.moverServoEquipe(a.admin, servoNaManual!.id, manual.id);
+  await o.sugerirEquipes(a.admin, a.missao.id);
+  const depois = await db.equipeEvangelizacao.findMany({ where: { missaoId: a.missao.id } });
+  assert.ok(depois.some((e) => e.id === manual.id), "equipe manual foi apagada");
+  assert.equal((await db.servo.findUnique({ where: { id: servoNaManual!.id } }))!.equipeEvangelizacaoId, manual.id);
+  // os 5 servos restantes foram reagrupados em equipes automáticas, ninguém ficou solto
+  assert.equal(await db.servo.count({ where: { missaoId: a.missao.id, equipeEvangelizacaoId: null } }), 0);
+});
+
+test("trocar membro à mão trava as duas equipes; apagar equipe manual é possível", async () => {
+  const o = await ops();
+  const a = await cenarioOps("manual-troca");
+  const s = (await db.servo.findFirst({ where: { equipeEvangelizacaoId: a.equipes[0].id } }))!;
+  await o.moverServoEquipe(a.admin, s.id, a.equipes[1].id);
+  const eqs = await db.equipeEvangelizacao.findMany({ where: { missaoId: a.missao.id } });
+  assert.ok(eqs.every((e) => e.manual));
+  await o.apagarEquipe(a.admin, a.equipes[0].id);
+  assert.equal(await db.equipeEvangelizacao.count({ where: { missaoId: a.missao.id } }), 1);
+});
+
+test("o sorteio de casas não mexe nas equipes nem nos membros", async () => {
+  const o = await ops();
+  const a = await cenarioOps("manual-sorteio");
+  await o.criarEquipe(a.admin, a.missao.id);
+  const antes = await db.servo.findMany({ where: { missaoId: a.missao.id }, orderBy: { id: "asc" }, select: { id: true, equipeEvangelizacaoId: true } });
+  const nEquipes = await db.equipeEvangelizacao.count({ where: { missaoId: a.missao.id } });
+  await o.rodarSorteio(a.admin, a.missao.id);
+  const depois = await db.servo.findMany({ where: { missaoId: a.missao.id }, orderBy: { id: "asc" }, select: { id: true, equipeEvangelizacaoId: true } });
+  assert.deepEqual(depois, antes);
+  assert.equal(await db.equipeEvangelizacao.count({ where: { missaoId: a.missao.id } }), nEquipes);
+});
+
+test("coordenador vinculado à missão opera; coordenador de outra missão é recusado", async () => {
+  const o = await ops();
+  const a = await cenarioOps("coord-a");
+  const b = await cenarioOps("coord-b");
+  const c = await db.usuario.create({ data: { nome: "coord", email: "coord-a@x", role: "COORDENADOR", setor: "EVANGELIZAÇÃO" } });
+  await db.usuarioMissao.create({ data: { usuarioId: c.id, missaoId: a.missao.id } });
+  const coord = { id: c.id, role: "COORDENADOR" };
+  await o.marcarTemCarro(coord, a.servo.id, true);
+  await o.criarEquipe(coord, a.missao.id);
+  await assert.rejects(o.criarEquipe(coord, b.missao.id), /Sem permissão/);
+  await assert.rejects(o.marcarTemCarro(coord, b.servo.id, true), /Sem permissão/);
+});
