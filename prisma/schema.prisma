@@ -51,6 +51,8 @@ model Missao {
   tribos       Tribo[]
   usuarios     UsuarioMissao[]
   liberacoesConflito LiberacaoConflitoServo[]
+  evangelizacaoFechada Boolean @default(false) // distribuição das casas fechada (só SUPER reabre)
+  equipesEvangelizacao EquipeEvangelizacao[]
 }
 
 // vínculo de acesso: quais missões um usuário ADMIN pode ver/editar (SUPER não usa isso)
@@ -103,15 +105,19 @@ model Servo {
   cercoHorario   String? // "00:00 - 01:00" ... ou null
   motivoDesistiu String?
   motivoRecusou  String?
+  temCarro       Boolean @default(false)
+  equipeEvangelizacaoId Int?
 
   missao Missao @relation(fields: [missaoId], references: [id])
   pessoa Pessoa @relation(fields: [pessoaId], references: [id])
+  equipeEvangelizacao EquipeEvangelizacao? @relation("servosEquipe", fields: [equipeEvangelizacaoId], references: [id], onDelete: SetNull)
 
   tribosLideradas TriboLider[]
 
   @@unique([missaoId, pessoaId])
   @@index([missaoId, setor])
   @@index([pessoaId])
+  @@index([equipeEvangelizacaoId])
 }
 
 model Neocampista {
@@ -135,14 +141,18 @@ model Neocampista {
   observacao  String?
   cpf         String?
   triboId     Int?
+  equipeEvangelizacaoId Int?
+  casaFixada  Boolean @default(false)
 
   missao  Missao  @relation(fields: [missaoId], references: [id])
   tribo   Tribo?  @relation(fields: [triboId], references: [id])
+  equipeEvangelizacao EquipeEvangelizacao? @relation("casasEquipe", fields: [equipeEvangelizacaoId], references: [id], onDelete: SetNull)
   alertas FichaAlerta[] @relation("alertaOrigem")
   alvos   FichaAlerta[] @relation("alertaAlvo")
 
   @@unique([missaoId, numero])
   @@index([triboId])
+  @@index([equipeEvangelizacaoId])
 }
 
 // par de fichas que não podem ficar na mesma tribo (parentesco/amizade)
@@ -225,4 +235,48 @@ model LiberacaoConflitoServo {
   missao Missao @relation(fields: [missaoId], references: [id])
 
   @@index([pessoaId, missaoId])
+}
+
+// Evangelização: cidade canônica (grafias sujas viram apelidos), vizinhança e equipes
+model Cidade {
+  id   Int    @id @default(autoincrement())
+  nome String @unique
+
+  apelidos  CidadeApelido[]
+  vizinhas  CidadeVizinha[] @relation("cidadeOrigem")
+  vizinhaDe CidadeVizinha[] @relation("cidadeVizinha")
+}
+
+model CidadeApelido {
+  id       Int    @id @default(autoincrement())
+  apelido  String @unique // normalizarCidade(texto)
+  cidadeId Int
+
+  cidade Cidade @relation(fields: [cidadeId], references: [id], onDelete: Cascade)
+
+  @@index([cidadeId])
+}
+
+// guardado nos dois sentidos
+model CidadeVizinha {
+  cidadeId Int
+  vizinhaId Int
+
+  cidade Cidade @relation("cidadeOrigem", fields: [cidadeId], references: [id], onDelete: Cascade)
+  vizinha Cidade @relation("cidadeVizinha", fields: [vizinhaId], references: [id], onDelete: Cascade)
+
+  @@id([cidadeId, vizinhaId])
+  @@index([vizinhaId])
+}
+
+model EquipeEvangelizacao {
+  id       Int    @id @default(autoincrement())
+  missaoId Int
+  nome     String
+
+  missao Missao        @relation(fields: [missaoId], references: [id], onDelete: Cascade)
+  servos Servo[]       @relation("servosEquipe")
+  casas  Neocampista[] @relation("casasEquipe")
+
+  @@index([missaoId])
 }
