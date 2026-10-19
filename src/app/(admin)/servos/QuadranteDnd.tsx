@@ -2,9 +2,10 @@
 
 import { createContext, useCallback, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
-import { adicionarServoRapido, solicitarLiberacaoConflito } from "@/lib/actions";
+import { adicionarServoRapido, moverServo, solicitarLiberacaoConflito } from "@/lib/actions";
 
 export const MIME_PESSOA = "application/x-quadrante-pessoa";
+export const MIME_SERVO = "application/x-quadrante-servo";
 
 type Conflito = {
   pessoaId: number;
@@ -18,9 +19,10 @@ type Pendente = { pessoaId: number; nome: string; setor: string; conflito: Confl
 type Ctx = {
   ativo: boolean; // só aceita soltar quando o painel de referência está aberto
   adicionar: (pessoaId: number, nome: string, setor: string) => Promise<void>;
+  mover: (servoId: number, nome: string, setor: string) => Promise<void>;
 };
 
-const DndContext = createContext<Ctx>({ ativo: false, adicionar: async () => {} });
+const DndContext = createContext<Ctx>({ ativo: false, adicionar: async () => {}, mover: async () => {} });
 export const useQuadranteDnd = () => useContext(DndContext);
 
 // Centraliza a adição de um servo vindo do painel de referência (arrastar ou botão "+"),
@@ -80,6 +82,22 @@ export function QuadranteDndProvider({
     [enviar],
   );
 
+  const mover = useCallback(
+    async (servoId: number, nome: string, setor: string) => {
+      const r = await moverServo(servoId, setor);
+      if (r.error) {
+        setAviso({ tipo: "erro", texto: `${nome}: ${r.error}` });
+        return;
+      }
+      setAviso({
+        tipo: "ok",
+        texto: `${nome} movido(a) para ${setor}.${r.funcaoAlterada ? " Já havia coordenador: virou integrante." : ""}`,
+      });
+      router.refresh();
+    },
+    [router],
+  );
+
   function fecharDialogo() {
     setPendente(null);
     setCodigo("");
@@ -87,7 +105,7 @@ export function QuadranteDndProvider({
   }
 
   return (
-    <DndContext.Provider value={{ ativo, adicionar }}>
+    <DndContext.Provider value={{ ativo, adicionar, mover }}>
       {children}
 
       {aviso && (

@@ -12,6 +12,7 @@ import { CamisetaInlineSelect, PagoInlineSelect, FuncaoInlineSelect, CercoInline
 import ExcluirDesistiuButtons from "./ExcluirDesistiuButtons";
 import ExcluirIntegrantesButton from "./ExcluirIntegrantesButton";
 import { Icon } from "./icons";
+import MoverServo from "./MoverServo";
 import { normalizarBusca } from "@/lib/busca";
 
 // colunas da lista de servos no desktop (a largura é do card, via container query; abaixo disso vira card)
@@ -235,6 +236,7 @@ export default async function ServosPage({
                     className={`grid grid-cols-2 gap-x-3 gap-y-3 px-4 py-4 transition-colors hover:bg-[#fafbfd] @4xl:items-center @4xl:gap-x-4 @4xl:gap-y-0 @4xl:py-2.5 ${COLUNAS}`}
                   >
                     <div className="col-span-2 flex min-w-0 items-center gap-3 @4xl:col-span-1">
+                      <MoverServo servoId={s.id} nome={s.pessoa.nome} setorAtual={s.setor} setores={setores.map((x) => x.nome)} />
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef1f8] text-xs font-semibold text-[var(--ink)]">
                         {iniciais(s.pessoa.nome)}
                       </span>

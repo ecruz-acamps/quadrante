@@ -41,24 +41,30 @@ export async function notificarOperacao(title: string, message: string) {
   await Promise.all([...urls].map((url) => enviar(url, title, message)));
 }
 
-type AcaoQuadrante = "adicionado" | "recusou" | "desistiu" | "excluido";
+type AcaoQuadrante = "adicionado" | "recusou" | "desistiu" | "excluido" | "movido";
 
 const TITULO_QUADRANTE: Record<AcaoQuadrante, string> = {
   adicionado: "Servo adicionado",
   recusou: "Servo disse não",
   desistiu: "Servo desistiu",
   excluido: "Servo excluído",
+  movido: "Alteração de setor",
 };
 
 // Avisa alterações no quadrante. Melhor-esforço: nunca deve quebrar a ação que o chamou.
 export async function notificarQuadrante(
   acao: AcaoQuadrante,
-  info: { nome: string; setor: string; missaoId: number; autor: string; quantidade?: number }
+  info: { nome: string; setor: string; missaoId: number; autor: string; quantidade?: number; setorOrigem?: string }
 ) {
   try {
     const missao = await db.missao.findUnique({ where: { id: info.missaoId }, select: { nome: true } });
     const quem = info.quantidade ? `${info.quantidade} integrantes` : info.nome;
     const local = `Setor ${info.setor} · ${missao?.nome ?? "missão"}`;
+    if (acao === "movido") {
+      const mudanca = `Alteração de setor: ${info.nome}, de ${info.setorOrigem} para ${info.setor}`;
+      await notificarPushbird("quadrante", mudanca, `${mudanca}\n${missao?.nome ?? "missão"}\nPor ${info.autor}`, local);
+      return;
+    }
     await notificarPushbird(
       "quadrante",
       `${TITULO_QUADRANTE[acao]}: ${quem}`,

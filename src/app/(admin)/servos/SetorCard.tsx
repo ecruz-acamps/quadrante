@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MIME_PESSOA, useQuadranteDnd } from "./QuadranteDnd";
+import { MIME_PESSOA, MIME_SERVO, useQuadranteDnd } from "./QuadranteDnd";
 import { Icon, setorVisual } from "./icons";
 import { normalizarBusca } from "@/lib/busca";
 
@@ -29,7 +29,7 @@ export default function SetorCard({
   const [visiveis, setVisiveis] = useState<number | null>(null);
   const lista = useRef<HTMLDivElement>(null);
   const comBusca = (quantidade ?? 0) > MIN_PARA_BUSCA;
-  const { ativo, adicionar } = useQuadranteDnd();
+  const { ativo, adicionar, mover } = useQuadranteDnd();
   const visual = setorVisual(setor ?? titulo);
 
   // esconde as linhas (renderizadas no servidor, marcadas com data-nome) que não casam com a busca;
@@ -55,9 +55,10 @@ export default function SetorCard({
     <div
       className={`mb-4 qd-surface overflow-hidden ${sobre ? "ring-2 ring-[var(--brass-bright)] border-transparent" : ""}`}
       onDragOver={(e) => {
-        if (!ativo || !setor || !e.dataTransfer.types.includes(MIME_PESSOA)) return;
+        const servo = e.dataTransfer.types.includes(MIME_SERVO);
+        if (!setor || !(servo || (ativo && e.dataTransfer.types.includes(MIME_PESSOA)))) return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
+        e.dataTransfer.dropEffect = servo ? "move" : "copy";
         setSobre(true);
       }}
       onDragLeave={(e) => {
@@ -65,7 +66,19 @@ export default function SetorCard({
       }}
       onDrop={(e) => {
         setSobre(false);
-        if (!ativo || !setor) return;
+        if (!setor) return;
+        const movido = e.dataTransfer.getData(MIME_SERVO);
+        if (movido) {
+          e.preventDefault();
+          try {
+            const { servoId, nome, setorAtual } = JSON.parse(movido);
+            if (typeof servoId === "number" && typeof nome === "string" && setorAtual !== setor) mover(servoId, nome, setor);
+          } catch {
+            /* dado de arrastar inválido: ignora */
+          }
+          return;
+        }
+        if (!ativo) return;
         const raw = e.dataTransfer.getData(MIME_PESSOA);
         if (!raw) return;
         e.preventDefault();

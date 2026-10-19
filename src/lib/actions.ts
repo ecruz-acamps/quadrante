@@ -605,6 +605,33 @@ export async function atualizarServoInline(
   return { ok: true } as const;
 }
 
+// move o servo para outro setor mantendo o resto; coordenador só continua coordenador se o destino não tiver um
+export async function moverServo(servoId: number, novoSetor: string) {
+  const usuario = await requireUser();
+  if (!(await acessoRegistros(usuario, ["servo", servoId]))) return { error: "Sem acesso a este servo." } as const;
+  const servo = await db.servo.findUnique({ where: { id: servoId }, include: { pessoa: { select: { nome: true } } } });
+  if (!servo) return { error: "Servo não encontrado." } as const;
+  if (servo.setor === novoSetor) return { error: "O servo já está neste setor." } as const;
+  if (!(await db.setor.findUnique({ where: { nome: novoSetor } }))) return { error: "Setor inválido." } as const;
+  let funcao = servo.funcao;
+  if (funcao === "COORDENADOR") {
+    const jaTem = await db.servo.count({
+      where: { missaoId: servo.missaoId, setor: novoSetor, funcao: "COORDENADOR", status: "ATIVO" },
+    });
+    if (jaTem > 0) funcao = "INTEGRANTE";
+  }
+  await db.servo.update({ where: { id: servoId }, data: { setor: novoSetor, funcao } });
+  await notificarQuadrante("movido", {
+    nome: servo.pessoa.nome,
+    setor: novoSetor,
+    setorOrigem: servo.setor,
+    missaoId: servo.missaoId,
+    autor: usuario.nome,
+  });
+  revalidatePath("/servos");
+  return { ok: true, funcaoAlterada: funcao !== servo.funcao } as const;
+}
+
 export async function excluirServo(formData: FormData) {
   const usuario = await requireUser();
   const id = Number(formData.get("id"));
