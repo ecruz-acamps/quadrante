@@ -26,4 +26,5 @@ test("linkWhatsapp monta o link com DDI 55 e ignora número inválido", () => {
   assert.equal(linkWhatsapp("021 3333-4444"), "https://wa.me/552133334444");
   assert.equal(linkWhatsapp("9999-8888"), null);
   assert.equal(linkWhatsapp(null), null);
+  assert.equal(linkWhatsapp("21999998888", "Olá,\nTudo bem?"), "https://wa.me/5521999998888?text=Ol%C3%A1%2C%0ATudo%20bem%3F");
 });

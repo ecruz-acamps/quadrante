@@ -4,7 +4,7 @@ import { FUNCOES } from "@/lib/constants";
 import StatusServoButtons from "./StatusServoButtons";
 import Link from "next/link";
 import ChamarButton from "../ChamarButton";
-import { linkWhatsapp } from "@/lib/chamado";
+import { linkWhatsapp, mensagensChamado } from "@/lib/chamado";
 import CamisetaSelect from "./CamisetaSelect";
 
 export default async function MeuSetorPage() {
@@ -63,9 +63,9 @@ export default async function MeuSetorPage() {
                   </td>
                   <td className="px-4 py-2">{s.funcao}</td>
                   <td className="px-4 py-2">
-                    {linkWhatsapp(s.pessoa.celular) ? (
+                    {linkWhatsapp(s.pessoa.celular, mensagensChamado({ nome: s.pessoa.nome, missaoNome: missao.nome, setor: s.setor })[0]) ? (
                       <a
-                        href={linkWhatsapp(s.pessoa.celular)!}
+                        href={linkWhatsapp(s.pessoa.celular, mensagensChamado({ nome: s.pessoa.nome, missaoNome: missao.nome, setor: s.setor })[0])!}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-medium text-[var(--brass)] hover:underline"
