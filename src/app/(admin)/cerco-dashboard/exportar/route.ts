@@ -9,7 +9,7 @@ export async function GET() {
   if (!missao) return new Response("Nenhuma missão ativa.", { status: 400 });
 
   const servos = await db.servo.findMany({
-    where: { missaoId: missao.id, status: "ATIVO", cercoHorario: { not: null } },
+    where: { missaoId: missao.id, status: "ATIVO", cercoHorario: { not: null }, pessoa: { ocultarNaExportacao: false } },
     include: { pessoa: true },
   });
 

@@ -1316,6 +1316,13 @@ export async function alternarCercoPublicado(missaoId: number, publicado: boolea
   revalidatePath("/cerco/[slug]", "page");
 }
 
+// ---------- exportação em Excel: pessoas ocultas ----------
+export async function definirOcultarNaExportacao(pessoaId: number, ocultar: boolean) {
+  await requireRole("SUPER");
+  await db.pessoa.update({ where: { id: pessoaId }, data: { ocultarNaExportacao: ocultar } });
+  revalidatePath("/configuracoes");
+}
+
 // ---------- dispositivos Pushbird (notificações push) ----------
 export async function criarPushbirdDevice(formData: FormData) {
   await requireRole("SUPER");

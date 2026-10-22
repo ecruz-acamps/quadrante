@@ -2,6 +2,7 @@ import { requireRole, getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
 import CercoPublicoToggle from "./CercoPublicoToggle";
 import PushbirdDevices from "./PushbirdDevices";
+import ExportacaoOculta from "./ExportacaoOculta";
 
 export default async function ConfiguracoesPage({
   searchParams,
@@ -13,6 +14,19 @@ export default async function ConfiguracoesPage({
   const driveConectado = Boolean(process.env.GOOGLE_DRIVE_REFRESH_TOKEN);
   const missao = await getMissaoAtiva();
   const dispositivosPushbird = await db.pushbirdDevice.findMany({ orderBy: { nome: "asc" } });
+  const ocultas = await db.pessoa.findMany({
+    where: { ocultarNaExportacao: true },
+    select: { id: true, nome: true },
+    orderBy: { nome: "asc" },
+  });
+  const servosAtivos = missao
+    ? await db.servo.findMany({
+        where: { missaoId: missao.id, status: "ATIVO", pessoa: { ocultarNaExportacao: false } },
+        select: { setor: true, pessoa: { select: { id: true, nome: true } } },
+        orderBy: { pessoa: { nome: "asc" } },
+      })
+    : [];
+  const candidatas = servosAtivos.map((s) => ({ id: s.pessoa.id, nome: s.pessoa.nome, setor: s.setor }));
 
   return (
     <div className="max-w-2xl">
@@ -21,6 +35,9 @@ export default async function ConfiguracoesPage({
       <nav className="flex gap-4 mb-6 text-sm border-b border-[var(--line)]">
         <a href="#backup" className="px-1 pb-2 border-b-2 border-[var(--brass)] text-[var(--ink)] font-medium">
           Backup
+        </a>
+        <a href="#exportacao" className="px-1 pb-2 text-[var(--ink-soft)]/70 hover:text-[var(--ink)]">
+          Exportação
         </a>
         <a href="#notificacoes" className="px-1 pb-2 text-[var(--ink-soft)]/70 hover:text-[var(--ink)]">
           Notificações
@@ -86,6 +103,11 @@ export default async function ConfiguracoesPage({
             {driveConectado ? "Reconectar Google Drive" : "Conectar Google Drive"}
           </a>
         </div>
+      </section>
+
+      <section id="exportacao" className="scroll-mt-4 mt-10">
+        <h2 className="font-medium text-[var(--ink)] mb-3">Exportação (Excel)</h2>
+        <ExportacaoOculta ocultas={ocultas} candidatas={candidatas} />
       </section>
 
       <section id="notificacoes" className="scroll-mt-4 mt-10">

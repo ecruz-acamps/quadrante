@@ -27,7 +27,7 @@ export async function GET() {
 
   const [servos, setores] = await Promise.all([
     db.servo.findMany({
-      where: { missaoId: missao.id, status: "ATIVO" },
+      where: { missaoId: missao.id, status: "ATIVO", pessoa: { ocultarNaExportacao: false } },
       include: { pessoa: true },
     }),
     db.setor.findMany({ orderBy: { nome: "asc" } }).then(ordenarSetores),

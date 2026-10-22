@@ -79,6 +79,7 @@ model Pessoa {
   camiseta    String?
   email       String?
   aniversario String?
+  ocultarNaExportacao Boolean @default(false) // some dos Excels exportados (Configurações → Exportação)
 
   servos Servo[]
   liberacoesConflito LiberacaoConflitoServo[]
