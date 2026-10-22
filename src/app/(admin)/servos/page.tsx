@@ -8,6 +8,7 @@ import SetorCard from "./SetorCard";
 import ReferenciaPanel from "./ReferenciaPanel";
 import { QuadranteDndProvider } from "./QuadranteDnd";
 import ChamarButton from "../ChamarButton";
+import { linkWhatsapp } from "@/lib/chamado";
 import { CamisetaInlineSelect, PagoInlineSelect, FuncaoInlineSelect, CercoInlineSelect } from "./ServoInlineEdit";
 import ExcluirDesistiuButtons from "./ExcluirDesistiuButtons";
 import ExcluirIntegrantesButton from "./ExcluirIntegrantesButton";
@@ -236,7 +237,7 @@ export default async function ServosPage({
                     className={`grid grid-cols-2 gap-x-3 gap-y-3 px-4 py-4 transition-colors hover:bg-[#fafbfd] @4xl:items-center @4xl:gap-x-4 @4xl:gap-y-0 @4xl:py-2.5 ${COLUNAS}`}
                   >
                     <div className="col-span-2 flex min-w-0 items-center gap-3 @4xl:col-span-1">
-                      <MoverServo servoId={s.id} nome={s.pessoa.nome} setorAtual={s.setor} setores={setores.map((x) => x.nome)} />
+                      <MoverServo servoId={s.id} nome={s.pessoa.nome} setorAtual={s.setor} />
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef1f8] text-xs font-semibold text-[var(--ink)]">
                         {iniciais(s.pessoa.nome)}
                       </span>
@@ -247,6 +248,17 @@ export default async function ServosPage({
                         >
                           {s.pessoa.nome}
                         </Link>
+                        {linkWhatsapp(s.pessoa.celular) && (
+                          <a
+                            href={linkWhatsapp(s.pessoa.celular)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Abrir conversa no WhatsApp"
+                            className="whitespace-nowrap font-[var(--font-plex-mono)] text-[0.7rem] text-[var(--brass)] hover:underline"
+                          >
+                            {s.pessoa.celular}
+                          </a>
+                        )}
                         {(missoesPorPessoa.get(s.pessoaId) ?? 1) > 1 && (
                           <span className="whitespace-nowrap rounded-full bg-[#faf3e0] px-2 py-0.5 font-[var(--font-plex-mono)] text-[0.65rem] font-medium text-[#8a6616]">
                             {missoesPorPessoa.get(s.pessoaId)}ª missão
