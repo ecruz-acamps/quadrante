@@ -4,6 +4,7 @@ import { FUNCOES } from "@/lib/constants";
 import StatusServoButtons from "./StatusServoButtons";
 import Link from "next/link";
 import ChamarButton from "../ChamarButton";
+import { linkWhatsapp } from "@/lib/chamado";
 import CamisetaSelect from "./CamisetaSelect";
 
 export default async function MeuSetorPage() {
@@ -61,7 +62,21 @@ export default async function MeuSetorPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-2">{s.funcao}</td>
-                  <td className="px-4 py-2">{s.pessoa.celular ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    {linkWhatsapp(s.pessoa.celular) ? (
+                      <a
+                        href={linkWhatsapp(s.pessoa.celular)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-[var(--brass)] hover:underline"
+                        title="Abrir conversa no WhatsApp"
+                      >
+                        {s.pessoa.celular}
+                      </a>
+                    ) : (
+                      s.pessoa.celular ?? "—"
+                    )}
+                  </td>
                   <td className="px-4 py-2"><CamisetaSelect servoId={s.id} camiseta={s.camiseta} /></td>
                   <td className="px-4 py-2">
                     <StatusServoButtons

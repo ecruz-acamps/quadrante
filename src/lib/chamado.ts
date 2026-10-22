@@ -21,3 +21,12 @@ export function mensagensChamado(d: { nome: string; missaoNome: string; setor: s
     `Louvado seja Deus, pelo seu SIM!\nSeu setor é ${nomeSetor(d.setor)}.`,
   ];
 }
+
+// Link da conversa no WhatsApp ("(21) 99999-8888" → "https://wa.me/5521999998888"); sem número válido devolve null
+export function linkWhatsapp(celular: string | null | undefined): string | null {
+  let d = (celular ?? "").replace(/\D/g, "");
+  if (d.startsWith("55") && d.length >= 12) d = d.slice(2);
+  d = d.replace(/^0+/, "");
+  if (d.length !== 10 && d.length !== 11) return null;
+  return `https://wa.me/55${d}`;
+}
