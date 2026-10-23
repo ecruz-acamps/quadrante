@@ -20,6 +20,7 @@ const NAV = [
   ["/pessoas", "Pessoas", false],
   ["/estatisticas", "Estatísticas", true],
   ["/duplicatas", "Possíveis Duplicatas", true],
+  ["/duplicatas-telefone", "Duplicatas por Telefone", true],
   ["/missoes", "Missões", true],
   ["/usuarios", "Usuários", true],
   ["/gerador-fichas", "Gerador de Fichas", true],

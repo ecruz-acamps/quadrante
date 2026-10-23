@@ -24,6 +24,7 @@ const NAV_ICONE: Record<string, string> = {
   "/pessoas": "user",
   "/estatisticas": "chart",
   "/duplicatas": "copy",
+  "/duplicatas-telefone": "copy",
   "/missoes": "star",
   "/usuarios": "key",
   "/gerador-fichas": "book",
