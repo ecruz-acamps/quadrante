@@ -11,6 +11,7 @@ import ChamarButton from "../ChamarButton";
 import { linkWhatsapp, mensagensChamado } from "@/lib/chamado";
 import { CamisetaInlineSelect, PagoInlineSelect, FuncaoInlineSelect, CercoInlineSelect } from "./ServoInlineEdit";
 import ExcluirDesistiuButtons from "./ExcluirDesistiuButtons";
+import AceitouButton from "./AceitouButton";
 import ExcluirIntegrantesButton from "./ExcluirIntegrantesButton";
 import { Icon } from "./icons";
 import MoverServo from "./MoverServo";
@@ -287,6 +288,7 @@ export default async function ServosPage({
                         <Icon name="pencil" className="h-3.5 w-3.5 text-[var(--brass)]" />
                         Editar
                       </Link>
+                      <AceitouButton servoId={s.id} confirmado={s.confirmado} />
                       <ExcluirDesistiuButtons servoId={s.id} />
                     </div>
                   </div>

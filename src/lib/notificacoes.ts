@@ -41,10 +41,11 @@ export async function notificarOperacao(title: string, message: string) {
   await Promise.all([...urls].map((url) => enviar(url, title, message)));
 }
 
-type AcaoQuadrante = "adicionado" | "recusou" | "desistiu" | "excluido" | "movido";
+type AcaoQuadrante = "adicionado" | "aceitou" | "recusou" | "desistiu" | "excluido" | "movido";
 
 const TITULO_QUADRANTE: Record<AcaoQuadrante, string> = {
   adicionado: "Servo adicionado",
+  aceitou: "Servo disse sim",
   recusou: "Servo disse não",
   desistiu: "Servo desistiu",
   excluido: "Servo excluído",

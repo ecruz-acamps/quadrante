@@ -704,6 +704,21 @@ export async function marcarDesistiu(formData: FormData) {
   revalidatePath("/registros");
 }
 
+export async function marcarAceitou(formData: FormData) {
+  const usuario = await requireUser();
+  const id = Number(formData.get("id"));
+  await exigirRegistros(usuario, ["servo", id]);
+  const servo = await db.servo.update({
+    where: { id },
+    data: dadosDoStatus("ATIVO"),
+    include: { pessoa: { select: { nome: true } } },
+  });
+  await notificarQuadrante("aceitou", { nome: servo.pessoa.nome, setor: servo.setor, missaoId: servo.missaoId, autor: usuario.nome });
+  revalidatePath("/servos");
+  revalidatePath("/meu-setor");
+  revalidatePath("/registros");
+}
+
 export async function marcarRecusou(formData: FormData) {
   const usuario = await requireUser();
   const id = Number(formData.get("id"));
@@ -738,8 +753,8 @@ export async function marcarStatusServo(servoId: number, status: string, motivo?
     data: dadosDoStatus(status, typeof motivo === "string" ? motivo : undefined),
     include: { pessoa: { select: { nome: true } } },
   });
-  if (status === "RECUSOU" || status === "DESISTIU") {
-    await notificarQuadrante(status === "RECUSOU" ? "recusou" : "desistiu", {
+  if (status === "ATIVO" || status === "RECUSOU" || status === "DESISTIU") {
+    await notificarQuadrante(status === "ATIVO" ? "aceitou" : status === "RECUSOU" ? "recusou" : "desistiu", {
       nome: atualizado.pessoa.nome, setor: atualizado.setor, missaoId: atualizado.missaoId, autor: usuario.nome,
     });
   }
@@ -1201,6 +1216,21 @@ export async function fundirPessoas(formData: FormData) {
   });
   await db.pessoa.delete({ where: { id: removerId } });
   revalidatePath("/duplicatas");
+  revalidatePath("/duplicatas-telefone");
+}
+
+// funde vários cadastros (mesmo telefone) num só: manterId fica, removerIds somem
+export async function fundirPessoasPorTelefone(formData: FormData) {
+  await requireRole("SUPER");
+  const manterId = String(formData.get("manterId") || "");
+  const removerIds = formData.getAll("removerId").map(String).filter((id) => id && id !== manterId);
+  for (const removerId of removerIds) {
+    const fd = new FormData();
+    fd.set("manterId", manterId);
+    fd.set("removerId", removerId);
+    await fundirPessoas(fd);
+  }
+  revalidatePath("/duplicatas-telefone");
 }
 
 // ---------- usuários (SUPER only) ----------
@@ -1306,6 +1336,24 @@ export async function ignorarDuplicata(formData: FormData) {
     create: { pessoa1Id, pessoa2Id },
   });
   revalidatePath("/duplicatas");
+  revalidatePath("/duplicatas-telefone");
+}
+
+// marca todos os pares de um grupo de telefone como "não é duplicata"
+export async function ignorarGrupoTelefone(formData: FormData) {
+  await requireRole("SUPER");
+  const ids = formData.getAll("pessoaId").map(Number).filter(Boolean).sort((a, b) => a - b);
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      await db.duplicataIgnorada.upsert({
+        where: { pessoa1Id_pessoa2Id: { pessoa1Id: ids[i], pessoa2Id: ids[j] } },
+        update: {},
+        create: { pessoa1Id: ids[i], pessoa2Id: ids[j] },
+      });
+    }
+  }
+  revalidatePath("/duplicatas");
+  revalidatePath("/duplicatas-telefone");
 }
 
 // ---------- cerco público ----------
