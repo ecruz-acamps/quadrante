@@ -41,6 +41,7 @@ Cada acampamento é uma **missão** (ex.: "23º Acampamento Sênior"). O sistema
 - **Quantas vezes cada pessoa já serviu** e em quais setores (com alerta de servir muitas vezes seguidas no
   mesmo setor).
 - **Quem cobre cada hora do Cerco de Jericó**, com inscrição pública por link.
+- **Quem se disponibilizou para servir** na próxima missão, por formulário público (substitui o Google Forms), com triagem e aprovação para um setor.
 
 O sistema guarda **todas as edições** num mesmo banco, então o histórico de uma pessoa (como campista e como
 servo) atravessa os acampamentos.
@@ -53,6 +54,7 @@ Itens do menu lateral do painel administrativo:
 |---|---|
 | **Início** | Resumo da missão ativa: totais, pagamentos, vagas do Cerco e alertas. |
 | **Quadrante de Servos** | Tela principal. Servos agrupados por setor em cards recolhíveis; edição inline de função, camiseta, cerco e pagamento; adicionar, editar, excluir, marcar "disse não"/"desistiu"; filtros por nome e setor; exportação para Excel; **comparar com outra edição** (painel lateral com arrastar-e-soltar para trazer pessoas para um setor); **Chamar Evangelização**. |
+| **Inscrição de servos** | Formulário público `/servir/<slug>` (mesmo apelido do Cerco, fechado até o SUPER abrir) para quem quer servir na missão. Nome, CPF, celular, estado civil (casado informa nome e celular do cônjuge) e "você pode servir?" são fixos; as demais perguntas (nascimento, acampamentos feitos, setores já servidos, paróquia, pastoral…) são **editáveis** pelo SUPER: criar, reordenar, desativar, obrigatória ou opcional, 7 tipos (texto curto/longo, sim/não, escolha uma/várias, número, data) e opção "Outra". Um conjunto de perguntas vale para todas as missões. A triagem lista os candidatos com filtros, respostas, **cônjuges ligados** quando os dois se candidatam à mesma missão, pessoas parecidas já cadastradas e aprovação para um setor (cria o servo; respeita o bloqueio de missões próximas com o código de liberação). Exporta para Excel. |
 | **Formação** | Presença nas formações e motivo de falta de cada servo. |
 | **Cerco de Jericó** | Dashboard das vagas por horário e inscrição pública por link (`/cerco/<slug>`), com notificação no celular a cada inscrição. A página pública funciona como PWA (com tela offline). |
 | **Camisetas** | Contagem por tamanho para o pedido. |
@@ -80,16 +82,18 @@ Itens do menu lateral do painel administrativo:
   liberação por código de 6 dígitos (`LiberacaoConflitoServo`).
 - Servir mais de 2 vezes seguidas no mesmo setor gera alerta (exceto Diretor Espiritual).
 - O Cerco tem 24 faixas de uma hora (`HORARIOS_CERCO` em `src/lib/constants.ts`).
+- Inscrição de servos: um candidato por (missão, CPF); reenviar o formulário com o mesmo CPF atualiza a resposta em vez de duplicar (candidato já aprovado continua aprovado). A página pública nunca devolve dados gravados e limita 10 envios por IP a cada 10 minutos. Excluir uma pergunta só a desativa, para preservar respostas antigas; o tipo não muda depois que há respostas.
+- Casais na triagem: dois candidatos da mesma missão são ligados se o celular (ou o nome) do cônjuge informado por um bate com o do outro; celular repetido em dois candidatos não liga ninguém.
 
 ## Roteiro (o que vem por aí)
 
-Nada desta lista está em produção. Cada item tem spec e plano em `docs/superpowers/`.
+Nada desta lista está em produção. Cada item tem spec e/ou plano em `docs/superpowers/`. A **Inscrição de servos** já saiu da lista: está em produção desde 2026-10-24 (spec e plano em `docs/superpowers/`).
 
 | Item | Situação |
 |---|---|
 | **v1.2: Evangelização** (equipes de visita e sorteio das casas dos neocampistas por cidade) | Implementada e testada, **ainda não publicada em produção** (a migração do banco já foi aplicada, é só acréscimo). Falta conferir a tabela de vizinhança entre cidades (rascunho em `scripts/seed-cidades.ts`). Equipes de 3 pessoas (com carro), 3 a 4 casas por equipe, e uma equipe nunca visita a cidade de um dos seus membros. |
 | **Coordenador em `/meu-setor`** (login que só enxerga o próprio setor) | Adiado; spec e plano prontos. |
-| **Candidatos a servir em `/servir/<slug>`** (substitui o Google Forms de disponibilidade) | Adiado para 2027; spec e plano prontos. |
+| **Agenda de servir em app Android** (CPF + lista de quem já fez o acampamento, agenda das próximas missões, Capacitor) e **inscrição para fazer o acampamento** integrada ao sistema de pré-fichas por API | Adiado; desenho guardado em `docs/superpowers/specs/2026-10-24-agenda-servir-app-ADIADO-design.md`. |
 
 ## Tecnologias
 
@@ -119,9 +123,12 @@ src/
     login/                 tela de login
     (admin)/               painel autenticado (servos, fichas, tribos, financeiro, ...)
     cerco/[slug]/          inscrição pública do Cerco (PWA)
+    servir/[slug]/         formulário público de inscrição de servos
     api/auth, api/backup   login Google e backup/Drive
   lib/
     actions.ts             Server Actions (toda a escrita no banco)
+    actionsServir.ts       Server Actions da inscrição de servos (envio público, perguntas, triagem)
+    servir*.ts, cpf.ts     regras da inscrição de servos (validação, perguntas, candidatos, cônjuges), com testes
     auth.ts                sessão, perfis e missão ativa
     db.ts                  cliente Prisma
     constants.ts           funções, camisetas, horários do Cerco, setores
