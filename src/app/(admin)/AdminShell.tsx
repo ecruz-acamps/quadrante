@@ -11,6 +11,7 @@ const NAV_ICONE: Record<string, string> = {
   "/": "home",
   "/meu-setor": "users",
   "/servos": "users",
+  "/candidatos": "clipboard",
   "/formacao": "book",
   "/cerco-dashboard": "clock",
   "/camisetas": "shirt",

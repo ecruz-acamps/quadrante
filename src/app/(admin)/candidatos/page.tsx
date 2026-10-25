@@ -6,6 +6,7 @@ import { ligarConjuges } from "@/lib/servirConjuge";
 import { listarPerguntasAtivas } from "@/lib/servirPerguntasDb";
 import type { RespostaSalva } from "@/lib/servirRespostas";
 import LinhaCandidato from "./LinhaCandidato";
+import ServirConfig from "../configuracoes/ServirConfig";
 
 type Busca = Record<string, string | undefined>;
 
@@ -21,7 +22,7 @@ function lerRespostas(json: string): RespostaSalva[] {
 const valoresDe = (r?: RespostaSalva) => (r ? (Array.isArray(r.valor) ? r.valor : [r.valor]) : []);
 
 export default async function CandidatosPage({ searchParams }: { searchParams: Promise<Busca> }) {
-  await requireUser();
+  const usuario = await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) return <p className="text-sm">Selecione uma missão.</p>;
   const sp = await searchParams;
@@ -65,7 +66,7 @@ export default async function CandidatosPage({ searchParams }: { searchParams: P
   return (
     <div className="max-w-4xl">
       <div className="flex items-center justify-between gap-3 mb-4">
-        <h1 className="page-title">Candidatos a servir</h1>
+        <h1 className="page-title">Inscrição de servos</h1>
         <a href="/candidatos/exportar" className="btn-link px-3 py-2 text-sm">
           Exportar Excel
         </a>
@@ -74,6 +75,21 @@ export default async function CandidatosPage({ searchParams }: { searchParams: P
         {missao.nome} · {missao.servirPublicado ? "recebendo candidaturas" : "candidaturas fechadas"} ·{" "}
         {todos.filter((c) => !c.disponivel).length} indisponíveis
       </p>
+
+      {usuario.role === "SUPER" && (
+        <div className="card p-4 mb-6">
+          <h2 className="font-medium text-[var(--ink)] mb-1">Formulário público</h2>
+          <p className="text-sm text-[var(--ink-soft)]/80 mb-3">
+            Link para quem quer servir em {missao.nome}. Fechado, quem abrir o link vê “inscrições encerradas”.
+          </p>
+          <ServirConfig
+            missaoId={missao.id}
+            slug={missao.cercoSlug}
+            servirPublicado={missao.servirPublicado}
+            servirDatas={missao.servirDatas}
+          />
+        </div>
+      )}
 
       <nav className="flex flex-wrap gap-3 mb-4 text-sm border-b border-[var(--line)]">
         {abas.map(([valor, rotulo]) => (

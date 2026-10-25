@@ -7,6 +7,7 @@ import AdminShell from "./AdminShell";
 const NAV = [
   ["/", "Início", false],
   ["/servos", "Quadrante de Servos", false],
+  ["/candidatos", "Inscrição de servos", false],
   ["/formacao", "Formação", false],
   ["/cerco-dashboard", "Cerco de Jericó", false],
   ["/camisetas", "Camisetas", false],

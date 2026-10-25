@@ -67,9 +67,6 @@ export default function ServirConfig({
         <button type="button" onClick={copiar} className="btn-link px-3 py-2">
           {copiado ? "Link copiado" : "Copiar link"}
         </button>
-        <a href="/candidatos" className="btn-link px-3 py-2">
-          Ver candidatos
-        </a>
         <a href="/configuracoes/perguntas-servir" className="btn-link px-3 py-2">
           Editar perguntas
         </a>
