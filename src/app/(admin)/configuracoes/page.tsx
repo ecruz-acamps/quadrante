@@ -1,6 +1,7 @@
 import { requireRole, getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
 import CercoPublicoToggle from "./CercoPublicoToggle";
+import ServirConfig from "./ServirConfig";
 import PushbirdDevices from "./PushbirdDevices";
 import ExportacaoOculta from "./ExportacaoOculta";
 
@@ -71,6 +72,22 @@ export default async function ConfiguracoesPage({
               Status: {missao.cercoPublicado ? "publicado" : "fora do ar"}
             </p>
             <CercoPublicoToggle missaoId={missao.id} cercoPublicado={missao.cercoPublicado} />
+          </div>
+        )}
+
+        {missao && (
+          <div className="card p-4 mt-4">
+            <h3 className="font-medium text-[var(--ink)] mb-2">Candidatos a servir</h3>
+            <p className="text-sm text-[var(--ink-soft)]/80 mb-4">
+              Formulário público (<code>/servir/{missao.cercoSlug}</code>) para quem quer servir em {missao.nome}.
+              As respostas aparecem em Candidatos. Fechado, quem abrir o link vê “inscrições encerradas”.
+            </p>
+            <ServirConfig
+              missaoId={missao.id}
+              slug={missao.cercoSlug}
+              servirPublicado={missao.servirPublicado}
+              servirDatas={missao.servirDatas}
+            />
           </div>
         )}
 

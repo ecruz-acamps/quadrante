@@ -53,6 +53,9 @@ model Missao {
   liberacoesConflito LiberacaoConflitoServo[]
   evangelizacaoFechada Boolean @default(false) // distribuição das casas fechada (só SUPER reabre)
   equipesEvangelizacao EquipeEvangelizacao[]
+  servirPublicado Boolean @default(false) // página pública /servir/[cercoSlug] aceita candidaturas
+  servirDatas     String? // ex.: "26 a 30 de dezembro" (aparece na pergunta de disponibilidade)
+  candidatos      Candidato[]
 }
 
 // vínculo de acesso: quais missões um usuário ADMIN pode ver/editar (SUPER não usa isso)
@@ -281,4 +284,41 @@ model EquipeEvangelizacao {
   casas  Neocampista[] @relation("casasEquipe")
 
   @@index([missaoId])
+}
+
+// candidato a servir (resposta do formulário público /servir/[slug]); uma linha por (missão, CPF)
+model Candidato {
+  id        Int     @id @default(autoincrement())
+  missaoId  Int
+  nome      String
+  celular   String
+  cpf       String // só dígitos
+  casado    Boolean @default(false)
+  conjugeNome    String?
+  conjugeCelular String? // só dígitos
+  respostas String  @default("[]") // JSON: lista de { perguntaId, titulo, tipo, valor } — "perguntaId" é a 1ª chave
+  disponivel Boolean
+  status    String  @default("PENDENTE") // PENDENTE | APROVADO | RECUSADO
+  servoId   Int? // preenchido ao aprovar
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  missao Missao @relation(fields: [missaoId], references: [id])
+
+  @@unique([missaoId, cpf])
+  @@index([missaoId, status])
+}
+
+// pergunta personalizável do formulário de candidatos (um conjunto só, vale para todas as missões)
+model PerguntaServir {
+  id           Int     @id @default(autoincrement())
+  ordem        Int
+  titulo       String
+  tipo         String // TEXTO_CURTO | TEXTO_LONGO | SIM_NAO | ESCOLHA_UMA | ESCOLHA_VARIAS | NUMERO | DATA
+  obrigatoria  Boolean @default(false)
+  opcoes       String? // JSON: lista de opções (só para os tipos de escolha)
+  permiteOutra Boolean @default(false)
+  ativa        Boolean @default(true) // "excluir" só desativa, para preservar respostas antigas
+
+  @@index([ordem])
 }
