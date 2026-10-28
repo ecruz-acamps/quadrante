@@ -23,6 +23,7 @@ const NAV_ICONE: Record<string, string> = {
   "/financeiro": "coin",
   "/registros": "ban",
   "/pessoas": "user",
+  "/cruzamentos": "copy",
   "/estatisticas": "chart",
   "/duplicatas": "copy",
   "/duplicatas-telefone": "copy",

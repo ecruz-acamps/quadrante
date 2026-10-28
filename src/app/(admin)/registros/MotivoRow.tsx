@@ -7,11 +7,15 @@ export default function MotivoRow({
   setor,
   celular,
   motivo,
+  servoId,
+  voltarAction,
 }: {
   nome: string;
   setor: string;
   celular: string;
   motivo: string | null;
+  servoId?: number;
+  voltarAction?: (formData: FormData) => Promise<void>; // devolve o servo ao quadrante (status ATIVO)
 }) {
   const [aberto, setAberto] = useState(false);
 
@@ -24,11 +28,24 @@ export default function MotivoRow({
         <td className="px-4 py-2">{nome}</td>
         <td className="px-4 py-2">{setor}</td>
         <td className="px-4 py-2">{celular}</td>
+        {voltarAction && (
+          <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+            <form
+              action={voltarAction}
+              onSubmit={(e) => {
+                if (!confirm(`Voltar ${nome} para o quadrante (${setor})?`)) e.preventDefault();
+              }}
+            >
+              <input type="hidden" name="id" value={servoId} />
+              <button className="btn-link">Voltar ao quadrante</button>
+            </form>
+          </td>
+        )}
       </tr>
 
       {aberto && (
         <tr>
-          <td colSpan={3} className="p-0">
+          <td colSpan={voltarAction ? 4 : 3} className="p-0">
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
               onMouseDown={(e) => {

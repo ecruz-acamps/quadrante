@@ -19,6 +19,7 @@ const NAV = [
   ["/financeiro", "Financeiro", false],
   ["/registros", "Não / Desistências / Faltas", false],
   ["/pessoas", "Pessoas", false],
+  ["/cruzamentos", "Cruzamentos", false],
   ["/estatisticas", "Estatísticas", true],
   ["/duplicatas", "Possíveis Duplicatas", true],
   ["/duplicatas-telefone", "Duplicatas por Telefone", true],
