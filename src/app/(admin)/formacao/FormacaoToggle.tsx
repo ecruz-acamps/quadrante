@@ -19,7 +19,7 @@ export default function FormacaoToggle({
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
-  async function marcar(presente: boolean, motivoTexto?: string) {
+  async function marcar(presente: boolean, motivoTexto?: string, limpar = false) {
     setEnviando(true);
     setErro("");
     try {
@@ -27,6 +27,7 @@ export default function FormacaoToggle({
       formData.set("servoId", String(servoId));
       formData.set("numero", String(numero));
       formData.set("presente", String(presente));
+      if (limpar) formData.set("limpar", "true");
       if (motivoTexto) formData.set("motivo", motivoTexto);
       await marcarFormacao(formData);
       setAbertoModal(false);
@@ -56,7 +57,8 @@ export default function FormacaoToggle({
       <button
         type="button"
         disabled={enviando}
-        onClick={() => setAbertoModal(true)}
+        onClick={() => (valor === "Não" ? marcar(false, undefined, true) : setAbertoModal(true))}
+        title={valor === "Não" ? "Clique para retirar a falta" : undefined}
         className={`px-2 py-1 text-xs rounded border ${
           valor === "Não"
             ? "bg-[var(--signal)]/10 border-[var(--signal)] text-[var(--signal)]"

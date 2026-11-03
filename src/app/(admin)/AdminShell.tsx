@@ -14,7 +14,6 @@ const NAV_ICONE: Record<string, string> = {
   "/candidatos": "clipboard",
   "/formacao": "book",
   "/cerco-dashboard": "clock",
-  "/camisetas": "shirt",
   "/setores": "layers",
   "/cidades": "pin",
   "/fichas": "clipboard",

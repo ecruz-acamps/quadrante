@@ -13,7 +13,7 @@ import { reservarHorarioCerco } from "./cercoReserva";
 import { edicaoDe } from "./missoes";
 import { gerarCodigo6Digitos, checarConflitoServo } from "./conflitoServo";
 import { validarELiberarCodigo } from "./liberacaoConflito";
-import { notificarPushbird, notificarQuadrante } from "./notificacoes";
+import { notificarPushbird, notificarQuadrante, enviarWebPush } from "./notificacoes";
 import { excedeuLimite, limparLimite, ipDoCliente } from "./rateLimit";
 
 // ---------- auth ----------
@@ -768,7 +768,7 @@ export async function atualizarCamisetaServo(servoId: number, camiseta: string |
   await db.servo.update({ where: { id: servo.id }, data: { camiseta } });
   revalidatePath("/meu-setor");
   revalidatePath("/servos");
-  revalidatePath("/camisetas");
+  revalidatePath("/formacao");
   return { ok: true } as const;
 }
 
@@ -778,13 +778,24 @@ export async function marcarFormacao(formData: FormData) {
   const servoId = Number(formData.get("servoId"));
   await exigirRegistros(usuario, ["servo", servoId]);
   const numero = Number(formData.get("numero")); // 1 | 2 | 3
+  const limpar = formData.get("limpar") === "true";
   const presente = formData.get("presente") === "true";
   const motivo = String(formData.get("motivo") || "").trim();
   if (![1, 2, 3].includes(numero)) return;
 
   const campo = `formacao${numero}` as "formacao1" | "formacao2" | "formacao3";
-  const data: Record<string, string | null> = { [campo]: presente ? "SIM" : "Não" };
-  if (!presente) data.motivoFalta = motivo || null;
+  const data: Record<string, string | null> = {
+    [campo]: limpar ? null : presente ? "SIM" : "Não",
+  };
+  if (limpar) {
+    // remove o motivo se não restar nenhuma outra falta
+    const atual = await db.servo.findUnique({
+      where: { id: servoId },
+      select: { formacao1: true, formacao2: true, formacao3: true },
+    });
+    const outras = [1, 2, 3].filter((n) => n !== numero && atual?.[`formacao${n}` as "formacao1"] === "Não");
+    if (outras.length === 0) data.motivoFalta = null;
+  } else if (!presente) data.motivoFalta = motivo || null;
 
   await db.servo.update({ where: { id: servoId }, data });
   revalidatePath("/formacao");
@@ -1404,4 +1415,33 @@ export async function excluirPushbirdDevice(formData: FormData) {
   await requireRole("SUPER");
   await db.pushbirdDevice.delete({ where: { id: Number(formData.get("id")) } });
   revalidatePath("/configuracoes");
+}
+
+// ---------- notificações nativas (Web Push) ----------
+export async function salvarWebPush(input: {
+  nome: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}) {
+  await requireRole("SUPER");
+  const nome = input.nome.trim() || "Meu celular";
+  if (!input.endpoint || !input.p256dh || !input.auth) return;
+  await db.webPushSubscription.upsert({
+    where: { endpoint: input.endpoint },
+    create: { nome, endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth },
+    update: { nome, p256dh: input.p256dh, auth: input.auth },
+  });
+  revalidatePath("/configuracoes");
+}
+
+export async function excluirWebPush(formData: FormData) {
+  await requireRole("SUPER");
+  await db.webPushSubscription.delete({ where: { id: Number(formData.get("id")) } });
+  revalidatePath("/configuracoes");
+}
+
+export async function testarWebPush() {
+  await requireRole("SUPER");
+  await enviarWebPush(null, "Quadrante", "Teste de notificação nativa ✅");
 }

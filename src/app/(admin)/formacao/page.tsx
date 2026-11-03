@@ -2,6 +2,7 @@ import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { FUNCOES } from "@/lib/constants";
 import SetorCard from "../servos/SetorCard";
+import CamisetasResumo from "./CamisetasResumo";
 import FormacaoToggle from "./FormacaoToggle";
 import { PagoInlineSelect, FormaPagamentoInlineSelect } from "../servos/ServoInlineEdit";
 
@@ -38,6 +39,8 @@ export default async function FormacaoPage() {
   return (
     <div>
       <h1 className="page-title mb-6">Formação</h1>
+
+      <CamisetasResumo missaoId={missao.id} />
 
       {[...grupos.entries()].map(([setorNome, lista]) => (
         <SetorCard key={setorNome} titulo={`${setorNome} (${lista.length})`} acao={null}>
