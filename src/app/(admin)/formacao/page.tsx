@@ -2,9 +2,8 @@ import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { FUNCOES } from "@/lib/constants";
 import SetorCard from "../servos/SetorCard";
-import CamisetasResumo from "./CamisetasResumo";
 import FormacaoToggle from "./FormacaoToggle";
-import { PagoInlineSelect, FormaPagamentoInlineSelect } from "../servos/ServoInlineEdit";
+import { CamisetaInlineSelect, PagoInlineSelect, FormaPagamentoInlineSelect } from "../servos/ServoInlineEdit";
 
 export default async function FormacaoPage() {
   await requireUser();
@@ -40,8 +39,6 @@ export default async function FormacaoPage() {
     <div>
       <h1 className="page-title mb-6">Formação</h1>
 
-      <CamisetasResumo missaoId={missao.id} />
-
       {[...grupos.entries()].map(([setorNome, lista]) => (
         <SetorCard key={setorNome} titulo={`${setorNome} (${lista.length})`} acao={null}>
           {lista.length === 0 ? (
@@ -55,6 +52,7 @@ export default async function FormacaoPage() {
                     <th className="text-left px-4 py-2">1ª Formação</th>
                     <th className="text-left px-4 py-2">2ª Formação</th>
                     <th className="text-left px-4 py-2">3ª Formação</th>
+                    <th className="text-left px-4 py-2">Camiseta</th>
                     <th className="text-left px-4 py-2">Pago</th>
                     <th className="text-left px-4 py-2">Forma</th>
                   </tr>
@@ -71,6 +69,9 @@ export default async function FormacaoPage() {
                       </td>
                       <td className="px-4 py-2">
                         <FormacaoToggle servoId={s.id} numero={3} valor={s.formacao3} />
+                      </td>
+                      <td className="px-4 py-2">
+                        <CamisetaInlineSelect servoId={s.id} camiseta={s.camiseta} />
                       </td>
                       <td className="px-4 py-2">
                         <PagoInlineSelect servoId={s.id} pago={s.pago} />

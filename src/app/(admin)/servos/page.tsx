@@ -9,7 +9,7 @@ import ReferenciaPanel from "./ReferenciaPanel";
 import { QuadranteDndProvider } from "./QuadranteDnd";
 import ChamarButton from "../ChamarButton";
 import { linkWhatsapp, mensagensChamado } from "@/lib/chamado";
-import { CamisetaInlineSelect, PagoInlineSelect, FuncaoInlineSelect, CercoInlineSelect } from "./ServoInlineEdit";
+import { PagoInlineSelect, FuncaoInlineSelect, CercoInlineSelect } from "./ServoInlineEdit";
 import ExcluirDesistiuButtons from "./ExcluirDesistiuButtons";
 import AceitouButton from "./AceitouButton";
 import ExcluirIntegrantesButton from "./ExcluirIntegrantesButton";
@@ -18,7 +18,7 @@ import MoverServo from "./MoverServo";
 import { normalizarBusca } from "@/lib/busca";
 
 // colunas da lista de servos no desktop (a largura é do card, via container query; abaixo disso vira card)
-const COLUNAS = "@4xl:grid-cols-[minmax(0,1.7fr)_8.5rem_5rem_9.5rem_5.5rem_16.5rem]";
+const COLUNAS = "@4xl:grid-cols-[minmax(0,1.7fr)_8.5rem_9.5rem_5.5rem_16.5rem]";
 
 function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
@@ -225,7 +225,6 @@ export default async function ServosPage({
               <div className={`hidden border-b border-[#eef0f5] bg-[#fafbfd] px-4 py-2 text-[0.68rem] font-medium uppercase tracking-wider text-[#8a92a8] @4xl:grid @4xl:gap-x-4 ${COLUNAS}`}>
                 <span>Nome</span>
                 <span>Função</span>
-                <span>Camiseta</span>
                 <span>Cerco</span>
                 <span>Pago</span>
                 <span className="text-right">Ações</span>
@@ -269,9 +268,6 @@ export default async function ServosPage({
                     </div>
                     <Campo rotulo="Função">
                       <FuncaoInlineSelect servoId={s.id} funcao={s.funcao} />
-                    </Campo>
-                    <Campo rotulo="Camiseta">
-                      <CamisetaInlineSelect servoId={s.id} camiseta={s.camiseta} />
                     </Campo>
                     <Campo rotulo="Cerco">
                       <CercoInlineSelect servoId={s.id} cercoHorario={s.cercoHorario} />

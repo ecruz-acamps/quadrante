@@ -1,17 +1,21 @@
+import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CAMISETAS } from "@/lib/constants";
 
-export default async function CamisetasResumo({ missaoId }: { missaoId: number }) {
+export default async function CamisetasPage() {
+  await requireUser();
+  const missao = await getMissaoAtiva();
+  if (!missao) return <p>Nenhuma missão ativa.</p>;
 
   const [servos, fichas] = await Promise.all([
     db.servo.groupBy({
       by: ["camiseta"],
-      where: { missaoId, status: "ATIVO" },
+      where: { missaoId: missao.id, status: "ATIVO" },
       _count: true,
     }),
     db.neocampista.groupBy({
       by: ["camiseta"],
-      where: { missaoId },
+      where: { missaoId: missao.id },
       _count: true,
     }),
   ]);
@@ -23,8 +27,8 @@ export default async function CamisetasResumo({ missaoId }: { missaoId: number }
   const totalFichas = fichas.reduce((a, f) => a + f._count, 0);
 
   return (
-    <div className="max-w-2xl mb-8">
-      <h2 className="text-lg font-semibold mb-3">Camisetas</h2>
+    <div className="max-w-2xl">
+      <h1 className="page-title mb-6">Camisetas</h1>
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
