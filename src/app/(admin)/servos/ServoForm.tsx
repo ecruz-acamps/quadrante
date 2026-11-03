@@ -115,8 +115,16 @@ export default function ServoForm({
         {simNao("formacao3", servo?.formacao3)}
       </label>
       <label className="text-sm col-span-2">
-        Motivo da falta (formação)
-        <input name="motivoFalta" defaultValue={servo?.motivoFalta ?? ""} className={sel} />
+        Motivo da falta na 1ª formação
+        <input name="motivoFalta1" defaultValue={servo?.motivoFalta1 ?? ""} className={sel} />
+      </label>
+      <label className="text-sm col-span-2">
+        Motivo da falta na 2ª formação
+        <input name="motivoFalta2" defaultValue={servo?.motivoFalta2 ?? ""} className={sel} />
+      </label>
+      <label className="text-sm col-span-2">
+        Motivo da falta na 3ª formação
+        <input name="motivoFalta3" defaultValue={servo?.motivoFalta3 ?? ""} className={sel} />
       </label>
       <label className="text-sm">
         Pagamento (forma)

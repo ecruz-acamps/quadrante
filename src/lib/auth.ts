@@ -33,9 +33,14 @@ function cookieSecure() {
 
 // token: userId.versao.expiraEm.assinatura
 export async function createSession(userId: number) {
-  const user = await db.usuario.findUnique({ where: { id: userId }, select: { sessaoVersao: true } });
+  // sessão única: cada login incrementa a versão, invalidando os tokens de qualquer outro dispositivo/navegador
+  const user = await db.usuario.update({
+    where: { id: userId },
+    data: { sessaoVersao: { increment: 1 } },
+    select: { sessaoVersao: true },
+  });
   const expiraEm = Math.floor(Date.now() / 1000) + SESSAO_MAX_SEGUNDOS;
-  const payload = `${userId}.${user?.sessaoVersao ?? 0}.${expiraEm}`;
+  const payload = `${userId}.${user.sessaoVersao}.${expiraEm}`;
   const store = await cookies();
   store.set(COOKIE, `${payload}.${sign(payload)}`, {
     httpOnly: true,
@@ -73,10 +78,20 @@ export const getSessionUserId = cache(async (): Promise<number | null> => {
   return id;
 });
 
+// cookie com assinatura válida e não expirado, mas sem sessão ativa = foi invalidado por um login em outro dispositivo
+async function sessaoSubstituida(): Promise<boolean> {
+  const token = (await cookies()).get(COOKIE)?.value;
+  const parts = token?.split(".") ?? [];
+  if (parts.length !== 4) return false;
+  const [uid, versao, expiraEm, assinatura] = parts;
+  if (!/^[0-9a-f]+$/.test(assinatura) || !assinaturaValida(`${uid}.${versao}.${expiraEm}`, assinatura)) return false;
+  return Number(expiraEm) >= Math.floor(Date.now() / 1000);
+}
+
 // exige login; aceita qualquer perfil (usada pelo layout e por requireCoordenador)
 export const requireQualquerUsuario = cache(async () => {
   const id = await getSessionUserId();
-  if (!id) redirect("/login");
+  if (!id) redirect((await sessaoSubstituida()) ? "/login?error=outra-sessao" : "/login");
   const user = await db.usuario.findUnique({ where: { id } });
   if (!user) redirect("/login");
   return user;

@@ -16,6 +16,19 @@ model PushbirdDevice {
   notificarQuadrante Boolean @default(true) // servo adicionado, recusou, desistiu ou excluído
 }
 
+// Aparelho inscrito em notificações nativas (Web Push / PWA), uma linha por aparelho.
+model WebPushSubscription {
+  id                 Int      @id @default(autoincrement())
+  nome               String
+  endpoint           String   @unique
+  p256dh             String
+  auth               String
+  notificarConflito  Boolean  @default(true)
+  notificarCerco     Boolean  @default(true)
+  notificarQuadrante Boolean  @default(true)
+  criadoEm           DateTime @default(now())
+}
+
 model Usuario {
   id    Int    @id @default(autoincrement())
   nome  String
@@ -101,7 +114,10 @@ model Servo {
   formacao1      String? // SIM | Não
   formacao2      String?
   formacao3      String?
-  motivoFalta    String?
+  motivoFalta    String? // legado (um motivo só); migrado para motivoFalta1/2/3
+  motivoFalta1   String?
+  motivoFalta2   String?
+  motivoFalta3   String?
   pagamentoForma String? // DINHEIRO | PIX | ISENTO | ...
   pagamentoValor Float?
   pago           Boolean @default(false)

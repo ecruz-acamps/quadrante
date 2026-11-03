@@ -22,8 +22,11 @@ export default async function Home() {
     );
   }
 
-  const [servos, fichas, comCerco, pagos] = await Promise.all([
+  const [servos, disseramSim, recusaram, desistiram, fichas, comCerco, pagos] = await Promise.all([
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO" } }),
+    db.servo.count({ where: { missaoId: missao.id, status: "ATIVO", confirmado: true } }),
+    db.servo.count({ where: { missaoId: missao.id, status: "RECUSOU" } }),
+    db.servo.count({ where: { missaoId: missao.id, status: "DESISTIU" } }),
     db.neocampista.count({ where: { missaoId: missao.id } }),
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO", cercoHorario: { not: null } } }),
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO", pago: true } }),
@@ -43,12 +46,28 @@ export default async function Home() {
 
   const kpis = [
     {
-      label: "Servos ativos",
-      value: servos,
+      label: "Servos que disseram sim",
+      value: disseramSim,
       href: "/servos",
       icon: IconUsers,
       color: "var(--ink)",
       soft: "color-mix(in srgb, var(--ink) 10%, var(--card))",
+    },
+    {
+      label: "Disseram não",
+      value: recusaram,
+      href: "/registros",
+      icon: IconAlert,
+      color: "var(--signal)",
+      soft: "var(--signal-soft)",
+    },
+    {
+      label: "Desistiram",
+      value: desistiram,
+      href: "/registros",
+      icon: IconAlert,
+      color: "var(--signal)",
+      soft: "var(--signal-soft)",
     },
     {
       label: "Neocampistas inscritos",
@@ -98,7 +117,7 @@ export default async function Home() {
         </Link>
       </p>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-7 gap-3 sm:gap-4">
         {kpis.map((k) => {
           const Icon = k.icon;
           return (

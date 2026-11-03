@@ -164,7 +164,9 @@ function servoData(formData: FormData) {
     formacao1: s("formacao1"),
     formacao2: s("formacao2"),
     formacao3: s("formacao3"),
-    motivoFalta: s("motivoFalta"),
+    motivoFalta1: s("motivoFalta1"),
+    motivoFalta2: s("motivoFalta2"),
+    motivoFalta3: s("motivoFalta3"),
     pagamentoForma: s("pagamentoForma"),
     pagamentoValor: formData.get("pagamentoValor") ? Number(formData.get("pagamentoValor")) : null,
     pago: formData.get("pago") === "on",
@@ -784,18 +786,12 @@ export async function marcarFormacao(formData: FormData) {
   if (![1, 2, 3].includes(numero)) return;
 
   const campo = `formacao${numero}` as "formacao1" | "formacao2" | "formacao3";
+  const campoMotivo = `motivoFalta${numero}` as "motivoFalta1" | "motivoFalta2" | "motivoFalta3";
+  // cada formação guarda o próprio motivo; só o motivo da formação alterada é mexido
   const data: Record<string, string | null> = {
     [campo]: limpar ? null : presente ? "SIM" : "Não",
+    [campoMotivo]: limpar || presente ? null : motivo || null,
   };
-  if (limpar) {
-    // remove o motivo se não restar nenhuma outra falta
-    const atual = await db.servo.findUnique({
-      where: { id: servoId },
-      select: { formacao1: true, formacao2: true, formacao3: true },
-    });
-    const outras = [1, 2, 3].filter((n) => n !== numero && atual?.[`formacao${n}` as "formacao1"] === "Não");
-    if (outras.length === 0) data.motivoFalta = null;
-  } else if (!presente) data.motivoFalta = motivo || null;
 
   await db.servo.update({ where: { id: servoId }, data });
   revalidatePath("/formacao");

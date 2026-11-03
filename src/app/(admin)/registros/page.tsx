@@ -2,6 +2,7 @@ import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { marcarAceitou } from "@/lib/actions";
 import MotivoRow from "./MotivoRow";
+import FaltaRow from "./FaltaRow";
 
 export default async function RegistrosPage() {
   await requireUser();
@@ -88,33 +89,20 @@ export default async function RegistrosPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--line)]">
-            {faltaram.map((s) => {
-              const faltas = [
-                s.formacao1 === "Não" && "1ª",
-                s.formacao2 === "Não" && "2ª",
-                s.formacao3 === "Não" && "3ª",
-              ].filter(Boolean) as string[];
-              return (
-                <tr key={s.id}>
-                  <td className="px-4 py-2">{s.pessoa.nome}</td>
-                  <td className="px-4 py-2">{s.setor}</td>
-                  <td className="px-4 py-2">{s.pessoa.celular || "—"}</td>
-                  <td className="px-4 py-2">
-                    <div className="flex gap-1">
-                      {faltas.map((f) => (
-                        <span
-                          key={f}
-                          className="text-[0.65rem] font-[var(--font-plex-mono)] text-[var(--signal)] border border-[var(--signal)]/40 rounded px-1 py-px"
-                        >
-                          {f} formação
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-xs">{s.motivoFalta || "—"}</td>
-                </tr>
-              );
-            })}
+            {faltaram.map((s) => (
+              <FaltaRow
+                key={s.id}
+                nome={s.pessoa.nome}
+                setor={s.setor}
+                celular={s.pessoa.celular || "—"}
+                motivoLegado={s.motivoFalta}
+                formacoes={[
+                  { numero: 1, faltou: s.formacao1 === "Não", motivo: s.motivoFalta1 },
+                  { numero: 2, faltou: s.formacao2 === "Não", motivo: s.motivoFalta2 },
+                  { numero: 3, faltou: s.formacao3 === "Não", motivo: s.motivoFalta3 },
+                ]}
+              />
+            ))}
             {faltaram.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-2 text-[var(--ink-soft)]/40">

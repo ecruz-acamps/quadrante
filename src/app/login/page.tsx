@@ -17,6 +17,7 @@ function LoginForm() {
   const erroGoogle = {
     oauth: "Não foi possível concluir o login com Google. Tente novamente.",
     dominio: "Use uma conta Google verificada do domínio do acampamento.",
+    "outra-sessao": "Sua conta foi acessada em outro dispositivo.",
   }[useSearchParams().get("error") ?? ""];
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-[var(--ink)] relative overflow-hidden">

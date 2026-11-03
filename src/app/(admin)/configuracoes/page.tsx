@@ -2,6 +2,7 @@ import { requireRole, getMissaoAtiva } from "@/lib/auth";
 import { db } from "@/lib/db";
 import CercoPublicoToggle from "./CercoPublicoToggle";
 import PushbirdDevices from "./PushbirdDevices";
+import NotificacoesNativas from "./NotificacoesNativas";
 import ExportacaoOculta from "./ExportacaoOculta";
 
 export default async function ConfiguracoesPage({
@@ -14,6 +15,7 @@ export default async function ConfiguracoesPage({
   const driveConectado = Boolean(process.env.GOOGLE_DRIVE_REFRESH_TOKEN);
   const missao = await getMissaoAtiva();
   const dispositivosPushbird = await db.pushbirdDevice.findMany({ orderBy: { nome: "asc" } });
+  const inscritosWebPush = await db.webPushSubscription.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } });
   const ocultas = await db.pessoa.findMany({
     where: { ocultarNaExportacao: true },
     select: { id: true, nome: true },
@@ -112,6 +114,7 @@ export default async function ConfiguracoesPage({
 
       <section id="notificacoes" className="scroll-mt-4 mt-10">
         <h2 className="font-medium text-[var(--ink)] mb-3">Notificações</h2>
+        <NotificacoesNativas inscritos={inscritosWebPush} vapidPublicKey={process.env.VAPID_PUBLIC_KEY ?? null} />
         <PushbirdDevices devices={dispositivosPushbird} />
       </section>
     </div>
