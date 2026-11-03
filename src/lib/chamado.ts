@@ -30,3 +30,22 @@ export function linkWhatsapp(celular: string | null | undefined, texto?: string)
   if (d.length !== 10 && d.length !== 11) return null;
   return `https://wa.me/55${d}${texto ? `?text=${encodeURIComponent(texto)}` : ""}`;
 }
+
+// Avisos internos exibidos no popup do chamado, por nome (comparação sem acento/caixa).
+const AVISOS_CHAMADO: Record<string, string> = {
+  "valter guckert": "PRATICA MAGIA NEGRA (UMBANDA)",
+  "angelita bauer": "PRATICA MAGIA NEGRA (UMBANDA)",
+};
+
+const normalizarNome = (s: string) =>
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+export function avisoChamado(nome: string): string | null {
+  return AVISOS_CHAMADO[normalizarNome(nome)] ?? null;
+}
+
+export function descreverConflito(c: { missaoConflitoNome: string; distancia: number; aviso?: string }): string {
+  return c.aviso
+    ? `ATENÇÃO: ${c.aviso}. Precisa de liberação da coordenação.`
+    : `Já é servo ativo em ${c.missaoConflitoNome}, a ${c.distancia} mês(es) de distância.`;
+}

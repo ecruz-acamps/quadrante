@@ -1,5 +1,7 @@
 "use client";
 
+import { descreverConflito } from "@/lib/chamado";
+
 import { useActionState, useState } from "react";
 import { solicitarLiberacaoConflito } from "@/lib/actions";
 
@@ -11,6 +13,7 @@ type ConflitoState = {
     missaoId: number;
     missaoConflitoNome: string;
     distancia: number;
+    aviso?: string;
   };
 };
 
@@ -57,8 +60,7 @@ export default function ServoFormClient({
       {conflitoExibido && (
         <div className="border border-[var(--signal)] rounded p-3 text-sm space-y-2">
           <p>
-            {pessoaNome} já é servo ativo em <strong>{conflitoExibido.missaoConflitoNome}</strong>, a{" "}
-            {conflitoExibido.distancia} mês(es) de distância desta missão.
+            {pessoaNome}: {descreverConflito(conflitoExibido)}
           </p>
           {!solicitado ? (
             <button type="button" onClick={solicitarLiberacao} className="btn-primary px-3 py-1 text-sm">

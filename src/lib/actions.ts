@@ -392,6 +392,7 @@ export async function adicionarServoRapido(formData: FormData) {
           missaoId,
           missaoConflitoNome: conflito.missaoConflitoNome,
           distancia: conflito.distancia,
+          aviso: conflito.aviso,
         },
       };
     }
@@ -510,6 +511,7 @@ export async function criarServo(_prevState: unknown, formData: FormData) {
             missaoId,
             missaoConflitoNome: conflito.missaoConflitoNome,
             distancia: conflito.distancia,
+          aviso: conflito.aviso,
           },
         };
       }
@@ -561,6 +563,7 @@ export async function atualizarServo(_prevState: unknown, formData: FormData) {
             missaoId: servo.missaoId,
             missaoConflitoNome: conflito.missaoConflitoNome,
             distancia: conflito.distancia,
+          aviso: conflito.aviso,
           },
         };
       }
@@ -678,7 +681,9 @@ export async function solicitarLiberacaoConflito(pessoaId: number, missaoId: num
   await notificarPushbird(
     "conflito",
     "Liberação de servo pendente",
-    `${pessoa.nome} já é servo ativo em "${missaoOrigemNome}" e está sendo cadastrado em "${missaoDestino.nome}". Código de liberação: ${codigo} (válido por 15 min).`
+    conflito?.aviso
+      ? `${pessoa.nome} (${conflito.aviso}) está sendo cadastrado em "${missaoDestino.nome}". Para APROVAR, informe o código de liberação: ${codigo} (válido por 15 min). Para negar, ignore.`
+      : `${pessoa.nome} já é servo ativo em "${missaoOrigemNome}" e está sendo cadastrado em "${missaoDestino.nome}". Código de liberação: ${codigo} (válido por 15 min).`
   );
   return { ok: true } as const;
 }

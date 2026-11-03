@@ -4,7 +4,7 @@ import { FUNCOES } from "@/lib/constants";
 import StatusServoButtons from "./StatusServoButtons";
 import Link from "next/link";
 import ChamarButton from "../ChamarButton";
-import { linkWhatsapp, mensagensChamado } from "@/lib/chamado";
+import { avisoChamado, linkWhatsapp, mensagensChamado } from "@/lib/chamado";
 import CamisetaSelect from "./CamisetaSelect";
 
 export default async function MeuSetorPage() {
@@ -58,7 +58,7 @@ export default async function MeuSetorPage() {
                 <tr key={s.id}>
                   <td className="px-4 py-2">
                     <Link href={`/meu-setor/historico/${s.id}`} className="font-medium text-[var(--ink)] hover:text-[var(--brass)] hover:underline">
-                      {s.pessoa.nome}
+                      <span className={avisoChamado(s.pessoa.nome) ? "!text-red-600 font-bold" : undefined}>{s.pessoa.nome}</span>
                     </Link>
                   </td>
                   <td className="px-4 py-2">{s.funcao}</td>

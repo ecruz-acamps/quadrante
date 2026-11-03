@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { mensagensChamado } from "@/lib/chamado";
+import { avisoChamado, mensagensChamado } from "@/lib/chamado";
 
 // Mostra as mensagens padrão do chamado para copiar. O envio pelo WhatsApp entra depois.
 export default function ChamarButton({ nome, missaoNome, setor }: { nome: string; missaoNome: string; setor: string }) {
   const [aberto, setAberto] = useState(false);
   const [copiada, setCopiada] = useState<number | null>(null);
   const mensagens = mensagensChamado({ nome, missaoNome, setor });
+  const aviso = avisoChamado(nome);
 
   useEffect(() => {
     if (!aberto) return;
@@ -45,6 +46,11 @@ export default function ChamarButton({ nome, missaoNome, setor }: { nome: string
         >
           <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-3 text-base font-semibold text-[var(--ink)]">Chamar {nome}</h2>
+            {aviso && (
+              <div role="alert" className="mb-3 rounded-md border-2 border-red-600 bg-red-50 p-3 text-center text-sm font-bold uppercase text-red-700">
+                ⚠ Atenção: {aviso}
+              </div>
+            )}
             <div className="space-y-3">
               {mensagens.map((m, i) => (
                 <div key={i} className="rounded-md border border-[var(--line)] p-3">

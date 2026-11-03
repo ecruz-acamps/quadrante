@@ -1,9 +1,11 @@
 import { db } from "./db";
+import { avisoChamado } from "./chamado";
 
 export type ConflitoServo = {
   missaoConflitoId: number;
   missaoConflitoNome: string;
   distancia: number;
+  aviso?: string; // conflito por aviso interno da pessoa (não por proximidade de missões)
 };
 
 // checa se `pessoaId` já é servo ATIVO em outra missão a menos de 3 meses de `missaoDestinoId`.
@@ -12,6 +14,10 @@ export async function checarConflitoServo(
   pessoaId: number,
   missaoDestinoId: number
 ): Promise<ConflitoServo | null> {
+  const pessoa = await db.pessoa.findUnique({ where: { id: pessoaId }, select: { nome: true } });
+  const aviso = pessoa ? avisoChamado(pessoa.nome) : null;
+  if (aviso) return { missaoConflitoId: 0, missaoConflitoNome: "", distancia: 0, aviso };
+
   const destino = await db.missao.findUniqueOrThrow({ where: { id: missaoDestinoId } });
   if (destino.mes == null || destino.anoCalendario == null) return null;
 

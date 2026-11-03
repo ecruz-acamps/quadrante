@@ -1,5 +1,7 @@
 "use client";
 
+import { descreverConflito } from "@/lib/chamado";
+
 import { useState, useTransition } from "react";
 import {
   aprovarCandidatoServir, parecidasDoCandidatoServir, reabrirCandidatoServir, recusarCandidatoServir,
@@ -60,7 +62,7 @@ export default function LinhaCandidato({
       const r = await aprovarCandidatoServir(null, dados);
       if ("ok" in r && r.ok) return;
       if ("conflito" in r) {
-        setConflito(`Já é servo em “${r.conflito.missaoConflitoNome}” (${r.conflito.distancia} mês(es) de distância).`);
+        setConflito(descreverConflito(r.conflito));
         setMensagem(null);
       } else {
         setMensagem("erro" in r ? r.erro : "Não foi possível aprovar.");

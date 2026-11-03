@@ -1,5 +1,7 @@
 "use client";
 
+import { descreverConflito } from "@/lib/chamado";
+
 import NeocampistaBadge from "./NeocampistaBadge";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -34,6 +36,7 @@ export default function AdicionarServoModal({
     missaoId: number;
     missaoConflitoNome: string;
     distancia: number;
+    aviso?: string;
   } | null>(null);
   const [codigoLiberacao, setCodigoLiberacao] = useState("");
   const [liberacaoSolicitada, setLiberacaoSolicitada] = useState(false);
@@ -257,8 +260,7 @@ export default function AdicionarServoModal({
             {conflito && (
               <div className="border border-[var(--signal)] rounded p-3 text-sm space-y-2">
                 <p>
-                  Já é servo ativo em <strong>{conflito.missaoConflitoNome}</strong>, a {conflito.distancia}{" "}
-                  mês(es) de distância.
+                  {descreverConflito(conflito)}
                 </p>
                 {!liberacaoSolicitada ? (
                   <button type="button" onClick={solicitarLiberacao} className="btn-primary px-3 py-1 text-sm">

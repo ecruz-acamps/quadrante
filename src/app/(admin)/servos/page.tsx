@@ -8,7 +8,7 @@ import SetorCard from "./SetorCard";
 import ReferenciaPanel from "./ReferenciaPanel";
 import { QuadranteDndProvider } from "./QuadranteDnd";
 import ChamarButton from "../ChamarButton";
-import { linkWhatsapp, mensagensChamado } from "@/lib/chamado";
+import { avisoChamado, linkWhatsapp, mensagensChamado } from "@/lib/chamado";
 import { PagoInlineSelect, FuncaoInlineSelect, CercoInlineSelect } from "./ServoInlineEdit";
 import ExcluirDesistiuButtons from "./ExcluirDesistiuButtons";
 import AceitouButton from "./AceitouButton";
@@ -246,7 +246,7 @@ export default async function ServosPage({
                           href={`/pessoas/${s.pessoaId}`}
                           className="truncate text-sm font-medium text-[var(--ink)] transition-colors hover:text-[var(--brass)]"
                         >
-                          {s.pessoa.nome}
+                          <span className={avisoChamado(s.pessoa.nome) ? "!text-red-600 font-bold" : undefined}>{s.pessoa.nome}</span>
                         </Link>
                         {linkWhatsapp(s.pessoa.celular, mensagensChamado({ nome: s.pessoa.nome, missaoNome: missao.nome, setor: s.setor })[0]) && (
                           <a

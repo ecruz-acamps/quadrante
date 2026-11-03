@@ -1,5 +1,7 @@
 "use client";
 
+import { descreverConflito } from "@/lib/chamado";
+
 import { createContext, useCallback, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adicionarServoRapido, moverServo, solicitarLiberacaoConflito } from "@/lib/actions";
@@ -12,6 +14,7 @@ type Conflito = {
   missaoId: number;
   missaoConflitoNome: string;
   distancia: number;
+  aviso?: string;
 };
 
 type Pendente = { pessoaId: number; nome: string; setor: string; conflito: Conflito };
@@ -130,8 +133,7 @@ export function QuadranteDndProvider({
             </h2>
             <div className="border border-[var(--signal)] rounded p-3 text-sm space-y-2">
               <p>
-                Já é servo ativo em <strong>{pendente.conflito.missaoConflitoNome}</strong>, a{" "}
-                {pendente.conflito.distancia} mês(es) de distância.
+                {descreverConflito(pendente.conflito)}
               </p>
               {!liberacaoSolicitada ? (
                 <button
