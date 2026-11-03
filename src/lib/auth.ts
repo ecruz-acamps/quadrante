@@ -1,9 +1,9 @@
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import crypto from "crypto";
 import { db } from "./db";
-import { podeUsarEvangelizacao } from "./coordenador";
+import { podeUsarEvangelizacao, rotaPermitidaServoSecretaria } from "./coordenador";
 
 const COOKIE = "quadrante_session";
 const SESSAO_MAX_SEGUNDOS = 60 * 60 * 24 * 7; // 7 dias; expiração validada no servidor
@@ -101,6 +101,11 @@ export const requireQualquerUsuario = cache(async () => {
 export const requireUser = cache(async () => {
   const user = await requireQualquerUsuario();
   if (user.role === "COORDENADOR") redirect("/meu-setor");
+  if (user.role === "SERVO_SECRETARIA") {
+    // o proxy grava o caminho da requisição; sem ele (ou fora das 4 áreas) a página não abre
+    const caminho = (await headers()).get("x-qd-caminho");
+    if (!rotaPermitidaServoSecretaria(caminho)) redirect("/servos");
+  }
   return user;
 });
 

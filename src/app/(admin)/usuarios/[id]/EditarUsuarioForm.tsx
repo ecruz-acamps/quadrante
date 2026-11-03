@@ -22,6 +22,7 @@ export default function EditarUsuarioForm({
       <input name="nome" required defaultValue={usuario.nome} placeholder="Nome" className="input col-span-2" />
       <select name="role" className="input col-span-2" value={role} onChange={(e) => setRole(e.target.value)}>
         <option value="ADMIN">ADMIN (secretaria)</option>
+        <option value="SERVO_SECRETARIA">SERVO-SECRETARIA (só servos, formação, tribos e fichas)</option>
         <option value="COORDENADOR">COORDENADOR (só o próprio setor)</option>
         <option value="SUPER">SUPER (acesso total)</option>
       </select>

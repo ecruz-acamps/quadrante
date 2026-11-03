@@ -1,5 +1,5 @@
 import { requireQualquerUsuario, getMissaoAtiva, getMissoesPermitidas, getContextoCoordenador } from "@/lib/auth";
-import { SETOR_EVANGELIZACAO } from "@/lib/coordenador";
+import { SETOR_EVANGELIZACAO, ROTAS_SERVO_SECRETARIA } from "@/lib/coordenador";
 import { logoutAction, selecionarMissao } from "@/lib/actions";
 import { db } from "@/lib/db";
 import AdminShell from "./AdminShell";
@@ -58,7 +58,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     ? await db.missao.findMany({ orderBy: { id: "desc" } })
     : await getMissoesPermitidas(user.id);
   const mostrarSeletor = missoes.length > 1;
-  const nav = NAV.filter(([, , superOnly]) => !superOnly || isSuper);
+  const nav =
+    user.role === "SERVO_SECRETARIA"
+      ? ROTAS_SERVO_SECRETARIA.map(([href, rotulo]) => [href, rotulo, false] as const)
+      : NAV.filter(([, , superOnly]) => !superOnly || isSuper);
 
   return (
     <AdminShell

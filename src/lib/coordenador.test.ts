@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaValida, podeUsarEvangelizacao, MOTIVO_MAX } from "./coordenador";
+import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaValida, podeUsarEvangelizacao, rotaPermitidaServoSecretaria, MOTIVO_MAX } from "./coordenador";
 
 test("statusValido aceita só os três status exatos", () => {
   for (const s of ["ATIVO", "RECUSOU", "DESISTIU"]) assert.equal(statusValido(s), true);
@@ -46,7 +46,8 @@ test("dadosDoStatus: motivo gigante é cortado em MOTIVO_MAX", () => {
   assert.equal(r.motivoDesistiu?.length, MOTIVO_MAX);
 });
 
-test("normalizarRole: só SUPER e COORDENADOR são preservados, o resto vira ADMIN", () => {
+test("normalizarRole: SUPER, COORDENADOR e SERVO_SECRETARIA são preservados, o resto vira ADMIN", () => {
+  assert.equal(normalizarRole("SERVO_SECRETARIA"), "SERVO_SECRETARIA");
   assert.equal(normalizarRole("SUPER"), "SUPER");
   assert.equal(normalizarRole("COORDENADOR"), "COORDENADOR");
   assert.equal(normalizarRole("ADMIN"), "ADMIN");
@@ -67,4 +68,13 @@ test("podeUsarEvangelizacao: SUPER e ADMIN sempre; coordenador só do setor EVAN
   assert.equal(podeUsarEvangelizacao({ role: "COORDENADOR", setor: "COZINHA" }), false);
   assert.equal(podeUsarEvangelizacao({ role: "COORDENADOR", setor: null }), false);
   assert.equal(podeUsarEvangelizacao({ role: "COORDENADOR", setor: "Evangelização" }), false);
+});
+
+test("rotaPermitidaServoSecretaria: só servos, formação, tribos e fichas (e subrotas)", () => {
+  for (const ok of ["/servos", "/servos/12", "/formacao", "/tribos/3", "/fichas", "/fichas/novo"]) {
+    assert.equal(rotaPermitidaServoSecretaria(ok), true, ok);
+  }
+  for (const no of ["/", "/financeiro", "/usuarios", "/servosx", "/fichas-x", "/gerador-fichas", "/pessoas/1", "", null, undefined]) {
+    assert.equal(rotaPermitidaServoSecretaria(no), false, String(no));
+  }
 });

@@ -33,6 +33,7 @@ export default function CriarUsuarioForm({
       <input name="senha" type="password" required placeholder="Senha" className="input" />
       <select name="role" className="input" value={role} onChange={(e) => setRole(e.target.value)}>
         <option value="ADMIN">ADMIN (secretaria)</option>
+        <option value="SERVO_SECRETARIA">SERVO-SECRETARIA (só servos, formação, tribos e fichas)</option>
         <option value="COORDENADOR">COORDENADOR (só o próprio setor)</option>
         <option value="SUPER">SUPER (acesso total)</option>
       </select>
