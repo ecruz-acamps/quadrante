@@ -1,20 +1,27 @@
 import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { FUNCOES } from "@/lib/constants";
+import { normalizarBusca } from "@/lib/busca";
+import { Icon } from "../servos/icons";
 import SetorCard from "../servos/SetorCard";
 import FormacaoToggle from "./FormacaoToggle";
 import { CamisetaInlineSelect, PagoInlineSelect, FormaPagamentoInlineSelect } from "../servos/ServoInlineEdit";
 
-export default async function FormacaoPage() {
+export default async function FormacaoPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   await requireUser();
+  const { q } = await searchParams;
+  const termo = q ? normalizarBusca(q) : "";
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
-  const servos = await db.servo.findMany({
+  const todos = await db.servo.findMany({
     where: { missaoId: missao.id, status: "ATIVO" },
     include: { pessoa: true },
     orderBy: [{ setor: "asc" }, { pessoa: { nome: "asc" } }],
   });
+
+  // filtra em JS para "joao" achar "João" (o contains do banco não ignora acento)
+  const servos = termo ? todos.filter((s) => normalizarBusca(s.pessoa.nome).includes(termo)) : todos;
 
   const setores = await db.setor.findMany({ orderBy: { nome: "asc" } });
 
@@ -39,8 +46,29 @@ export default async function FormacaoPage() {
     <div>
       <h1 className="page-title mb-6">Formação</h1>
 
-      {[...grupos.entries()].map(([setorNome, lista]) => (
-        <SetorCard key={setorNome} titulo={`${setorNome} (${lista.length})`} acao={null}>
+      <div className="qd-surface mb-6 p-3 sm:p-4">
+        <form className="flex flex-wrap gap-2.5">
+          <div className="relative w-full sm:min-w-64 sm:max-w-sm sm:flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa1b5]">
+              <Icon name="search" className="h-4 w-4" />
+            </span>
+            <input name="q" defaultValue={q} placeholder="Buscar por nome do servo..." className="qd-field pl-9" />
+          </div>
+          <button className="qd-btn bg-[var(--ink)] px-5 py-2.5 text-white hover:bg-[#14295a]">Buscar</button>
+          {q && (
+            <a href="/formacao" className="btn-link self-center text-sm">
+              Limpar
+            </a>
+          )}
+        </form>
+      </div>
+
+      {termo && servos.length === 0 && <p className="text-[var(--ink-soft)]/60">Nenhum servo encontrado para “{q}”.</p>}
+
+      {[...grupos.entries()]
+        .filter(([, lista]) => !termo || lista.length > 0)
+        .map(([setorNome, lista]) => (
+        <SetorCard key={setorNome} titulo={`${setorNome} (${lista.length})`} acao={null} iniciarAberto={Boolean(termo)}>
           {lista.length === 0 ? (
             <p className="px-4 py-4 text-sm text-[var(--ink-soft)]/60">Nenhum servo neste setor ainda.</p>
           ) : (
