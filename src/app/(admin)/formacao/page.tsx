@@ -77,7 +77,7 @@ export default async function FormacaoPage({ searchParams }: { searchParams: Pro
       {[...grupos.entries()]
         .filter(([, lista]) => !filtrando || lista.length > 0)
         .map(([setorNome, lista]) => (
-        <SetorCard key={setorNome} titulo={`${setorNome} (${lista.length})`} acao={null} iniciarAberto={filtrando}>
+        <SetorCard key={setorNome} titulo={setorNome} quantidade={lista.length} acao={null} iniciarAberto={filtrando}>
           {lista.length === 0 ? (
             <p className="px-4 py-4 text-sm text-[var(--ink-soft)]/60">Nenhum servo neste setor ainda.</p>
           ) : (
@@ -96,7 +96,7 @@ export default async function FormacaoPage({ searchParams }: { searchParams: Pro
                 </thead>
                 <tbody className="divide-y divide-[var(--line)]">
                   {lista.map((s) => (
-                    <tr key={s.id}>
+                    <tr key={s.id} data-nome={normalizarBusca(s.pessoa.nome)}>
                       <td className="px-4 py-2">{s.pessoa.nome}</td>
                       <td className="px-4 py-2">
                         <FormacaoToggle servoId={s.id} numero={1} valor={s.formacao1} />
