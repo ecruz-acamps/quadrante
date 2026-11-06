@@ -7,10 +7,11 @@ import SetorCard from "../servos/SetorCard";
 import FormacaoToggle from "./FormacaoToggle";
 import { CamisetaInlineSelect, PagoInlineSelect, FormaPagamentoInlineSelect } from "../servos/ServoInlineEdit";
 
-export default async function FormacaoPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function FormacaoPage({ searchParams }: { searchParams: Promise<{ q?: string; setor?: string }> }) {
   await requireUser();
-  const { q } = await searchParams;
+  const { q, setor } = await searchParams;
   const termo = q ? normalizarBusca(q) : "";
+  const filtrando = Boolean(termo || setor);
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
@@ -21,7 +22,9 @@ export default async function FormacaoPage({ searchParams }: { searchParams: Pro
   });
 
   // filtra em JS para "joao" achar "João" (o contains do banco não ignora acento)
-  const servos = termo ? todos.filter((s) => normalizarBusca(s.pessoa.nome).includes(termo)) : todos;
+  const servos = todos.filter(
+    (s) => (!setor || s.setor === setor) && (!termo || normalizarBusca(s.pessoa.nome).includes(termo)),
+  );
 
   const setores = await db.setor.findMany({ orderBy: { nome: "asc" } });
 
@@ -54,8 +57,14 @@ export default async function FormacaoPage({ searchParams }: { searchParams: Pro
             </span>
             <input name="q" defaultValue={q} placeholder="Buscar por nome do servo..." className="qd-field pl-9" />
           </div>
+          <select name="setor" defaultValue={setor || ""} className="qd-field w-full sm:w-auto sm:min-w-52">
+            <option value="">Todos os setores</option>
+            {setores.map((se) => (
+              <option key={se.id}>{se.nome}</option>
+            ))}
+          </select>
           <button className="qd-btn bg-[var(--ink)] px-5 py-2.5 text-white hover:bg-[#14295a]">Buscar</button>
-          {q && (
+          {(q || setor) && (
             <a href="/formacao" className="btn-link self-center text-sm">
               Limpar
             </a>
@@ -63,12 +72,12 @@ export default async function FormacaoPage({ searchParams }: { searchParams: Pro
         </form>
       </div>
 
-      {termo && servos.length === 0 && <p className="text-[var(--ink-soft)]/60">Nenhum servo encontrado para “{q}”.</p>}
+      {filtrando && servos.length === 0 && <p className="text-[var(--ink-soft)]/60">Nenhum servo encontrado.</p>}
 
       {[...grupos.entries()]
-        .filter(([, lista]) => !termo || lista.length > 0)
+        .filter(([, lista]) => !filtrando || lista.length > 0)
         .map(([setorNome, lista]) => (
-        <SetorCard key={setorNome} titulo={`${setorNome} (${lista.length})`} acao={null} iniciarAberto={Boolean(termo)}>
+        <SetorCard key={setorNome} titulo={`${setorNome} (${lista.length})`} acao={null} iniciarAberto={filtrando}>
           {lista.length === 0 ? (
             <p className="px-4 py-4 text-sm text-[var(--ink-soft)]/60">Nenhum servo neste setor ainda.</p>
           ) : (
