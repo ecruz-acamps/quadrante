@@ -58,6 +58,31 @@ fase_instalacao() {
   conferir "app continua respondendo após a 2ª execução" aguardar_app
 }
 
+fase_restauracao() {
+  echo "== Restauração"
+  local senha="senha-do-backup-de-teste-123" codigo url arq resp
+  url=http://localhost:3008/api/restaurar
+  codigo=$(grep '^RESTAURACAO_CODIGO=' "$DIR/.env" | cut -d'"' -f2)
+  install -d -o quadrante -g quadrante /tmp/qd-backup
+  arq=$(runuser -u quadrante -- env HOME=/home/quadrante bash -c "cd $DIR && ./node_modules/.bin/tsx scripts/gerar-backup-teste.ts /tmp/qd-backup '$senha'" | tail -n 1)
+  conferir "backup sintético gerado" test -s "$arq"
+  echo "isto não é um backup" > /tmp/lixo.gpg
+
+  conferir "código errado → 403" test "$(http -F codigo=ERRADO -F senha="$senha" -F arquivo=@"$arq" $url)" = 403
+  conferir "senha errada → 400" test "$(http -F codigo="$codigo" -F senha=errada-errada-123 -F arquivo=@"$arq" $url)" = 400
+  conferir "arquivo que não é backup → 400" test "$(http -F codigo="$codigo" -F senha="$senha" -F arquivo=@/tmp/lixo.gpg $url)" = 400
+  resp=$(curl -s -F codigo="$codigo" -F senha="$senha" -F arquivo=@"$arq" $url)
+  conferir "restauração válida → ok:true" bash -c "echo '$resp' | grep -q '\"ok\":true'"
+
+  conferir "app volta a responder após reiniciar" aguardar_app
+  conferir "/restaurar passa a responder 404" test "$(http http://localhost:3008/restaurar)" = 404
+  conferir "/login responde 200 (sem redirecionar para /restaurar)" test "$(http http://localhost:3008/login)" = 200
+  conferir ".env restaurado traz o AUTH_SECRET do backup" grep -q '^AUTH_SECRET="segredo-do-backup"' "$DIR/.env"
+  conferir ".env restaurado mantém COOKIE_SECURE=false" grep -q '^COOKIE_SECURE="false"' "$DIR/.env"
+  conferir "banco restaurado tem o usuário do backup" bash -c "runuser -u quadrante -- env HOME=/home/quadrante bash -c \"cd $DIR && node -e \\\"const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.usuario.count().then(n=>{console.log(n);return p.\\\$disconnect()})\\\"\" | grep -qx 1"
+  conferir "nova restauração → 404" test "$(http -F codigo="$codigo" -F senha="$senha" -F arquivo=@"$arq" $url)" = 404
+}
+
 for f in $FASES; do "fase_$f"; done
 echo
 if [ "$FALHAS" -eq 0 ]; then echo "TUDO OK"; else echo "$FALHAS verificação(ões) FALHARAM"; fi
