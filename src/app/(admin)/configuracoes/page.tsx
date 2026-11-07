@@ -4,6 +4,8 @@ import CercoPublicoToggle from "./CercoPublicoToggle";
 import PushbirdDevices from "./PushbirdDevices";
 import NotificacoesNativas from "./NotificacoesNativas";
 import ExportacaoOculta from "./ExportacaoOculta";
+import TunelCloudflare from "./TunelCloudflare";
+import { lerStatusTunel } from "@/lib/auxiliarTunel";
 
 export default async function ConfiguracoesPage({
   searchParams,
@@ -13,6 +15,7 @@ export default async function ConfiguracoesPage({
   await requireRole("SUPER");
   const { drive } = await searchParams;
   const driveConectado = Boolean(process.env.GOOGLE_DRIVE_REFRESH_TOKEN);
+  const tunel = await lerStatusTunel();
   const missao = await getMissaoAtiva();
   const dispositivosPushbird = await db.pushbirdDevice.findMany({ orderBy: { nome: "asc" } });
   const inscritosWebPush = await db.webPushSubscription.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } });
@@ -37,6 +40,9 @@ export default async function ConfiguracoesPage({
       <nav className="flex gap-4 mb-6 text-sm border-b border-[var(--line)]">
         <a href="#backup" className="px-1 pb-2 border-b-2 border-[var(--brass)] text-[var(--ink)] font-medium">
           Backup
+        </a>
+        <a href="#acesso" className="px-1 pb-2 text-[var(--ink-soft)]/70 hover:text-[var(--ink)]">
+          Acesso
         </a>
         <a href="#exportacao" className="px-1 pb-2 text-[var(--ink-soft)]/70 hover:text-[var(--ink)]">
           Exportação
@@ -105,6 +111,11 @@ export default async function ConfiguracoesPage({
             {driveConectado ? "Reconectar Google Drive" : "Conectar Google Drive"}
           </a>
         </div>
+      </section>
+
+      <section id="acesso" className="scroll-mt-4 mt-10">
+        <h2 className="font-medium text-[var(--ink)] mb-3">Acesso pela internet (Cloudflare)</h2>
+        <TunelCloudflare disponivel={tunel.disponivel} ativo={tunel.ativo} hostname={process.env.TUNEL_HOSTNAME ?? null} />
       </section>
 
       <section id="exportacao" className="scroll-mt-4 mt-10">
