@@ -146,10 +146,10 @@ curl -fsSL https://raw.githubusercontent.com/ecruz-acamps/quadrante/main/install
 ```
 
 O instalador instala o que falta (Node 22, pm2, git, gpg, cron), cria o usuário `quadrante`, baixa o código em
-`/opt/quadrante`, monta o `.env` mínimo, aplica as migrações, faz o build, sobe o sistema na **porta 3008** (volta
+`/opt/quadrante`, monta o `.env` mínimo, aplica as migrações, faz o build, sobe o sistema na **porta 4008** (volta
 sozinho após reiniciar a máquina) e recria o agendamento dos backups. Também deixa o `cloudflared` e um auxiliar
 prontos para o acesso pela internet, **sem ligar nenhum túnel**. No fim ele mostra o endereço
-`http://<IP>:3008/restaurar` e um **código de restauração** (uso único).
+`http://<IP>:4008/restaurar` e um **código de restauração** (uso único).
 
 **Rodar de novo atualiza** o sistema: não troca `AUTH_SECRET`/`BACKUP_PASSPHRASE` nem apaga o banco (antes de atualizar
 ele guarda uma cópia em `prisma/quadrante.db.bak-antes-deploy-AAAAMMDD`). Variáveis opcionais: `QUADRANTE_DIR`,
@@ -157,7 +157,7 @@ ele guarda uma cópia em `prisma/quadrante.db.bak-antes-deploy-AAAAMMDD`). Vari�
 
 ### Primeiro acesso: restaurar o backup pela interface
 
-1. Abra `http://<IP>:3008/restaurar` (rede local). Em sistema recém-instalado, o login leva para essa tela.
+1. Abra `http://<IP>:4008/restaurar` (rede local). Em sistema recém-instalado, o login leva para essa tela.
 2. Baixe do Google Drive o `quadrante-backup-….tar.gz.gpg` mais recente e envie na tela, com o **código de restauração**
    e a **senha do backup** (`BACKUP_PASSPHRASE`, do seu cofre de senhas).
 3. O sistema descriptografa, confere o banco, troca banco e `.env`, aplica as migrações e reinicia sozinho. Em qualquer
@@ -177,7 +177,7 @@ Depois de restaurar, entre como administrador (perfil SUPER) em **Configuraçõe
 1. Crie na Cloudflare um **token de API** com as permissões *Conta › Cloudflare Tunnel › Editar*, *Zona › DNS › Editar*
    e *Zona › Zona › Leitura* (o token de conta `cfat_…` ou de usuário servem).
 2. Cole o token e o **endereço público** (ex.: `quadrante.movimentocampista.com.br`) e clique em **Criar túnel**.
-   O sistema cria o túnel, a rota para `localhost:3008` e o registro DNS, e liga o serviço `cloudflared`.
+   O sistema cria o túnel, a rota para `localhost:4008` e o registro DNS, e liga o serviço `cloudflared`.
 3. Se o endereço **já aponta para outro lugar** (o servidor antigo), a tela mostra o registro atual e pede confirmação
    antes de trocar: é essa troca que passa o acesso para o servidor novo.
 
@@ -244,7 +244,7 @@ npm ci
 npx prisma generate
 npx prisma migrate deploy     # aplica migrações pendentes (faça backup do banco antes!)
 npm run build
-pm2 start ecosystem.config.cjs                  # escuta na porta 3008
+pm2 start ecosystem.config.cjs                  # escuta na porta 4008
 pm2 save && pm2 startup                          # volta sozinho após reiniciar a máquina
 ```
 
@@ -258,7 +258,7 @@ npm run build
 pm2 restart quadrante
 ```
 
-Aponte seu proxy reverso/túnel (Cloudflare Tunnel, Nginx, Caddy…) para `http://localhost:3008` com HTTPS.
+Aponte seu proxy reverso/túnel (Cloudflare Tunnel, Nginx, Caddy…) para `http://localhost:4008` com HTTPS.
 
 ## Backup e recuperação
 
@@ -324,7 +324,7 @@ Roteiro para trocar de máquina (ou recuperar o sistema depois de perder o servi
    restauração (`npx tsx scripts/testar-restauracao.ts`, deve terminar com "RESTAURAÇÃO OK."). Confirme que a
    `BACKUP_PASSPHRASE` está no seu cofre de senhas.
 2. **No servidor novo:** rode o `install.sh` (comando acima).
-3. Abra `http://<IP>:3008/restaurar`, envie o backup mais recente do Drive e a senha (seção "Primeiro acesso").
+3. Abra `http://<IP>:4008/restaurar`, envie o backup mais recente do Drive e a senha (seção "Primeiro acesso").
 4. **Confira pela rede local:** login, totais do Quadrante de Servos, e rode o backup manual uma vez
    (`cd /opt/quadrante && sudo -u quadrante ./node_modules/.bin/tsx scripts/backup-to-drive.ts`). Se o Google Drive pedir
    para reconectar, use Configurações › Conectar Google Drive.
@@ -365,5 +365,5 @@ npx tsx scripts/gerar-backup-teste.ts /tmp/qd "senha-de-teste-123"   # backup SI
 | Volta para o login sem erro (em HTTP) | O cookie é `secure` em produção; use HTTPS ou, só em rede local, `COOKIE_SECURE=false`. |
 | Erro de coluna/tabela do Prisma | Falta `npx prisma migrate deploy` e/ou `npx prisma generate`. |
 | Página antiga após deploy | Rode `npm run build` antes do `pm2 restart quadrante`. |
-| Porta ocupada | `ss -ltnp \| grep 3008` e `pm2 list`. |
+| Porta ocupada | `ss -ltnp \| grep 4008` e `pm2 list`. |
 | Logs | `pm2 logs quadrante` |

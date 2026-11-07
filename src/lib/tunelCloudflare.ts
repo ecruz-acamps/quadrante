@@ -10,7 +10,7 @@ import {
   type FetchFn,
 } from "./cloudflare";
 
-export const SERVICO_LOCAL = "http://localhost:3008";
+export const SERVICO_LOCAL = "http://localhost:4008";
 
 export type EntradaTunel = { tokenApi: string; hostname: string; confirmarTrocaDns: boolean };
 

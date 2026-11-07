@@ -106,11 +106,11 @@ test("criarTunel busca o token em /token quando a criação não o devolve", asy
   assert.deepEqual(await criarTunel(f, TOKEN, "c1", "n"), { id: "t1", tokenTunel: "eyJ-token-buscado" });
 });
 
-test("definirRota envia ingress hostname→http://localhost:3008 e http_status:404", async () => {
+test("definirRota envia ingress hostname→http://localhost:4008 e http_status:404", async () => {
   const { f, chamadas } = fakeFetch({ "PUT /accounts/c1/cfd_tunnel/t1/configurations": ok({}) });
-  await definirRota(f, TOKEN, "c1", "t1", "app.x.com", "http://localhost:3008");
+  await definirRota(f, TOKEN, "c1", "t1", "app.x.com", "http://localhost:4008");
   assert.deepEqual(chamadas[0].corpo, {
-    config: { ingress: [{ hostname: "app.x.com", service: "http://localhost:3008" }, { service: "http_status:404" }] },
+    config: { ingress: [{ hostname: "app.x.com", service: "http://localhost:4008" }, { service: "http_status:404" }] },
   });
 });
 

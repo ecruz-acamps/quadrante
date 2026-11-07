@@ -30,7 +30,7 @@ DIR=/opt/quadrante
 ok() { printf '  OK      %s\n' "$1"; }
 falhou() { printf '  FALHOU  %s\n' "$1"; FALHAS=$((FALHAS + 1)); }
 conferir() { local d=$1; shift; if "$@" >/dev/null 2>&1; then ok "$d"; else falhou "$d"; fi; }
-aguardar_app() { for _ in $(seq 1 60); do curl -s -o /dev/null http://localhost:3008/login && return 0; sleep 2; done; return 1; }
+aguardar_app() { for _ in $(seq 1 60); do curl -s -o /dev/null http://localhost:4008/login && return 0; sleep 2; done; return 1; }
 aguardar_codigo() { for _ in $(seq 1 45); do [ "$(http "$1")" = "$2" ] && return 0; sleep 2; done; return 1; }
 http() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 
@@ -42,8 +42,8 @@ fase_instalacao() {
   tail -n 15 /tmp/inst1.log
   conferir "1ª execução termina com código 0" test "$rc" -eq 0
   conferir "saída mostra /restaurar" grep -q '/restaurar' /tmp/inst1.log
-  conferir "app respondeu na porta 3008" aguardar_app
-  conferir "/restaurar responde 200" test "$(http http://localhost:3008/restaurar)" = 200
+  conferir "app respondeu na porta 4008" aguardar_app
+  conferir "/restaurar responde 200" test "$(http http://localhost:4008/restaurar)" = 200
   conferir ".env tem AUTH_SECRET" grep -q '^AUTH_SECRET=' "$DIR/.env"
   conferir ".env tem RESTAURACAO_CODIGO" grep -q '^RESTAURACAO_CODIGO=' "$DIR/.env"
   conferir ".env tem COOKIE_SECURE=false (login por HTTP na rede local)" grep -q '^COOKIE_SECURE="false"' "$DIR/.env"
@@ -70,7 +70,7 @@ fase_instalacao() {
 fase_restauracao() {
   echo "== Restauração"
   local senha="senha-do-backup-de-teste-123" codigo url arq resp
-  url=http://localhost:3008/api/restaurar
+  url=http://localhost:4008/api/restaurar
   codigo=$(grep '^RESTAURACAO_CODIGO=' "$DIR/.env" | cut -d'"' -f2)
   install -d -o quadrante -g quadrante /tmp/qd-backup
   arq=$(runuser -u quadrante -- env HOME=/home/quadrante bash -c "cd $DIR && ./node_modules/.bin/tsx scripts/gerar-backup-teste.ts /tmp/qd-backup '$senha'" | tail -n 1)
@@ -83,8 +83,8 @@ fase_restauracao() {
   resp=$(curl -s -F codigo="$codigo" -F senha="$senha" -F arquivo=@"$arq" $url)
   conferir "restauração válida → ok:true" bash -c "echo '$resp' | grep -q '\"ok\":true'"
 
-  conferir "/restaurar passa a responder 404 depois do reinício" aguardar_codigo http://localhost:3008/restaurar 404
-  conferir "/login responde 200 (sem redirecionar para /restaurar)" test "$(http http://localhost:3008/login)" = 200
+  conferir "/restaurar passa a responder 404 depois do reinício" aguardar_codigo http://localhost:4008/restaurar 404
+  conferir "/login responde 200 (sem redirecionar para /restaurar)" test "$(http http://localhost:4008/login)" = 200
   conferir ".env restaurado traz o AUTH_SECRET do backup" grep -q '^AUTH_SECRET="segredo-do-backup"' "$DIR/.env"
   conferir ".env restaurado mantém COOKIE_SECURE=false" grep -q '^COOKIE_SECURE="false"' "$DIR/.env"
   cat > /tmp/conta-usuarios.js <<'JS'

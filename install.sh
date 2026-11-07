@@ -13,7 +13,7 @@ DIR="${QUADRANTE_DIR:-/opt/quadrante}"
 REPO="${QUADRANTE_REPO:-https://github.com/ecruz-acamps/quadrante.git}"
 BRANCH="${QUADRANTE_BRANCH:-main}"
 USUARIO=quadrante
-PORTA=3008
+PORTA=4008
 LOG=/var/log/quadrante/instalacao.log
 
 verde() { printf '\033[1;32m%s\033[0m\n' "$*"; }
