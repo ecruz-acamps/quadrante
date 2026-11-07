@@ -145,3 +145,18 @@ test("migrar que falha devolve os originais e lança MIGRACAO", async () => {
   assert.equal(readFileSync(join(appDir, "prisma", "quadrante.db"), "utf8"), "BANCO-VELHO");
   assert.equal(readFileSync(join(appDir, ".env"), "utf8"), "VELHO=1\n");
 });
+
+test("aplicarBackup preserva o COOKIE_SECURE do .env atual (acesso por HTTP na rede local)", async () => {
+  const p = await prepararBackup(await fazerBackup(), SENHA);
+  lixo.push(p.pasta);
+  const appDir = await appFalso();
+  writeFileSync(join(appDir, ".env"), 'VELHO=1\nCOOKIE_SECURE="false"\n');
+  try {
+    await aplicarBackup(p, { appDir, desconectar: async () => {}, migrar: async () => {} });
+    const novo = readFileSync(join(appDir, ".env"), "utf8");
+    assert.match(novo, /^COOKIE_SECURE="false"$/m);
+    assert.match(novo, /^AUTH_SECRET="do-backup"$/m); // o resto vem do backup
+  } finally {
+    delete process.env.COOKIE_SECURE;
+  }
+});

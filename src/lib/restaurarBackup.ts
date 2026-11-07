@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { descriptografarArquivo } from "./criptografia";
 import { verificarSnapshot } from "./snapshotDb";
-import { lerEnvValor } from "./envFile";
+import { lerEnvValor, setEnvValue } from "./envFile";
 
 const execFileAsync = promisify(execFile);
 
@@ -107,6 +107,9 @@ export async function aplicarBackup(p: BackupPreparado, o: OpcoesAplicar): Promi
   const destinoEnv = path.join(o.appDir, ".env");
   const bak = ".bak-antes-restauracao";
 
+  // COOKIE_SECURE descreve COMO este servidor é acessado (HTTP na rede local ou HTTPS), não os dados do backup
+  const cookieSecure = await lerEnvValor(destinoEnv, "COOKIE_SECURE");
+
   await o.desconectar();
 
   const tinhaBanco = await existe(destinoBanco);
@@ -122,6 +125,7 @@ export async function aplicarBackup(p: BackupPreparado, o: OpcoesAplicar): Promi
     await fs.rename(destinoBanco + ".novo", destinoBanco);
     await fs.copyFile(p.arquivoEnv, destinoEnv + ".novo");
     await fs.rename(destinoEnv + ".novo", destinoEnv);
+    if (cookieSecure !== undefined) await setEnvValue("COOKIE_SECURE", cookieSecure, destinoEnv);
     await o.migrar({ ...process.env, DATABASE_URL: urlNova });
   } catch (err) {
     // volta tudo como estava
