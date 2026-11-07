@@ -2,6 +2,7 @@ import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { marcarAceitou } from "@/lib/actions";
 import MotivoRow from "./MotivoRow";
+import { ordenarSetores } from "@/lib/constants";
 import FaltaRow from "./FaltaRow";
 
 export default async function RegistrosPage() {
@@ -22,16 +23,20 @@ export default async function RegistrosPage() {
     }),
   ]);
 
+  const setoresRepescar = ordenarSetores(await db.setor.findMany({ orderBy: { nome: "asc" } })).map((x) => x.nome);
+
   const TabelaComMotivo = ({
     titulo,
     lista,
     campoMotivo,
     podeVoltar,
+    podeRepescar,
   }: {
     titulo: string;
     lista: typeof recusaram;
     campoMotivo: "motivoRecusou" | "motivoDesistiu";
     podeVoltar?: boolean;
+    podeRepescar?: boolean;
   }) => (
     <div className="card overflow-hidden mb-6">
       <div className="qd-card-head">
@@ -44,7 +49,7 @@ export default async function RegistrosPage() {
               <th className="text-left px-4 py-2">Nome</th>
               <th className="text-left px-4 py-2">Setor</th>
               <th className="text-left px-4 py-2">Celular</th>
-              {podeVoltar && <th className="px-4 py-2"></th>}
+              {(podeVoltar || podeRepescar) && <th className="px-4 py-2"></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--line)]">
@@ -57,11 +62,12 @@ export default async function RegistrosPage() {
                 motivo={s[campoMotivo]}
                 servoId={s.id}
                 voltarAction={podeVoltar ? marcarAceitou : undefined}
+                setoresRepescar={podeRepescar ? setoresRepescar : undefined}
               />
             ))}
             {lista.length === 0 && (
               <tr>
-                <td colSpan={podeVoltar ? 4 : 3} className="px-4 py-2 text-[var(--ink-soft)]/40">
+                <td colSpan={podeVoltar || podeRepescar ? 4 : 3} className="px-4 py-2 text-[var(--ink-soft)]/40">
                   Nenhum registro.
                 </td>
               </tr>
@@ -120,7 +126,7 @@ export default async function RegistrosPage() {
     <div>
       <h1 className="page-title mb-6">Não / Desistências / Faltas na formação</h1>
       <TabelaComMotivo titulo="Falaram NÃO ao chamado" lista={recusaram} campoMotivo="motivoRecusou" podeVoltar />
-      <TabelaComMotivo titulo="Desistiram" lista={desistiram} campoMotivo="motivoDesistiu" />
+      <TabelaComMotivo titulo="Desistiram" lista={desistiram} campoMotivo="motivoDesistiu" podeRepescar />
       <TabelaFaltas />
     </div>
   );

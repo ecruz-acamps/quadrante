@@ -703,6 +703,31 @@ export async function marcarDesistiu(formData: FormData) {
   revalidatePath("/registros");
 }
 
+// repesca quem desistiu: volta a ATIVO (ainda a ser chamado) no setor escolhido
+export async function repescarServo(servoId: number, novoSetor: string) {
+  const usuario = await requireUser();
+  if (!Number.isSafeInteger(servoId) || servoId <= 0) return { error: "Servo inválido." } as const;
+  if (!(await acessoRegistros(usuario, ["servo", servoId]))) return { error: "Sem acesso a este servo." } as const;
+  const servo = await db.servo.findUnique({ where: { id: servoId }, include: { pessoa: { select: { nome: true } } } });
+  if (!servo) return { error: "Servo não encontrado." } as const;
+  if (servo.status !== "DESISTIU") return { error: "Este servo não está como desistente." } as const;
+  if (!(await db.setor.findUnique({ where: { nome: novoSetor } }))) return { error: "Setor inválido." } as const;
+  let funcao = servo.funcao;
+  if (funcao === "COORDENADOR") {
+    const jaTem = await db.servo.count({ where: { missaoId: servo.missaoId, setor: novoSetor, funcao: "COORDENADOR", status: "ATIVO" } });
+    if (jaTem > 0) funcao = "INTEGRANTE";
+  }
+  await db.servo.update({
+    where: { id: servoId },
+    data: { status: "ATIVO", confirmado: false, motivoDesistiu: null, setor: novoSetor, funcao },
+  });
+  await notificarQuadrante("movido", { nome: servo.pessoa.nome, setor: novoSetor, setorOrigem: servo.setor, missaoId: servo.missaoId, autor: usuario.nome });
+  revalidatePath("/servos");
+  revalidatePath("/registros");
+  revalidatePath("/meu-setor");
+  return { ok: true } as const;
+}
+
 export async function marcarAceitou(formData: FormData) {
   const usuario = await requireUser();
   const id = Number(formData.get("id"));
