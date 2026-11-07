@@ -1,0 +1,19 @@
+[Unit]
+Description=Túnel Cloudflare do Quadrante
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# o token fica nesse arquivo (modo 600, só root); ver scripts/quadrante-tunel
+EnvironmentFile=/etc/quadrante/cloudflared.env
+ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate run
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
