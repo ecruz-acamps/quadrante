@@ -31,6 +31,7 @@ ok() { printf '  OK      %s\n' "$1"; }
 falhou() { printf '  FALHOU  %s\n' "$1"; FALHAS=$((FALHAS + 1)); }
 conferir() { local d=$1; shift; if "$@" >/dev/null 2>&1; then ok "$d"; else falhou "$d"; fi; }
 aguardar_app() { for _ in $(seq 1 60); do curl -s -o /dev/null http://localhost:3008/login && return 0; sleep 2; done; return 1; }
+aguardar_codigo() { for _ in $(seq 1 45); do [ "$(http "$1")" = "$2" ] && return 0; sleep 2; done; return 1; }
 http() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 
 printf '[safe]\n\tdirectory = *\n' > /etc/gitconfig   # o repositório de teste é de outro dono
@@ -74,12 +75,16 @@ fase_restauracao() {
   resp=$(curl -s -F codigo="$codigo" -F senha="$senha" -F arquivo=@"$arq" $url)
   conferir "restauração válida → ok:true" bash -c "echo '$resp' | grep -q '\"ok\":true'"
 
-  conferir "app volta a responder após reiniciar" aguardar_app
-  conferir "/restaurar passa a responder 404" test "$(http http://localhost:3008/restaurar)" = 404
+  conferir "/restaurar passa a responder 404 depois do reinício" aguardar_codigo http://localhost:3008/restaurar 404
   conferir "/login responde 200 (sem redirecionar para /restaurar)" test "$(http http://localhost:3008/login)" = 200
   conferir ".env restaurado traz o AUTH_SECRET do backup" grep -q '^AUTH_SECRET="segredo-do-backup"' "$DIR/.env"
   conferir ".env restaurado mantém COOKIE_SECURE=false" grep -q '^COOKIE_SECURE="false"' "$DIR/.env"
-  conferir "banco restaurado tem o usuário do backup" bash -c "runuser -u quadrante -- env HOME=/home/quadrante bash -c \"cd $DIR && node -e \\\"const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.usuario.count().then(n=>{console.log(n);return p.\\\$disconnect()})\\\"\" | grep -qx 1"
+  cat > /tmp/conta-usuarios.js <<'JS'
+const { PrismaClient } = require("/opt/quadrante/node_modules/@prisma/client");
+const p = new PrismaClient();
+p.usuario.count().then((n) => { console.log(n); return p.$disconnect(); });
+JS
+  conferir "banco restaurado tem o usuário do backup" bash -c "cd $DIR && runuser -u quadrante -- env HOME=/home/quadrante node /tmp/conta-usuarios.js | grep -qx 1"
   conferir "nova restauração → 404" test "$(http -F codigo="$codigo" -F senha="$senha" -F arquivo=@"$arq" $url)" = 404
 }
 
