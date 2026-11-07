@@ -2,12 +2,13 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { db } from "@/lib/db";
-import { guardarAcesso } from "@/lib/guardaRestauracao";
+import { guardarAcesso, prevalidarEnvio } from "@/lib/guardaRestauracao";
 import { iniciarRestauracao, limparTentativas } from "@/lib/codigoRestauracao";
 import { prepararBackup, aplicarBackup, migrarComPrisma, ErroRestauracao } from "@/lib/restaurarBackup";
 import { agendarReinicio } from "@/lib/reiniciar";
 
 const TAMANHO_MAX = 200 * 1024 * 1024;
+const MARGEM_CAMPOS = 1024 * 1024; // campos do formulário além do arquivo
 
 function erro(status: number, mensagem: string) {
   return Response.json({ erro: mensagem }, { status });
@@ -15,6 +16,8 @@ function erro(status: number, mensagem: string) {
 
 // Restaura o backup do Drive (.tar.gz.gpg) num sistema vazio. Protegido por código de uso único.
 export async function POST(request: Request) {
+  const antes = await prevalidarEnvio(request, TAMANHO_MAX + MARGEM_CAMPOS);
+  if (antes) return antes;
   const form = await request.formData().catch(() => null);
   if (!form) return erro(400, "Envio inválido.");
 

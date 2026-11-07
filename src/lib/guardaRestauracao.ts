@@ -14,3 +14,14 @@ export async function guardarAcesso(codigo: string): Promise<Response | null> {
   if (!codigoConfere(process.env.RESTAURACAO_CODIGO, codigo)) return json(403, "Código de restauração incorreto.");
   return null;
 }
+
+// Roda ANTES de ler o corpo da requisição: com usuários cadastrados a rota "não existe" (404) e, em sistema vazio,
+// o tamanho declarado precisa existir e caber no limite. Sem isto, qualquer pessoa na internet (túnel ligado)
+// poderia fazer o servidor armazenar em memória um corpo gigante antes de qualquer checagem de código.
+export async function prevalidarEnvio(request: Request, maxBytes: number): Promise<Response | null> {
+  if (!(await sistemaVazio())) return json(404, "Não encontrado");
+  const declarado = request.headers.get("content-length");
+  if (declarado === null || !/^\d+$/.test(declarado)) return json(411, "Envio sem tamanho declarado.");
+  if (Number(declarado) > maxBytes) return json(413, "O envio é grande demais.");
+  return null;
+}

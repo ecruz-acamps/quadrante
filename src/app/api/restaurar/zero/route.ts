@@ -1,10 +1,12 @@
-import { guardarAcesso } from "@/lib/guardaRestauracao";
+import { guardarAcesso, prevalidarEnvio } from "@/lib/guardaRestauracao";
 import { limparTentativas } from "@/lib/codigoRestauracao";
 import { criarAdministrador } from "@/lib/adminInicial";
 import { removeEnvValue } from "@/lib/envFile";
 
 // "Começar do zero": cria o primeiro administrador de um sistema vazio. Protegido pelo mesmo código de uso único.
 export async function POST(request: Request) {
+  const antes = await prevalidarEnvio(request, 64 * 1024);
+  if (antes) return antes;
   const corpo = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!corpo) return Response.json({ erro: "Envio inválido." }, { status: 400 });
 
