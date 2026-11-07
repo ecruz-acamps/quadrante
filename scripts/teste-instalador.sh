@@ -45,13 +45,14 @@ fase_instalacao() {
   conferir "/restaurar responde 200" test "$(http http://localhost:3008/restaurar)" = 200
   conferir ".env tem AUTH_SECRET" grep -q '^AUTH_SECRET=' "$DIR/.env"
   conferir ".env tem RESTAURACAO_CODIGO" grep -q '^RESTAURACAO_CODIGO=' "$DIR/.env"
+  conferir ".env tem COOKIE_SECURE=false (login por HTTP na rede local)" grep -q '^COOKIE_SECURE="false"' "$DIR/.env"
   conferir ".env com modo 600" test "$(stat -c %a "$DIR/.env")" = 600
   conferir "pm2 roda como usuário quadrante" bash -c "runuser -u quadrante -- pm2 pid quadrante | grep -Eq '^[1-9]'"
 
   local segredo; segredo=$(grep '^AUTH_SECRET=' "$DIR/.env")
   bash /codigo/install.sh > /tmp/inst2.log 2>&1; local rc2=$?
   conferir "2ª execução termina com código 0" test "$rc2" -eq 0
-  conferir "AUTH_SECRET não mudou na 2ª execução" test "$segredo" = "$(grep '^AUTH_SECRET=' "$DIR/.env")"
+  conferir "AUTH_SECRET não mudou na 2ª execução" test -n "$segredo" -a "$segredo" = "$(grep '^AUTH_SECRET=' "$DIR/.env")"
   conferir "cron de backup aparece 1 vez" test "$(crontab -u quadrante -l | grep -c 'backup-to-drive')" = 1
   conferir "bloco do cron marcado 1 vez" test "$(crontab -u quadrante -l | grep -c '>>> quadrante')" = 1
   conferir "app continua respondendo após a 2ª execução" aguardar_app
