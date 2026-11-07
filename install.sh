@@ -35,13 +35,13 @@ cat <<'BANNER'
   └──────────────────────────────────────────────────┘
 BANNER
 
-etapa "1/8 · Programas do sistema"
+etapa "1/9 · Programas do sistema"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq git curl ca-certificates gnupg openssl tar cron sudo >/dev/null
 verde "✓ git, curl, gpg, cron e sudo prontos"
 
-etapa "2/8 · Node 22 e pm2"
+etapa "2/9 · Node 22 e pm2"
 if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" != 22 ]; then
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null 2>&1
   apt-get install -y -qq nodejs >/dev/null
@@ -49,13 +49,13 @@ fi
 command -v pm2 >/dev/null || npm install -g pm2 >/dev/null 2>&1
 verde "✓ Node $(node -v) e pm2 $(pm2 -v 2>/dev/null | tail -n 1)"
 
-etapa "3/8 · Usuário do sistema"
+etapa "3/9 · Usuário do sistema"
 id "$USUARIO" >/dev/null 2>&1 || useradd --system --create-home --home-dir "/home/$USUARIO" --shell /usr/sbin/nologin "$USUARIO"
 install -d -o "$USUARIO" -g "$USUARIO" /var/log/quadrante
 : >> "$LOG"
 verde "✓ usuário '$USUARIO' e /var/log/quadrante"
 
-etapa "4/8 · Código em $DIR"
+etapa "4/9 · Código em $DIR"
 ATUALIZANDO=""
 if [ -d "$DIR/.git" ]; then
   ATUALIZANDO=1
@@ -74,7 +74,7 @@ else
 fi
 verde "✓ código atualizado ($(como_app git -C "$DIR" rev-parse --short HEAD))"
 
-etapa "5/8 · Configuração (.env)"
+etapa "5/9 · Configuração (.env)"
 if [ ! -f "$DIR/.env" ]; then
   H=$(openssl rand -hex 6 | tr 'a-f' 'A-F')
   (
@@ -94,14 +94,14 @@ else
   verde "✓ .env já existe (mantido como está)"
 fi
 
-etapa "6/8 · Dependências, banco e build (alguns minutos; detalhes em $LOG)"
+etapa "6/9 · Dependências, banco e build (alguns minutos; detalhes em $LOG)"
 if ! como_app bash -c "cd '$DIR' && npm ci --no-audit --no-fund && npx prisma generate && npx prisma migrate deploy && npm run build" >> "$LOG" 2>&1; then
   tail -n 40 "$LOG"
   erro "Falha ao preparar o sistema. O registro completo está em $LOG"
 fi
 verde "✓ dependências, banco e build prontos"
 
-etapa "7/8 · Iniciando o sistema (pm2, porta $PORTA)"
+etapa "7/9 · Iniciando o sistema (pm2, porta $PORTA)"
 como_app pm2 startOrReload "$DIR/ecosystem.config.cjs" --update-env >> "$LOG" 2>&1
 como_app pm2 save >> "$LOG" 2>&1
 if env PATH="$PATH:/usr/bin" pm2 startup systemd -u "$USUARIO" --hp "/home/$USUARIO" >> "$LOG" 2>&1; then
@@ -110,7 +110,7 @@ else
   aviso "Não foi possível ativar o início automático (pm2 startup). Sem systemd isto é esperado; no servidor real rode: sudo env PATH=\$PATH:/usr/bin pm2 startup systemd -u $USUARIO --hp /home/$USUARIO"
 fi
 
-etapa "8/8 · Agendamento dos backups (cron)"
+etapa "8/9 · Agendamento dos backups (cron)"
 BLOCO=$(cat <<CRON
 # >>> quadrante >>>
 PATH=/usr/bin:/bin
@@ -122,6 +122,30 @@ CRON
 ATUAL=$(crontab -u "$USUARIO" -l 2>/dev/null | sed '/# >>> quadrante >>>/,/# <<< quadrante <<</d' || true)
 printf '%s\n%s\n' "$ATUAL" "$BLOCO" | crontab -u "$USUARIO" -
 verde "✓ backup às 03:00 e alarme de silêncio às 09:00 (só agem depois que o .env tiver BACKUP_PASSPHRASE)"
+
+etapa "9/9 · Preparando o acesso pela internet (túnel Cloudflare, desligado por enquanto)"
+# O túnel é ligado depois, em Configurações. Aqui só deixamos tudo pronto: cloudflared, auxiliar e regra do sudo.
+if ! command -v cloudflared >/dev/null; then
+  if ( mkdir -p --mode=0755 /usr/share/keyrings \
+      && curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg \
+      && echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' > /etc/apt/sources.list.d/cloudflared.list \
+      && apt-get update -qq && apt-get install -y -qq cloudflared >/dev/null ) >> "$LOG" 2>&1; then
+    verde "✓ cloudflared instalado"
+  else
+    aviso "Não foi possível instalar o cloudflared agora (detalhes em $LOG). Rode este instalador de novo antes de ligar o túnel."
+  fi
+fi
+install -m 755 -o root -g root "$DIR/scripts/quadrante-tunel" /usr/local/sbin/quadrante-tunel
+install -m 644 -o root -g root "$DIR/scripts/quadrante-cloudflared.service" /etc/systemd/system/quadrante-cloudflared.service
+# a regra do sudo é validada antes de valer (arquivo com ponto no nome é ignorado pelo sudo até ser renomeado)
+install -m 440 -o root -g root "$DIR/scripts/quadrante-sudoers" /etc/sudoers.d/quadrante.novo
+if visudo -cf /etc/sudoers.d/quadrante.novo >/dev/null; then
+  mv /etc/sudoers.d/quadrante.novo /etc/sudoers.d/quadrante
+else
+  rm -f /etc/sudoers.d/quadrante.novo
+  erro "A regra do sudo do túnel é inválida; nada foi alterado em /etc/sudoers.d."
+fi
+verde "✓ auxiliar do túnel e regra do sudo prontos (túnel desligado)"
 
 FUSO=$(cat /etc/timezone 2>/dev/null || timedatectl show -p Timezone --value 2>/dev/null || true)
 [ "$FUSO" = "America/Sao_Paulo" ] || aviso "O fuso do servidor é '${FUSO:-desconhecido}'. Os horários do cron seguem o relógio do servidor; para o horário de Brasília: sudo timedatectl set-timezone America/Sao_Paulo"

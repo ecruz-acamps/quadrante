@@ -57,6 +57,14 @@ fase_instalacao() {
   conferir "cron de backup aparece 1 vez" test "$(crontab -u quadrante -l | grep -c 'backup-to-drive')" = 1
   conferir "bloco do cron marcado 1 vez" test "$(crontab -u quadrante -l | grep -c '>>> quadrante')" = 1
   conferir "app continua respondendo após a 2ª execução" aguardar_app
+  conferir "cloudflared instalado" command -v cloudflared
+  conferir "auxiliar do túnel é do root, modo 755" test "$(stat -c '%U %a' /usr/local/sbin/quadrante-tunel)" = "root 755"
+  conferir "unidade quadrante-cloudflared instalada" test -s /etc/systemd/system/quadrante-cloudflared.service
+  conferir "ExecStart da unidade aponta para um cloudflared que existe" bash -c "test -x \"\$(grep '^ExecStart=' /etc/systemd/system/quadrante-cloudflared.service | sed 's/^ExecStart=//; s/ .*//')\""
+  conferir "regra do sudo válida" visudo -cf /etc/sudoers.d/quadrante
+  conferir "quadrante roda o auxiliar (status)" runuser -u quadrante -- sudo -n /usr/local/sbin/quadrante-tunel status
+  conferir "quadrante NÃO roda outro comando por sudo" bash -c "! runuser -u quadrante -- sudo -n /bin/ls"
+  conferir "túnel continua desligado (sem cloudflared.env)" test ! -e /etc/quadrante/cloudflared.env
 }
 
 fase_restauracao() {
