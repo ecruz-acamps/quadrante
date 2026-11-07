@@ -4,7 +4,7 @@ module.exports = {
   apps: [
     {
       name: "quadrante",
-      cwd: "/home/true/quadrante/app",
+      cwd: __dirname, // a pasta onde o ecosystem.config.cjs está (o instalador usa /opt/quadrante)
       script: "node_modules/next/dist/bin/next",
       args: "start -p 3008",
       env: { NODE_ENV: "production" },

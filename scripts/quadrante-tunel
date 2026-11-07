@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Auxiliar do túnel Cloudflare do Quadrante. Roda como root; o app (usuário `quadrante`) o chama por sudo.
+# É o ÚNICO comando de root que o app pode usar (ver scripts/quadrante-sudoers).
+#
+#   quadrante-tunel ligar     lê UMA linha do stdin (o token do túnel), guarda em /etc/quadrante/cloudflared.env (600)
+#                             e liga o serviço quadrante-cloudflared
+#   quadrante-tunel desligar  para e desativa o serviço (não apaga nada na Cloudflare)
+#   quadrante-tunel status    imprime "ativo" ou "inativo"
+#
+# O token nunca vai em argumento de processo (apareceria na lista de processos): vai pelo stdin e fica num arquivo 600.
+set -euo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+ARQ=/etc/quadrante/cloudflared.env
+UNIDADE=quadrante-cloudflared
+
+[ "$(id -u)" = 0 ] || { echo "quadrante-tunel: precisa rodar como root" >&2; exit 2; }
+[ $# -eq 1 ] || { echo "uso: quadrante-tunel ligar|desligar|status" >&2; exit 2; }
+
+case "$1" in
+  ligar)
+    IFS= read -r TOKEN || true
+    # só caracteres de token (base64/base64url); nada de espaço, ponto-e-vírgula ou quebra de linha
+    [[ "$TOKEN" =~ ^[A-Za-z0-9+/=_-]{50,2000}$ ]] || { echo "quadrante-tunel: token inválido" >&2; exit 2; }
+    install -d -m 700 /etc/quadrante
+    ( umask 077; printf 'TUNNEL_TOKEN=%s\n' "$TOKEN" > "$ARQ.novo" )
+    mv "$ARQ.novo" "$ARQ"
+    systemctl daemon-reload
+    systemctl enable "$UNIDADE"
+    systemctl restart "$UNIDADE" # restart (e não só enable --now): com o serviço já ativo, o token novo só vale se reiniciar
+    ;;
+  desligar)
+    systemctl disable --now "$UNIDADE"
+    ;;
+  status)
+    if systemctl is-active --quiet "$UNIDADE"; then echo ativo; else echo inativo; fi
+    ;;
+  *)
+    echo "uso: quadrante-tunel ligar|desligar|status" >&2
+    exit 2
+    ;;
+esac

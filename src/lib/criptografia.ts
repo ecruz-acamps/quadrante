@@ -7,6 +7,8 @@ function gpg(args: string[], senha: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const p = spawn("gpg", ["--batch", "--yes", "--quiet", "--pinentry-mode", "loopback", "--passphrase-fd", "0", ...args], {
       stdio: ["pipe", "ignore", "pipe"],
+      // mensagens do gpg sempre em inglês: restaurarBackup distingue "senha errada" pelo texto do erro
+      env: { ...process.env, LC_ALL: "C" },
     });
     let erro = "";
     p.stderr.on("data", (d) => (erro += d));

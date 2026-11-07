@@ -41,3 +41,11 @@ test("meu-setor/page.tsx usa requireCoordenador e não requireUser", () => {
   assert.ok(/\brequireCoordenador\(/.test(codigo), "meu-setor/page.tsx deve chamar requireCoordenador(");
   assert.ok(!/\brequireUser\(/.test(codigo), "requireUser em meu-setor redireciona o coordenador em loop");
 });
+
+test("toda server action de actionsTunel.ts confere requireRole(\"SUPER\")", () => {
+  const codigo = semComentarios(readFileSync(join(RAIZ, "configuracoes", "actionsTunel.ts"), "utf8"));
+  const acoes = (codigo.match(/export async function /g) ?? []).length;
+  const checagens = (codigo.match(/await requireRole\("SUPER"\)/g) ?? []).length;
+  assert.ok(acoes > 0, "nenhuma server action encontrada em actionsTunel.ts");
+  assert.equal(checagens, acoes, `${acoes} ação(ões), mas ${checagens} requireRole("SUPER")`);
+});

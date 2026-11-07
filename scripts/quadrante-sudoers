@@ -1,0 +1,2 @@
+# O app roda como o usuário `quadrante`. Este é o único comando de root que ele pode chamar (sem senha).
+quadrante ALL=(root) NOPASSWD: /usr/local/sbin/quadrante-tunel ligar, /usr/local/sbin/quadrante-tunel desligar, /usr/local/sbin/quadrante-tunel status

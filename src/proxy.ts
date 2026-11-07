@@ -8,6 +8,7 @@ export function proxy(request: NextRequest) {
   return NextResponse.next({ request: { headers } });
 }
 
+// api/restaurar fica de fora: o proxy bufferizaria o corpo do envio e o limitaria a 10 MB (o backup pode ser maior).
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|api/restaurar).*)"],
 };
