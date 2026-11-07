@@ -23,6 +23,7 @@ if [ "${1:-}" != "--dentro" ]; then
 fi
 
 # ---------------------------------------------------------------- dentro do contêiner (root, sem systemd)
+set +e
 set -uo pipefail
 FALHAS=0
 DIR=/opt/quadrante
