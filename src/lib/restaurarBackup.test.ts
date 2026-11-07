@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { criarBancoTemporario } from "./testdb";
 import { criptografarArquivo } from "./criptografia";
-import { prepararBackup, aplicarBackup, ErroRestauracao, type BackupPreparado } from "./restaurarBackup";
+import { prepararBackup, aplicarBackup, ErroRestauracao } from "./restaurarBackup";
 
 const SENHA = "senha-de-teste-123";
 const ENV_BACKUP = 'DATABASE_URL="file:./quadrante.db"\nAUTH_SECRET="do-backup"\n';

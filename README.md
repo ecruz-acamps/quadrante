@@ -19,12 +19,12 @@ Produção: `https://quadrante.movimentocampista.com.br` (acesso restrito a quem
 3. [Roteiro (o que vem por aí)](#roteiro-o-que-vem-por-aí)
 4. [Tecnologias](#tecnologias)
 5. [Estrutura do projeto](#estrutura-do-projeto)
-6. [Instalação do zero](#instalação-do-zero)
+6. [Instalação do zero](#instalação-do-zero) (um comando, restauração pela interface, túnel Cloudflare)
 7. [Variáveis de ambiente (.env)](#variáveis-de-ambiente-env)
 8. [Rodando em desenvolvimento](#rodando-em-desenvolvimento)
 9. [Publicando em produção](#publicando-em-produção)
 10. [Backup e recuperação](#backup-e-recuperação)
-11. [Restaurar o servidor completo (passo a passo)](#restaurar-o-servidor-completo-passo-a-passo)
+11. [Mudar de servidor / restaurar o servidor completo](#mudar-de-servidor--restaurar-o-servidor-completo)
 12. [Operação do dia a dia](#operação-do-dia-a-dia)
 13. [Solução de problemas](#solução-de-problemas)
 
@@ -137,44 +137,69 @@ docs/                      planos e notas de desenho
 
 ## Instalação do zero
 
-### Pré-requisitos
+### Servidor: um comando
 
-- Linux (o servidor atual é Debian), **Node.js 22** (recomendado via [nvm](https://github.com/nvm-sh/nvm)) e **npm**
-- **git**
-- **PM2** (`npm i -g pm2`) para produção
-- Um jeito de expor a porta ao público com **HTTPS** (proxy reverso ou túnel). O cookie de sessão é `secure`
-  em produção, então o acesso precisa ser por HTTPS.
-
-### Passos
+Num **Debian 12** (ou Ubuntu) limpo, como administrador:
 
 ```bash
-# 1. Baixar o código (repositório privado: use sua conta/token do GitHub)
-git clone https://github.com/ecruz-acamps/quadrante.git
-cd quadrante
-
-# 2. Instalar dependências
-npm ci
-
-# 3. Criar o .env (veja a seção abaixo). Se tiver um backup, copie o .env dele.
-nano .env
-
-# 4. Preparar o banco
-#    a) Restaurando um backup: copie o quadrante.db para prisma/quadrante.db e rode:
-npx prisma migrate deploy
-#    b) Banco novo e vazio: o mesmo comando cria todas as tabelas...
-npx prisma migrate deploy
-#       ...e depois crie o usuário administrador (se não definir a senha, ela é impressa no terminal)
-SEED_ADMIN_PASSWORD='uma-senha-forte' npx tsx prisma/seed.ts
-
-# 5. Gerar o cliente Prisma
-npx prisma generate
-
-# 6. Subir em desenvolvimento (porta 3005)
-npm run dev
+curl -fsSL https://raw.githubusercontent.com/ecruz-acamps/quadrante/main/install.sh | sudo bash
 ```
 
-Em um banco novo, o usuário criado é `admin@quadrante.local` (perfil SUPER). Depois do primeiro login,
-cadastre os **setores**, as **missões** e os demais usuários pela interface.
+O instalador instala o que falta (Node 22, pm2, git, gpg, cron), cria o usuário `quadrante`, baixa o código em
+`/opt/quadrante`, monta o `.env` mínimo, aplica as migrações, faz o build, sobe o sistema na **porta 3008** (volta
+sozinho após reiniciar a máquina) e recria o agendamento dos backups. Também deixa o `cloudflared` e um auxiliar
+prontos para o acesso pela internet, **sem ligar nenhum túnel**. No fim ele mostra o endereço
+`http://<IP>:3008/restaurar` e um **código de restauração** (uso único).
+
+**Rodar de novo atualiza** o sistema: não troca `AUTH_SECRET`/`BACKUP_PASSPHRASE` nem apaga o banco (antes de atualizar
+ele guarda uma cópia em `prisma/quadrante.db.bak-antes-deploy-AAAAMMDD`). Variáveis opcionais: `QUADRANTE_DIR`,
+`QUADRANTE_REPO`, `QUADRANTE_BRANCH`.
+
+### Primeiro acesso: restaurar o backup pela interface
+
+1. Abra `http://<IP>:3008/restaurar` (rede local). Em sistema recém-instalado, o login leva para essa tela.
+2. Baixe do Google Drive o `quadrante-backup-….tar.gz.gpg` mais recente e envie na tela, com o **código de restauração**
+   e a **senha do backup** (`BACKUP_PASSPHRASE`, do seu cofre de senhas).
+3. O sistema descriptografa, confere o banco, troca banco e `.env`, aplica as migrações e reinicia sozinho. Em qualquer
+   erro (senha errada, arquivo danificado, banco reprovado, migração que falha) nada é substituído. Depois abre o login
+   normal, com os mesmos usuários e logins.
+
+Sem backup, o bloco **Começar do zero** cria o primeiro administrador. A tela `/restaurar` só existe enquanto não há
+nenhum usuário cadastrado (depois responde 404) e erra o código no máximo 5 vezes em 15 minutos.
+
+> Na rede local o acesso é por HTTP, então o instalador grava `COOKIE_SECURE="false"` no `.env` (sem isso o navegador
+> descarta o cookie de login) e a restauração preserva essa linha. Ao ligar o túnel (abaixo) ela é removida.
+
+### Acesso pela internet (túnel Cloudflare)
+
+Depois de restaurar, entre como administrador (perfil SUPER) em **Configurações › Acesso pela internet**:
+
+1. Crie na Cloudflare um **token de API** com as permissões *Conta › Cloudflare Tunnel › Editar*, *Zona › DNS › Editar*
+   e *Zona › Zona › Leitura* (o token de conta `cfat_…` ou de usuário servem).
+2. Cole o token e o **endereço público** (ex.: `quadrante.movimentocampista.com.br`) e clique em **Criar túnel**.
+   O sistema cria o túnel, a rota para `localhost:3008` e o registro DNS, e liga o serviço `cloudflared`.
+3. Se o endereço **já aponta para outro lugar** (o servidor antigo), a tela mostra o registro atual e pede confirmação
+   antes de trocar: é essa troca que passa o acesso para o servidor novo.
+
+O token da API é usado uma vez e **não é guardado** (nem em disco, `.env`, backup ou log); só o token do túnel
+fica, em `/etc/quadrante/cloudflared.env` (modo 600, só root). Depois de ligar, use o endereço `https://`. **Desligar túnel**
+para o serviço e volta a permitir HTTP na rede local. Abra o token numa rede em que você confie: na rede local ele
+trafega por HTTP.
+
+### Para desenvolvimento
+
+```bash
+git clone https://github.com/ecruz-acamps/quadrante.git
+cd quadrante
+npm ci
+nano .env                       # veja a seção abaixo; copie o de um backup se tiver
+npx prisma migrate deploy       # cria as tabelas (ou aplica as pendentes)
+SEED_ADMIN_PASSWORD='uma-senha-forte' npx tsx prisma/seed.ts   # só em banco novo e vazio
+npx prisma generate
+npm run dev                     # http://localhost:3005
+```
+
+Em um banco novo, o usuário criado é `admin@quadrante.local` (perfil SUPER).
 
 ## Variáveis de ambiente (.env)
 
@@ -191,7 +216,10 @@ Crie `.env` na raiz do projeto. **Nunca o envie ao git** (já está no `.gitigno
 | `GOOGLE_DRIVE_REFRESH_TOKEN` | para backup | Preenchido sozinho ao conectar o Drive em Configurações. |
 | `GOOGLE_DRIVE_FOLDER_ID` | para backup | ID da pasta do Drive que recebe os backups. |
 | `PUSHBIRD_WEBHOOK_URL` | opcional | Webhook que envia notificação ao celular quando alguém se inscreve no Cerco. |
-| `COOKIE_SECURE` | opcional | `false` permite acessar por HTTP em rede local. Padrão: seguro em produção. |
+| `COOKIE_SECURE` | opcional | `false` permite acessar por HTTP em rede local (o instalador grava; ligar o túnel remove). Padrão: seguro em produção. |
+| `BACKUP_PASSPHRASE` | para backup | Senha do backup criptografado (16+ caracteres; `openssl rand -base64 33`). **Guarde no cofre de senhas, fora do servidor.** |
+| `RESTAURACAO_CODIGO` | só na instalação | Código de uso único da tela `/restaurar`; o instalador gera e ele some depois de restaurar. |
+| `TUNEL_HOSTNAME` | automática | Endereço público do túnel, preenchido ao ligar o túnel em Configurações. |
 | `SEED_ADMIN_PASSWORD` | opcional | Senha do admin criado pelo seed (senão é gerada aleatoriamente). |
 
 Se mudar de domínio, atualize os dois `*_REDIRECT_URI` **no `.env` e no Google Cloud Console**.
@@ -209,14 +237,14 @@ trabalhe numa **cópia** do banco, nunca no de produção.
 
 ## Publicando em produção
 
-Primeira vez:
+Primeira vez (o `install.sh` já faz tudo isto; use só se preferir manual):
 
 ```bash
 npm ci
 npx prisma generate
 npx prisma migrate deploy     # aplica migrações pendentes (faça backup do banco antes!)
 npm run build
-pm2 start npm --name quadrante -- run start     # escuta na porta 3008
+pm2 start ecosystem.config.cjs                  # escuta na porta 3008
 pm2 save && pm2 startup                          # volta sozinho após reiniciar a máquina
 ```
 
@@ -270,7 +298,8 @@ Configuração:
    ```bash
    npx tsx scripts/backup-to-drive.ts
    ```
-4. **Agende** (`crontab -e`). O segundo item é o alarme de silêncio: avisa no celular se não há backup bom há mais de 26 h
+4. **Agende.** O `install.sh` já cria este agendamento para o usuário `quadrante` (as linhas só agem depois que o `.env` tem a
+   `BACKUP_PASSPHRASE`). Para fazer à mão, use `crontab -e`. O segundo item é o alarme de silêncio: avisa no celular se não há backup bom há mais de 26 h
    (cobre o caso de o cron ou o servidor nem rodarem o backup):
    ```cron
    0 3 * * * export PATH=/caminho/do/node/bin:/usr/bin:/bin; cd /caminho/para/quadrante && ./node_modules/.bin/tsx scripts/backup-to-drive.ts >> /var/log/quadrante/backup.log 2>&1
@@ -287,43 +316,35 @@ npx tsx scripts/testar-restauracao.ts      # termina com "RESTAURAÇÃO OK."
 > O agendamento (cron) vive no servidor, não no repositório: ao trocar de máquina, recrie-o. O cron não enxerga
 > o `node` do nvm sem o `export PATH`.
 
-## Restaurar o servidor completo (passo a passo)
+## Mudar de servidor / restaurar o servidor completo
 
-Cenário: o servidor foi perdido; você tem o GitHub e o backup no Drive.
+Roteiro para trocar de máquina (ou recuperar o sistema depois de perder o servidor, tendo o GitHub e o backup do Drive):
 
-1. **Máquina nova:** instale Node 22, git e PM2 (`npm i -g pm2`).
-2. **Código:**
-   ```bash
-   git clone https://github.com/ecruz-acamps/quadrante.git && cd quadrante
-   npm ci
-   ```
-3. **Backup:** baixe pelo navegador o `quadrante-backup-….tar.gz.gpg` mais recente da pasta do Drive,
-   descriptografe com a `BACKUP_PASSPHRASE` (do seu cofre de senhas) e extraia dentro do projeto:
-   ```bash
-   gpg --output backup.tar.gz --decrypt quadrante-backup-AAAA-MM-DD-HHMM.tar.gz.gpg   # pede a senha
-   tar -xzf backup.tar.gz -C .
-   ```
-   Isso recoloca `prisma/quadrante.db` e `.env` nos lugares certos.
-4. **Banco e cliente:**
-   ```bash
-   npx prisma migrate deploy     # só aplica o que faltar; é seguro rodar sempre
-   npx prisma generate
-   ```
-5. **Build e subida:**
-   ```bash
-   npm run build
-   pm2 start npm --name quadrante -- run start
-   pm2 save && pm2 startup
-   ```
-6. **Rede:** exponha `localhost:3008` com HTTPS no mesmo domínio (ou, se mudar de domínio, atualize os
-   `*_REDIRECT_URI` no `.env` e no Google Cloud) e confira o DNS.
-7. **Verificar:** faça login, abra **Quadrante de Servos** e confira se os totais batem. Reconecte o Drive
-   em Configurações e **reagende o cron do backup**.
+1. **No servidor antigo (se ainda existir):** rode um backup agora (`npx tsx scripts/backup-to-drive.ts`) e o teste de
+   restauração (`npx tsx scripts/testar-restauracao.ts`, deve terminar com "RESTAURAÇÃO OK."). Confirme que a
+   `BACKUP_PASSPHRASE` está no seu cofre de senhas.
+2. **No servidor novo:** rode o `install.sh` (comando acima).
+3. Abra `http://<IP>:3008/restaurar`, envie o backup mais recente do Drive e a senha (seção "Primeiro acesso").
+4. **Confira pela rede local:** login, totais do Quadrante de Servos, e rode o backup manual uma vez
+   (`cd /opt/quadrante && sudo -u quadrante ./node_modules/.bin/tsx scripts/backup-to-drive.ts`). Se o Google Drive pedir
+   para reconectar, use Configurações › Conectar Google Drive.
+5. **Ligue o acesso pela internet** em Configurações, no mesmo endereço de hoje, confirmando a troca do DNS que aponta
+   para o servidor antigo (se o domínio mudar, atualize os `*_REDIRECT_URI` no `.env` e no Google Cloud). Confira o acesso
+   de fora da rede.
+6. **Só então** desligue o servidor antigo.
 
-**Sem backup do banco?** O código sobe, mas os dados estão perdidos. Cópias antigas (`prisma/quadrante.db.bak-*`)
-e as planilhas `.xlsx` das edições, se ainda existirem, permitem reconstruir parte do histórico com os
-scripts de importação em `scripts/` (`import-excel.ts`, `import-historico.ts`, …). Por isso o backup
-agendado é essencial.
+O código do sistema vem do GitHub; **os dados** (`prisma/quadrante.db` e `.env`) vêm do backup. Sem backup do banco, o
+código sobe, mas os dados estão perdidos. Cópias antigas (`prisma/quadrante.db.bak-*`) e as planilhas `.xlsx` das edições,
+se ainda existirem, permitem reconstruir parte do histórico com os scripts de importação em `scripts/`
+(`import-excel.ts`, `import-historico.ts`, …). Por isso o backup agendado é essencial.
+
+### Testes do instalador (precisam de Docker)
+
+```bash
+bash scripts/teste-instalador.sh        # instala e restaura num debian:12 limpo (usa o que está commitado; ~10 min)
+bash scripts/teste-quadrante-tunel.sh   # auxiliar root do túnel e regra do sudo
+npx tsx scripts/gerar-backup-teste.ts /tmp/qd "senha-de-teste-123"   # backup SINTÉTICO para testar a restauração
+```
 
 ## Operação do dia a dia
 
