@@ -26,7 +26,8 @@ case "$1" in
     ( umask 077; printf 'TUNNEL_TOKEN=%s\n' "$TOKEN" > "$ARQ.novo" )
     mv "$ARQ.novo" "$ARQ"
     systemctl daemon-reload
-    systemctl enable --now "$UNIDADE"
+    systemctl enable "$UNIDADE"
+    systemctl restart "$UNIDADE" # restart (e não só enable --now): com o serviço já ativo, o token novo só vale se reiniciar
     ;;
   desligar)
     systemctl disable --now "$UNIDADE"

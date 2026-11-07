@@ -42,7 +42,8 @@ echo "$TOKEN_OK" | $T ligar; rc=$?
 conferir "ligar com token válido termina com 0" test "$rc" -eq 0
 conferir "cloudflared.env criado com modo 600" test "$(stat -c %a $ARQ)" = 600
 conferir "cloudflared.env contém TUNNEL_TOKEN=<token>" grep -qx "TUNNEL_TOKEN=$TOKEN_OK" $ARQ
-conferir "ligar chamou 'enable --now quadrante-cloudflared'" grep -qx 'enable --now quadrante-cloudflared' /tmp/systemctl.log
+conferir "ligar habilita o serviço no boot ('enable quadrante-cloudflared')" grep -qx 'enable quadrante-cloudflared' /tmp/systemctl.log
+conferir "ligar REINICIA o serviço (token novo vale mesmo com o serviço já ativo)" grep -qx 'restart quadrante-cloudflared' /tmp/systemctl.log
 conferir "status → ativo" test "$($T status)" = ativo
 
 # duas linhas: só a primeira vale; a segunda nunca é executada
@@ -50,6 +51,7 @@ rm -f $ARQ /tmp/ativo
 printf '%s\n%s\n' "$TOKEN_OK" 'touch /tmp/invadido' | $T ligar
 conferir "segunda linha do stdin é ignorada (não executa nada)" test ! -e /tmp/invadido
 conferir "ligar com 2 linhas usa só a primeira" grep -qx "TUNNEL_TOKEN=$TOKEN_OK" $ARQ
+conferir "cada ligar reinicia o serviço (2 reinícios até aqui)" test "$(grep -c '^restart quadrante-cloudflared$' /tmp/systemctl.log)" -ge 2
 
 for ruim in "tem espaco $TOKEN_OK" ";rm -rf /" "curto123" "" "$TOKEN_OK;touch /tmp/invadido" "\$(touch /tmp/invadido)$TOKEN_OK"; do
   rm -f $ARQ
