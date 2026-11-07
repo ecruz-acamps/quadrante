@@ -26,6 +26,14 @@ export default async function FormacaoPage({ searchParams }: { searchParams: Pro
     (s) => (!setor || s.setor === setor) && (!termo || normalizarBusca(s.pessoa.nome).includes(termo)),
   );
 
+  // mesma contagem da lista de Servos: pessoa com um único registro (a missão atual) é "1 servir"
+  const contagens = await db.servo.groupBy({
+    by: ["pessoaId"],
+    where: { pessoaId: { in: todos.map((s) => s.pessoaId) } },
+    _count: true,
+  });
+  const primeiroServir = new Set(contagens.filter((c) => c._count <= 1).map((c) => c.pessoaId));
+
   const setores = await db.setor.findMany({ orderBy: { nome: "asc" } });
 
   const grupos = new Map<string, typeof servos>();
@@ -97,7 +105,14 @@ export default async function FormacaoPage({ searchParams }: { searchParams: Pro
                 <tbody className="divide-y divide-[var(--line)]">
                   {lista.map((s) => (
                     <tr key={s.id} data-nome={normalizarBusca(s.pessoa.nome)}>
-                      <td className="px-4 py-2">{s.pessoa.nome}</td>
+                      <td className="px-4 py-2">
+                        {s.pessoa.nome}
+                        {primeiroServir.has(s.pessoaId) && (
+                          <span className="ml-2 whitespace-nowrap rounded-full bg-[#e6f2ea] px-2 py-0.5 font-[var(--font-plex-mono)] text-[0.65rem] font-medium text-[#2f6b45]">
+                            1 servir
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-2">
                         <FormacaoToggle servoId={s.id} numero={1} valor={s.formacao1} />
                       </td>

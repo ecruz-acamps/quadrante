@@ -259,6 +259,11 @@ export default async function ServosPage({
                             {s.pessoa.celular}
                           </a>
                         )}
+                        {(missoesPorPessoa.get(s.pessoaId) ?? 1) <= 1 && (
+                          <span className="whitespace-nowrap rounded-full bg-[#e6f2ea] px-2 py-0.5 font-[var(--font-plex-mono)] text-[0.65rem] font-medium text-[#2f6b45]">
+                            1 servir
+                          </span>
+                        )}
                         {(missoesPorPessoa.get(s.pessoaId) ?? 1) > 1 && (
                           <span className="whitespace-nowrap rounded-full bg-[#faf3e0] px-2 py-0.5 font-[var(--font-plex-mono)] text-[0.65rem] font-medium text-[#8a6616]">
                             {missoesPorPessoa.get(s.pessoaId)}ª missão
