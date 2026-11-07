@@ -48,3 +48,13 @@ export async function criarEAtivarTunel(e: EntradaTunel, d: DependenciasTunel): 
   await gravarRegistroDns(d.fetch, e.tokenApi, zonaId, e.hostname, tunel.id, existente?.id);
   return { estado: "OK", hostname: e.hostname, tunelId: tunel.id };
 }
+
+// A confirmação da troca de DNS vale só para o endereço que foi MOSTRADO ao dono na tela de confirmação:
+// se ele editar o campo depois de ver o aviso, precisa confirmar de novo.
+export function confirmaTroca(
+  campos: { confirmar?: string | null; confirmarHostname?: string | null },
+  hostname: string,
+): boolean {
+  const norm = (t: string) => t.trim().toLowerCase();
+  return campos.confirmar === "1" && !!campos.confirmarHostname && norm(campos.confirmarHostname) === norm(hostname);
+}

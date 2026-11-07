@@ -3,14 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { ErroCloudflare } from "@/lib/cloudflare";
-import { criarEAtivarTunel } from "@/lib/tunelCloudflare";
+import { confirmaTroca, criarEAtivarTunel } from "@/lib/tunelCloudflare";
 import { chamarAuxiliar, ErroAuxiliar } from "@/lib/auxiliarTunel";
 import { removeEnvValue, setEnvValue } from "@/lib/envFile";
 
 export type EstadoLigarTunel = {
   erro?: string;
   ok?: string;
-  confirmar?: { tipo: string; conteudo: string };
+  confirmar?: { tipo: string; conteudo: string; hostname: string };
 };
 
 function mensagemSegura(err: unknown, padrao: string): string {
@@ -28,10 +28,17 @@ export async function ligarTunelAction(_prev: unknown, fd: FormData): Promise<Es
   if (!tokenApi) return { erro: "Cole o token da API da Cloudflare." };
   try {
     const r = await criarEAtivarTunel(
-      { tokenApi, hostname, confirmarTrocaDns: fd.get("confirmar") === "1" },
+      {
+        tokenApi,
+        hostname,
+        confirmarTrocaDns: confirmaTroca(
+          { confirmar: fd.get("confirmar") as string | null, confirmarHostname: fd.get("confirmarHostname") as string | null },
+          hostname,
+        ),
+      },
       { fetch, ligar: (tokenTunel) => chamarAuxiliar("ligar", `${tokenTunel}\n`).then(() => undefined) },
     );
-    if (r.estado === "CONFIRMAR_TROCA") return { confirmar: r.atual };
+    if (r.estado === "CONFIRMAR_TROCA") return { confirmar: { ...r.atual, hostname } };
     await setEnvValue("TUNEL_HOSTNAME", r.hostname);
     // agora o acesso é por HTTPS: volta ao padrão seguro (cookie de login "secure"); vale na hora
     await removeEnvValue("COOKIE_SECURE");

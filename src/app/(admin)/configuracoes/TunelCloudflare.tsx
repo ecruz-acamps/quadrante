@@ -100,10 +100,11 @@ export default function TunelCloudflare({
         {estado?.confirmar ? (
           <div className="rounded border border-[var(--signal)]/40 p-3 space-y-2">
             <p className="text-sm text-[var(--ink)]">
-              Este endereço já aponta para outro lugar (<code>{estado.confirmar.tipo}</code> →{" "}
+              <strong>{estado.confirmar.hostname}</strong> já aponta para outro lugar (<code>{estado.confirmar.tipo}</code> →{" "}
               <code>{estado.confirmar.conteudo}</code>). Trocar passa o acesso para <strong>este servidor</strong>; o servidor
               antigo deixa de receber visitas.
             </p>
+            <input type="hidden" name="confirmarHostname" value={estado.confirmar.hostname} />
             <button name="confirmar" value="1" disabled={pendente} className="btn-primary px-4 py-2">
               {pendente ? "Trocando…" : "Trocar para este servidor"}
             </button>

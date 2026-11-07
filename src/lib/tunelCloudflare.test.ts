@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { criarEAtivarTunel } from "./tunelCloudflare";
+import { criarEAtivarTunel, confirmaTroca } from "./tunelCloudflare";
 import { ErroCloudflare } from "./cloudflare";
 
 const TOKEN_API = "token-da-api-super-secreto-0123456789";
@@ -110,4 +110,12 @@ test("o resultado nunca contém o token da API nem o token do túnel", async () 
   ]);
   assert.equal(texto.includes(TOKEN_API), false);
   assert.equal(texto.includes(TOKEN_TUNEL), false);
+});
+
+test("confirmaTroca só vale para o endereço que foi mostrado na confirmação", () => {
+  assert.equal(confirmaTroca({ confirmar: "1", confirmarHostname: "app.x.com" }, "app.x.com"), true);
+  assert.equal(confirmaTroca({ confirmar: "1", confirmarHostname: "app.x.com" }, "outro.x.com"), false);
+  assert.equal(confirmaTroca({ confirmar: "1" }, "app.x.com"), false);
+  assert.equal(confirmaTroca({ confirmar: "0", confirmarHostname: "app.x.com" }, "app.x.com"), false);
+  assert.equal(confirmaTroca({ confirmar: "1", confirmarHostname: " APP.x.com " }, " app.X.com"), true);
 });
