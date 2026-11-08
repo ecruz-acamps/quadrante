@@ -74,6 +74,20 @@ export default async function ConfiguracoesPage({
           </a>
         </div>
 
+        <div className="card p-4 mt-4">
+          <p className="text-sm text-[var(--ink-soft)]/80 mb-4">
+            <strong>Levar para um servidor novo:</strong> baixa o sistema completo (banco + configurações) em um único arquivo.
+            No servidor novo, abra a tela <code>/restaurar</code>, escolha este arquivo e clique em Restaurar (sem senha).
+            O arquivo contém as chaves do sistema: apague-o depois de usar.
+          </p>
+          <a
+            href="/api/backup?completo=1"
+            className="inline-block rounded px-4 py-2 border border-[var(--brass)] text-[var(--ink)] font-medium"
+          >
+            Baixar para levar a outro servidor
+          </a>
+        </div>
+
         {missao && (
           <div className="card p-4 mt-4">
             <p className="text-sm text-[var(--ink-soft)]/80 mb-4">
