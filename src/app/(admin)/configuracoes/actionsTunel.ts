@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { sistemaVazio } from "@/lib/sistemaVazio";
 import { requireRole } from "@/lib/auth";
 import { ErroCloudflare } from "@/lib/cloudflare";
 import { confirmaTroca, criarEAtivarTunel } from "@/lib/tunelCloudflare";
@@ -22,7 +23,8 @@ function mensagemSegura(err: unknown, padrao: string): string {
 
 // O token da API é usado só aqui, nesta requisição: não é gravado em disco, .env nem log.
 export async function ligarTunelAction(_prev: unknown, fd: FormData): Promise<EstadoLigarTunel> {
-  await requireRole("SUPER");
+  // numa instalação nova (sem usuários) ainda não há login: a tela /restaurar também pode ligar o túnel
+  if (!(await sistemaVazio())) await requireRole("SUPER");
   const tokenApi = String(fd.get("tokenApi") ?? "").trim();
   const hostname = String(fd.get("hostname") ?? "").trim().toLowerCase();
   if (!tokenApi) return { erro: "Cole o token da API da Cloudflare." };
@@ -43,6 +45,7 @@ export async function ligarTunelAction(_prev: unknown, fd: FormData): Promise<Es
     // agora o acesso é por HTTPS: volta ao padrão seguro (cookie de login "secure"); vale na hora
     await removeEnvValue("COOKIE_SECURE");
     revalidatePath("/configuracoes");
+    revalidatePath("/restaurar");
     return { ok: `Túnel ligado. Em alguns minutos o sistema abre em https://${r.hostname} (use esse endereço daqui para frente).` };
   } catch (err) {
     return { erro: mensagemSegura(err, "Não foi possível criar o túnel. Veja o registro do servidor.") };

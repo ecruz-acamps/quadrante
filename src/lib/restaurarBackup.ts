@@ -28,15 +28,32 @@ export type BackupPreparado = { pasta: string; arquivoBanco: string; arquivoEnv:
 const ENTRADAS_PERMITIDAS = new Set(["prisma/", "prisma/quadrante.db", ".env"]);
 const ARQUIVOS_OBRIGATORIOS = ["prisma/quadrante.db", ".env"];
 
+async function ehGzip(arquivo: string): Promise<boolean> {
+  const f = await fs.open(arquivo, "r");
+  try {
+    const b = Buffer.alloc(2);
+    await f.read(b, 0, 2, 0);
+    return b[0] === 0x1f && b[1] === 0x8b;
+  } finally {
+    await f.close();
+  }
+}
+
 async function prepararSemLimpeza(arquivoCifrado: string, senha: string, pasta: string): Promise<BackupPreparado> {
   const tar = path.join(pasta, "backup.tar.gz");
-  try {
-    await descriptografarArquivo(arquivoCifrado, tar, senha);
-  } catch (err) {
-    if (/decryption failed|bad session key/i.test((err as Error).message)) {
-      throw new ErroRestauracao("SENHA", "Senha incorreta (ou arquivo danificado).");
+  if (await ehGzip(arquivoCifrado)) {
+    // backup sem criptografia (.tar.gz): não há senha a pedir
+    await fs.copyFile(arquivoCifrado, tar);
+  } else {
+    if (!senha) throw new ErroRestauracao("SENHA", "Este backup é criptografado: informe a senha do backup.");
+    try {
+      await descriptografarArquivo(arquivoCifrado, tar, senha);
+    } catch (err) {
+      if (/decryption failed|bad session key/i.test((err as Error).message)) {
+        throw new ErroRestauracao("SENHA", "Senha incorreta (ou arquivo danificado).");
+      }
+      throw new ErroRestauracao("FORMATO", `O arquivo não é um backup criptografado do Quadrante. (${(err as Error).message})`);
     }
-    throw new ErroRestauracao("FORMATO", "O arquivo não é um backup criptografado do Quadrante.");
   }
 
   // confere o conteúdo ANTES de extrair: só os dois arquivos esperados, nada de caminhos fora da pasta
@@ -109,6 +126,7 @@ export async function aplicarBackup(p: BackupPreparado, o: OpcoesAplicar): Promi
 
   // COOKIE_SECURE descreve COMO este servidor é acessado (HTTP na rede local ou HTTPS), não os dados do backup
   const cookieSecure = await lerEnvValor(destinoEnv, "COOKIE_SECURE");
+  const tunelHostname = await lerEnvValor(destinoEnv, "TUNEL_HOSTNAME"); // o túnel pode ter sido ligado antes de restaurar
 
   await o.desconectar();
 
@@ -126,6 +144,7 @@ export async function aplicarBackup(p: BackupPreparado, o: OpcoesAplicar): Promi
     await fs.copyFile(p.arquivoEnv, destinoEnv + ".novo");
     await fs.rename(destinoEnv + ".novo", destinoEnv);
     if (cookieSecure !== undefined) await setEnvValue("COOKIE_SECURE", cookieSecure, destinoEnv);
+    if (tunelHostname !== undefined) await setEnvValue("TUNEL_HOSTNAME", tunelHostname, destinoEnv);
     await o.migrar({ ...process.env, DATABASE_URL: urlNova });
   } catch (err) {
     // volta tudo como estava

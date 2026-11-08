@@ -28,16 +28,8 @@ after(async () => {
   banco.limpar();
 });
 
-test("403 com código errado e null (liberado) com o certo", async () => {
-  const errado = await guardarAcesso("XXXX-XXXX-XXXX");
-  assert.equal(errado?.status, 403);
-  assert.equal(typeof (await errado!.json()).erro, "string");
-  assert.equal(await guardarAcesso("aaaa-bbbb-cccc"), null);
-});
-
-test("429 na 6ª tentativa, mesmo que a 6ª tenha o código certo", async () => {
-  for (let i = 0; i < 5; i++) assert.equal((await guardarAcesso("ERRADO"))?.status, 403);
-  assert.equal((await guardarAcesso("AAAA-BBBB-CCCC"))?.status, 429);
+test("sem código: sistema vazio libera o acesso (null)", async () => {
+  assert.equal(await guardarAcesso(), null);
 });
 
 const envio = (tamanho?: number) =>
@@ -56,11 +48,9 @@ test("prevalidarEnvio recusa content-length inválido", async () => {
   assert.equal((await prevalidarEnvio(r, 1000))?.status, 411);
 });
 
-test("404 vem antes do 429 e do 403 quando já existe usuário", async () => {
-  for (let i = 0; i < 6; i++) await guardarAcesso("ERRADO"); // já bloqueado
+test("404 quando já existe usuário", async () => {
   await db.usuario.create({ data: { nome: "A", email: "a@x.com", role: "SUPER" } });
-  assert.equal((await guardarAcesso("AAAA-BBBB-CCCC"))?.status, 404);
-  assert.equal((await guardarAcesso("ERRADO"))?.status, 404);
+  assert.equal((await guardarAcesso())?.status, 404);
 });
 
 test("prevalidarEnvio responde 404 antes de olhar o tamanho quando já existe usuário", async () => {

@@ -14,21 +14,20 @@ function erro(status: number, mensagem: string) {
   return Response.json({ erro: mensagem }, { status });
 }
 
-// Restaura o backup do Drive (.tar.gz.gpg) num sistema vazio. Protegido por código de uso único.
+// Restaura o backup do Drive (.tar.gz.gpg) num sistema vazio. Sem código de acesso.
 export async function POST(request: Request) {
   const antes = await prevalidarEnvio(request, TAMANHO_MAX + MARGEM_CAMPOS);
   if (antes) return antes;
   const form = await request.formData().catch(() => null);
   if (!form) return erro(400, "Envio inválido.");
 
-  const bloqueio = await guardarAcesso(String(form.get("codigo") ?? ""));
+  const bloqueio = await guardarAcesso();
   if (bloqueio) return bloqueio;
 
   const arquivo = form.get("arquivo");
   const senha = String(form.get("senha") ?? "");
   if (!(arquivo instanceof File) || arquivo.size === 0) return erro(400, "Escolha o arquivo de backup.");
   if (arquivo.size > TAMANHO_MAX) return erro(400, "O arquivo é grande demais para ser um backup do Quadrante.");
-  if (!senha) return erro(400, "Informe a senha do backup.");
 
   const liberar = iniciarRestauracao();
   if (!liberar) return erro(409, "Já existe uma restauração em andamento.");
@@ -38,7 +37,8 @@ export async function POST(request: Request) {
   try {
     const cifrado = path.join(temp, "backup.tar.gz.gpg");
     await fs.writeFile(cifrado, Buffer.from(await arquivo.arrayBuffer()));
-    const preparado = await prepararBackup(cifrado, senha);
+    // senha em branco: usa a BACKUP_PASSPHRASE do .env deste servidor, se existir; backup sem criptografia não precisa
+    const preparado = await prepararBackup(cifrado, senha || process.env.BACKUP_PASSPHRASE || "");
     preparadoPasta = preparado.pasta;
     await aplicarBackup(preparado, {
       appDir: process.cwd(),

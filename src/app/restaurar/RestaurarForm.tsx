@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import TunelCloudflare from "../(admin)/configuracoes/TunelCloudflare";
 
 type Estado = { tipo: "erro" | "ok" | "enviando"; texto: string } | null;
 
@@ -25,7 +26,7 @@ function Mensagem({ estado }: { estado: Estado }) {
   return <p className={`${cor} text-sm`}>{estado.texto}</p>;
 }
 
-export default function RestaurarForm() {
+export default function RestaurarForm({ tunel }: { tunel: { disponivel: boolean; ativo: boolean; hostname: string | null } }) {
   const [backup, setBackup] = useState<Estado>(null);
   const [zero, setZero] = useState<Estado>(null);
 
@@ -62,7 +63,7 @@ export default function RestaurarForm() {
         return;
       }
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.href = "/login"; // recarga completa: o código de restauração foi removido do .env
+      window.location.href = "/login"; // recarga completa: o sistema agora tem usuário
     } catch {
       setZero({ tipo: "erro", texto: "Não foi possível enviar os dados. Tente de novo." });
     }
@@ -82,11 +83,10 @@ export default function RestaurarForm() {
           <h2 className="font-medium text-[var(--ink)]">Restaurar um backup</h2>
           <p className="text-sm text-[var(--ink-soft)]/80">
             Baixe do Google Drive o arquivo <code>quadrante-backup-….tar.gz.gpg</code> mais recente e envie aqui, com a
-            senha do backup.
+            senha do backup, se ele for criptografado.
           </p>
-          <input name="codigo" required placeholder="Código de restauração (mostrado no terminal)" autoComplete="off" className="input" />
-          <input name="arquivo" type="file" required accept=".gpg" className="input" />
-          <input name="senha" type="password" required placeholder="Senha do backup" autoComplete="off" className="input" />
+          <input name="arquivo" type="file" required accept=".gpg,.gz,.tgz" className="input" />
+          <input name="senha" type="password" placeholder="Senha do backup (em branco: usa a do servidor, se houver)" autoComplete="off" className="input" />
           <Mensagem estado={backup} />
           <button disabled={ocupado} className="btn-primary w-full py-2.5">
             {ocupado ? "Aguarde…" : "Restaurar backup"}
@@ -94,10 +94,16 @@ export default function RestaurarForm() {
         </form>
 
         <details className="bg-[var(--card)] rounded-lg shadow-2xl p-6 border border-[var(--line)]">
+          <summary className="cursor-pointer font-medium text-[var(--ink)]">Acesso pela internet (Cloudflare)</summary>
+          <div className="mt-4">
+            <TunelCloudflare disponivel={tunel.disponivel} ativo={tunel.ativo} hostname={tunel.hostname} />
+          </div>
+        </details>
+
+        <details className="bg-[var(--card)] rounded-lg shadow-2xl p-6 border border-[var(--line)]">
           <summary className="cursor-pointer font-medium text-[var(--ink)]">Não tenho backup: começar do zero</summary>
           <form onSubmit={comecarDoZero} className="space-y-3 mt-4">
             <p className="text-sm text-[var(--ink-soft)]/80">Cria o primeiro administrador de um sistema vazio.</p>
-            <input name="codigo" required placeholder="Código de restauração" autoComplete="off" className="input" />
             <input name="nome" required placeholder="Nome" className="input" />
             <input name="email" type="email" required placeholder="E-mail" className="input" />
             <input name="senha" type="password" required minLength={10} placeholder="Senha (mínimo 10 caracteres)" autoComplete="new-password" className="input" />
