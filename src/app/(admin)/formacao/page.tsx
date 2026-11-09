@@ -55,7 +55,15 @@ export default async function FormacaoPage({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <h1 className="page-title mb-6">Formação</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="page-title">Formação</h1>
+        {/* download de arquivo: <a> de propósito, <Link> tentaria navegar */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a href={`/formacao/exportar${setor ? `?setor=${encodeURIComponent(setor)}` : ""}`} className="qd-btn qd-btn-ghost">
+          <Icon name="download" className="h-4 w-4 text-[var(--brass)]" />
+          Exportar quem faltou
+        </a>
+      </div>
 
       <div className="qd-surface mb-6 p-3 sm:p-4">
         <form className="flex flex-wrap gap-2.5">
