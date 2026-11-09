@@ -1,6 +1,7 @@
 import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { brl } from "@/lib/format";
+import { valorServo } from "@/lib/valorServo";
 
 export default async function FinanceiroPage() {
   await requireUser();
@@ -11,22 +12,23 @@ export default async function FinanceiroPage() {
     where: { missaoId: missao.id, status: "ATIVO" },
   });
 
-  // valor do servo vem da missão (campo "equipe interna"); pagamentoValor, se preenchido à mão, tem prioridade
-  const valorServo = missao.valorInterna;
+  // valor de cada servo vem da regra em lib/valorServo (valores da missão); pagamentoValor digitado à mão tem prioridade
 
   const porSetor = new Map<
     string,
-    { dinheiro: number; pix: number; isento: number; qtd: number; pagaram: number }
+    { dinheiro: number; pix: number; isento: number; qtd: number; pagaram: number; esperado: number }
   >();
   let pagosSemForma = 0;
   for (const s of servos) {
-    if (!porSetor.has(s.setor)) porSetor.set(s.setor, { dinheiro: 0, pix: 0, isento: 0, qtd: 0, pagaram: 0 });
+    if (!porSetor.has(s.setor)) porSetor.set(s.setor, { dinheiro: 0, pix: 0, isento: 0, qtd: 0, pagaram: 0, esperado: 0 });
     const g = porSetor.get(s.setor)!;
     g.qtd++;
+    const valor = valorServo(s, missao);
+    g.esperado += valor;
     if (s.pago) g.pagaram++;
     if (s.pagamentoForma === "ISENTO") g.isento++;
     if (!s.pago) continue;
-    const v = s.pagamentoValor ?? valorServo;
+    const v = valor;
     if (s.pagamentoForma === "DINHEIRO") g.dinheiro += v;
     else if (s.pagamentoForma === "PIX" || s.pagamentoForma === "DÉBITO") g.pix += v;
     else if (!s.pagamentoForma) pagosSemForma++;
@@ -38,6 +40,7 @@ export default async function FinanceiroPage() {
   const fichasDinheiro = fichas.filter((f) => f.pagamento === "DINHEIRO").length;
   const fichasPix = fichas.filter((f) => f.pagamento === "PIX" || f.pagamento === "DÉBITO").length;
 
+  const esperadoServos = [...porSetor.values()].reduce((a, g) => a + g.esperado, 0);
   const totalServos = [...porSetor.values()].reduce((a, g) => a + g.dinheiro + g.pix, 0);
   const arrecadadoCampistas = (fichasDinheiro + fichasPix) * missao.valorCampista; // "pago em outra missão" não entra aqui
   const totalGeral = totalServos + arrecadadoCampistas;
@@ -49,7 +52,7 @@ export default async function FinanceiroPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="stat-card">
           <div className="stat-value">{brl(totalServos)}</div>
-          <div className="stat-label">Arrecadado servos</div>
+          <div className="stat-label">Arrecadado servos (esperado {brl(esperadoServos)})</div>
         </div>
         <div className="stat-card">
           <div className="stat-value">{brl(arrecadadoCampistas)}</div>
@@ -82,6 +85,7 @@ export default async function FinanceiroPage() {
               <th className="text-left px-4 py-2">Setor</th>
               <th className="text-left px-4 py-2">Dinheiro</th>
               <th className="text-left px-4 py-2">PIX/Débito</th>
+              <th className="text-left px-4 py-2">Esperado</th>
               <th className="text-left px-4 py-2">Isento</th>
               <th className="text-left px-4 py-2">Qtd. servos</th>
               <th className="text-left px-4 py-2">Pagaram</th>
@@ -94,6 +98,7 @@ export default async function FinanceiroPage() {
                 <td className="px-4 py-2">{setor}</td>
                 <td className="px-4 py-2">{brl(g.dinheiro)}</td>
                 <td className="px-4 py-2">{brl(g.pix)}</td>
+                <td className="px-4 py-2">{brl(g.esperado)}</td>
                 <td className="px-4 py-2">{g.isento}</td>
                 <td className="px-4 py-2">{g.qtd}</td>
                 <td className="px-4 py-2">{g.pagaram}</td>
@@ -104,6 +109,7 @@ export default async function FinanceiroPage() {
               <td className="px-4 py-2">NEO-CAMPISTAS</td>
               <td className="px-4 py-2">{brl((fichasDinheiro * missao.valorCampista))}</td>
               <td className="px-4 py-2">{brl((fichasPix * missao.valorCampista))}</td>
+              <td className="px-4 py-2">{brl(fichas.filter((f) => f.pagamento !== "ISENTO").length * missao.valorCampista)}</td>
               <td className="px-4 py-2">{fichasIsentas}</td>
               <td className="px-4 py-2">{fichas.length}</td>
               <td className="px-4 py-2">{fichasPagas}</td>
