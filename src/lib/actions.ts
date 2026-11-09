@@ -834,7 +834,8 @@ export async function marcarFormacao(formData: FormData) {
 export async function sugerirNomesCerco(missaoId: number, termo: string) {
   const t = termo.trim();
   if (t.length < 3 || !missaoId) return [];
-  if (excedeuLimite(`cerco:sugestao:${await ipDoCliente()}`, 60, 60_000)) return [];
+  // teto folgado por IP: muita gente em operadora móvel (CGNAT) sai pelo mesmo IP e cada tecla é uma busca
+  if (excedeuLimite(`cerco:sugestao:${await ipDoCliente()}`, 600, 60_000)) return [];
   const servos = await db.servo.findMany({
     where: { missaoId, status: "ATIVO", pessoa: { nome: { contains: t } } },
     include: { pessoa: true },
@@ -853,7 +854,13 @@ export async function inscreverCerco(_prev: unknown, formData: FormData) {
     return { error: "Preencha seu nome e escolha um horário." };
   }
   if (!HORARIOS_CERCO.includes(horario)) return { error: "Horário inválido." };
-  if (excedeuLimite(`cerco:inscricao:${await ipDoCliente()}`, 10, 10 * 60_000)) {
+  // O limite que protege cada servo é por IP + nome (quem insiste no mesmo nome é barrado); o teto por IP
+  // é só uma trava contra abuso e precisa ser alto, porque muitos servos compartilham o IP da operadora móvel.
+  const ip = await ipDoCliente();
+  if (
+    excedeuLimite(`cerco:inscricao:ip:${ip}`, 300, 10 * 60_000) ||
+    excedeuLimite(`cerco:inscricao:${ip}:${nome.toLowerCase().slice(0, 80)}`, 15, 10 * 60_000)
+  ) {
     return { error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." };
   }
 
