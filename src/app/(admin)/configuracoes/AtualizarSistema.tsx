@@ -1,37 +1,104 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { StatusAtualizacao } from "@/lib/atualizacaoSistema";
-import { iniciarAtualizacaoAction, reiniciarSistemaAction, statusAtualizacaoAction } from "./actionsAtualizacao";
+import type { Disponivel, StatusAtualizacao } from "@/lib/atualizacaoSistema";
+import {
+  aplicarAtualizacaoAction,
+  iniciarAtualizacaoAction,
+  statusAtualizacaoAction,
+  verificarDisponivelAction,
+} from "./actionsAtualizacao";
 
-const ROTULO = { parado: "nenhuma atualização em andamento", rodando: "atualizando…", concluido: "pronto para reiniciar", falhou: "falhou" } as const;
+const ROTULO = {
+  parado: "nenhuma atualização em andamento",
+  rodando: "preparando a versão nova (o sistema continua no ar)…",
+  concluido: "concluída",
+  falhou: "falhou (o sistema continua na versão anterior)",
+} as const;
 
-export default function AtualizarSistema({ inicial }: { inicial: StatusAtualizacao }) {
+function haQuanto(ms: number | null) {
+  if (!ms) return "nunca";
+  const min = Math.round((Date.now() - ms) / 60000);
+  if (min < 1) return "agora há pouco";
+  if (min < 60) return `há ${min} min`;
+  const h = Math.round(min / 60);
+  return h < 24 ? `há ${h} h` : `há ${Math.round(h / 24)} dia(s)`;
+}
+
+// espera o app voltar com outra versão e recarrega a página (o código da tela também mudou)
+async function esperarVersaoNova(anterior: string | null) {
+  for (let i = 0; i < 90; i++) {
+    await new Promise((res) => setTimeout(res, 2000));
+    try {
+      const r = await fetch("/api/versao", { cache: "no-store" });
+      if (r.ok) {
+        const { versao } = (await r.json()) as { versao: string | null };
+        if (versao && versao !== anterior) break;
+      }
+    } catch {
+      // reiniciando
+    }
+  }
+  window.location.reload();
+}
+
+export default function AtualizarSistema({ inicial, disponivel: dispInicial }: { inicial: StatusAtualizacao; disponivel: Disponivel }) {
   const [status, setStatus] = useState(inicial);
+  const [disp, setDisp] = useState(dispInicial);
   const [erro, setErro] = useState("");
-  const [reiniciando, setReiniciando] = useState(false);
+  const [verificando, setVerificando] = useState(false);
+  const [trocando, setTrocando] = useState(false);
+  const versaoAntes = useRef(inicial.versao);
+  const esperando = useRef(false);
   const logRef = useRef<HTMLPreElement>(null);
 
-  // enquanto roda, consulta o registro a cada 3 s
+  function aguardarReinicio(anterior: string | null) {
+    if (esperando.current) return;
+    esperando.current = true;
+    setTrocando(true);
+    esperarVersaoNova(anterior);
+  }
+
+  // enquanto prepara, consulta o registro a cada 3 s; ao terminar com versão nova, espera o reinício
   useEffect(() => {
     if (status.estado !== "rodando") return;
     const t = setInterval(async () => {
       try {
-        setStatus(await statusAtualizacaoAction());
+        const s = await statusAtualizacaoAction();
+        setStatus(s);
+        if (s.estado === "concluido" && (s.pronto || s.versao !== versaoAntes.current)) aguardarReinicio(versaoAntes.current);
       } catch {
-        // o servidor pode estar ocupado compilando; tenta de novo no próximo ciclo
+        // o servidor pode estar ocupado compilando ou já reiniciando; tenta de novo no próximo ciclo
+        if (status.log.includes("Versão nova pronta")) aguardarReinicio(versaoAntes.current);
       }
     }, 3000);
     return () => clearInterval(t);
-  }, [status.estado]);
+  }, [status.estado, status.log]);
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [status.log]);
 
-  async function atualizar() {
-    if (!window.confirm("Atualizar o sistema agora? O sistema pode ficar lento durante a compilação e será reiniciado ao final.")) return;
+  async function verificar() {
     setErro("");
+    setVerificando(true);
+    try {
+      setDisp(await verificarDisponivelAction());
+    } catch {
+      setErro("Não foi possível verificar agora.");
+    }
+    setVerificando(false);
+  }
+
+  async function atualizar() {
+    if (
+      !window.confirm(
+        "Atualizar o sistema agora?\n\nO sistema continua funcionando enquanto a versão nova é preparada (alguns minutos). No fim ele reinicia sozinho e fica fora do ar só alguns segundos.",
+      )
+    )
+      return;
+    setErro("");
+    versaoAntes.current = status.versao;
     const r = await iniciarAtualizacaoAction();
     if (r.erro) {
       setErro(r.erro);
@@ -40,43 +107,66 @@ export default function AtualizarSistema({ inicial }: { inicial: StatusAtualizac
     setStatus(await statusAtualizacaoAction());
   }
 
-  async function reiniciar() {
+  async function aplicar() {
     setErro("");
-    setReiniciando(true);
-    const r = await reiniciarSistemaAction().catch(() => ({ erro: "Não foi possível reiniciar." }));
+    setTrocando(true);
+    const r = await aplicarAtualizacaoAction().catch(() => ({ erro: "Não foi possível aplicar." }));
     if (r.erro) {
       setErro(r.erro);
-      setReiniciando(false);
+      setTrocando(false);
       return;
     }
-    for (let i = 0; i < 40; i++) {
-      await new Promise((res) => setTimeout(res, 2000));
-      try {
-        if ((await fetch("/login", { cache: "no-store" })).ok) break;
-      } catch {
-        // ainda reiniciando
-      }
-    }
-    window.location.reload();
+    aguardarReinicio(status.versao);
   }
 
   const rodando = status.estado === "rodando";
+  const temNova = disp.quantidade > 0;
   return (
     <div className="card p-4 space-y-3">
+      {temNova && !rodando && !trocando && (
+        <div className="rounded-lg border border-[var(--brass)]/50 bg-[var(--brass)]/10 p-3">
+          <p className="text-sm font-medium text-[var(--ink)]">
+            Nova versão disponível: {disp.quantidade} {disp.quantidade === 1 ? "alteração" : "alterações"}
+          </p>
+          {disp.alteracoes.length > 0 && (
+            <ul className="mt-2 list-disc pl-5 text-xs text-[var(--ink-soft)]/90 space-y-0.5">
+              {disp.alteracoes.map((a) => (
+                <li key={a.hash}>{a.titulo || a.hash}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       <p className="text-sm text-[var(--ink-soft)]/80">
-        Versão instalada: <strong>{status.versao ?? "desconhecida"}</strong> · Situação: <strong>{ROTULO[status.estado]}</strong>
+        Versão no ar: <strong>{status.versao ?? "desconhecida"}</strong> · Situação:{" "}
+        <strong>{trocando ? "trocando a versão e reiniciando (alguns segundos)…" : ROTULO[status.estado]}</strong>
       </p>
       <p className="text-xs text-[var(--ink-soft)]/70">
-        Baixa o código novo, faz uma cópia do banco, atualiza e compila. Só reinicia quando você pedir. Mudança de porta ou do pm2 exige
-        acesso ao servidor.
+        {temNova ? "" : "O sistema está na versão mais recente. "}Verificado {haQuanto(disp.verificadoEm)}
+        {disp.erro ? ` · ${disp.erro}` : ""}. O sistema confere o GitHub sozinho a cada 30 minutos.
       </p>
+      <p className="text-xs text-[var(--ink-soft)]/70">
+        A atualização faz uma cópia do banco, baixa o código novo e compila numa pasta separada, sem tirar o sistema do ar. No fim
+        troca a versão e reinicia sozinho (alguns segundos). Se algo falhar, nada muda. Mudança de porta ou do pm2 exige acesso ao
+        servidor.
+      </p>
+
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={atualizar} disabled={rodando || reiniciando} className="btn-primary px-4 py-2">
-          {rodando ? "Atualizando…" : "Atualizar o sistema"}
+        <button type="button" onClick={atualizar} disabled={rodando || trocando} className="btn-primary px-4 py-2">
+          {rodando ? "Atualizando…" : temNova ? "Atualizar agora" : "Atualizar o sistema"}
         </button>
-        {status.estado === "concluido" && (
-          <button type="button" onClick={reiniciar} disabled={reiniciando} className="rounded px-4 py-2 border border-[var(--brass)] text-[var(--ink)] font-medium">
-            {reiniciando ? "Reiniciando…" : "Reiniciar agora"}
+        <button
+          type="button"
+          onClick={verificar}
+          disabled={verificando || rodando || trocando}
+          className="rounded px-4 py-2 border border-[var(--line)] text-[var(--ink)]"
+        >
+          {verificando ? "Verificando…" : "Verificar agora"}
+        </button>
+        {status.pronto && !rodando && !trocando && (
+          <button type="button" onClick={aplicar} className="rounded px-4 py-2 border border-[var(--brass)] text-[var(--ink)] font-medium">
+            Aplicar versão pronta
           </button>
         )}
       </div>
