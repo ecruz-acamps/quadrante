@@ -7,6 +7,7 @@ import { db } from "./db";
 import { createSession, destroySession, requireUser, requireRole, requireCoordenador, setMissaoAtiva } from "./auth";
 import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaValida } from "./coordenador";
 import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
+import { ehSetorLideres } from "./setorLideres";
 import { normalizarNome } from "./nomes";
 import { FUNCOES, PAGAMENTOS, HORARIOS_CERCO, CAMISETAS } from "./constants";
 import { reservarHorarioCerco } from "./cercoReserva";
@@ -1197,6 +1198,9 @@ export async function adicionarLiderTribo(formData: FormData) {
   // a tribo e o servo precisam ser da mesma missão a que o usuário tem acesso
   await exigirRegistros(usuario, ["tribo", triboId], ["servo", servoId]);
   if (triboId && servoId) {
+    // líder de tribo precisa estar ativo no setor LÍDERES
+    const servo = await db.servo.findUnique({ where: { id: servoId }, select: { setor: true, status: true } });
+    if (!servo || servo.status !== "ATIVO" || !ehSetorLideres(servo.setor)) return;
     await db.triboLider.upsert({
       where: { triboId_servoId: { triboId, servoId } },
       update: {},
