@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { decimal } from "@/lib/format";
 import { CORES_TRIBO, COR_TRIBO_HEX as SWATCH } from "@/lib/constants";
 import { adicionarLiderTribo, removerLiderTribo } from "@/lib/actions";
+import { ehSetorLideres } from "@/lib/setorLideres";
 import AlocarFichaForm from "./AlocarFichaForm";
 import SortearTribosButton from "./SortearTribosButton";
 
@@ -33,11 +34,13 @@ export default async function TribosPage() {
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
-  const [tribos, fichasSemTribo, servos] = await Promise.all([
+  const [tribos, fichasSemTribo, servosAtivos] = await Promise.all([
     garantirTribos(missao.id),
     db.neocampista.findMany({ where: { missaoId: missao.id, triboId: null }, orderBy: { numero: "asc" } }),
     db.servo.findMany({ where: { missaoId: missao.id, status: "ATIVO" }, include: { pessoa: true }, orderBy: { pessoa: { nome: "asc" } } }),
   ]);
+  // só quem está no setor LÍDERES pode ser escolhido como líder de tribo
+  const servos = servosAtivos.filter((s) => ehSetorLideres(s.setor));
 
   return (
     <div>
@@ -104,8 +107,10 @@ export default async function TribosPage() {
                 <form action={adicionarLiderTribo} className="flex gap-2">
                   <input type="hidden" name="triboId" value={t.id} />
                   <select name="servoId" className="input py-1 text-xs flex-1" required>
-                    <option value="">Adicionar líder...</option>
-                    {servos.map((s) => (
+                    <option value="">
+                      {servos.length ? "Adicionar líder..." : "Nenhum servo no setor LÍDERES"}
+                    </option>
+                    {servos.filter((s) => !t.lideres.some((l) => l.servoId === s.id)).map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.pessoa.nome}
                       </option>
