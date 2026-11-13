@@ -59,21 +59,33 @@ export default function AtualizarSistema({ inicial, disponivel: dispInicial }: {
     esperarVersaoNova(anterior);
   }
 
-  // enquanto prepara, consulta o registro a cada 3 s; ao terminar com versão nova, espera o reinício
+  // enquanto prepara, consulta a cada 3 s. Quem diz que a versão nova entrou no ar é /api/versao: depois do
+  // reinício as Server Actions desta página (do build antigo) deixam de existir no servidor.
+  const rodandoAgora = status.estado === "rodando";
   useEffect(() => {
-    if (status.estado !== "rodando") return;
+    if (!rodandoAgora) return;
     const t = setInterval(async () => {
+      if (esperando.current) return;
+      try {
+        const r = await fetch("/api/versao", { cache: "no-store" });
+        if (r.ok) {
+          const { versao } = (await r.json()) as { versao: string | null };
+          if (versao && versao !== versaoAntes.current) return window.location.reload();
+        }
+      } catch {
+        // reiniciando
+      }
       try {
         const s = await statusAtualizacaoAction();
+        if (s.versao && s.versao !== versaoAntes.current) return window.location.reload();
         setStatus(s);
-        if (s.estado === "concluido" && (s.pronto || s.versao !== versaoAntes.current)) aguardarReinicio(versaoAntes.current);
+        if (s.estado === "concluido" && s.pronto) aguardarReinicio(versaoAntes.current);
       } catch {
-        // o servidor pode estar ocupado compilando ou já reiniciando; tenta de novo no próximo ciclo
-        if (status.log.includes("Versão nova pronta")) aguardarReinicio(versaoAntes.current);
+        // servidor ocupado compilando ou reiniciando; tenta no próximo ciclo
       }
     }, 3000);
     return () => clearInterval(t);
-  }, [status.estado, status.log]);
+  }, [rodandoAgora]);
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
