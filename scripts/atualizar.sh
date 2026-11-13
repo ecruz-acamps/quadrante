@@ -22,6 +22,8 @@ echo "== INICIADO $(date '+%Y-%m-%d %H:%M:%S') =="
 
 # versão que está no ar (gravada no build); sem ela, vale o commit atual
 RODANDO="$(cat "$DIR/.next/QUADRANTE_VERSAO" 2>/dev/null || git rev-parse HEAD)"
+# build antigo sem a marca: grava agora, antes do pull, para a tela não confundir o commit baixado com o que está no ar
+if [ -d "$DIR/.next" ] && [ ! -s "$DIR/.next/QUADRANTE_VERSAO" ]; then echo "$RODANDO" > "$DIR/.next/QUADRANTE_VERSAO"; fi
 
 passo "Cópia de segurança do banco"
 BANCO="$DIR/prisma/quadrante.db"

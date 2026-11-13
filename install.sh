@@ -95,7 +95,7 @@ else
 fi
 
 etapa "6/9 · Dependências, banco e build (alguns minutos; detalhes em $LOG)"
-if ! como_app bash -c "cd '$DIR' && npm ci --no-audit --no-fund && npx prisma generate && npx prisma migrate deploy && npm run build" >> "$LOG" 2>&1; then
+if ! como_app bash -c "cd '$DIR' && npm ci --no-audit --no-fund && npx prisma generate && npx prisma migrate deploy && npm run build && git rev-parse HEAD > .next/QUADRANTE_VERSAO" >> "$LOG" 2>&1; then
   tail -n 40 "$LOG"
   erro "Falha ao preparar o sistema. O registro completo está em $LOG"
 fi
