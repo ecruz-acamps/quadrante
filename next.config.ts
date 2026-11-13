@@ -14,6 +14,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // A atualização pela interface compila em outra pasta (QUADRANTE_DIST_DIR=.next-novo) enquanto o sistema
+  // segue no ar com a .next atual; no fim as pastas são trocadas e o app reinicia. Sem a variável, usa .next.
+  distDir: process.env.QUADRANTE_DIST_DIR || ".next",
   poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

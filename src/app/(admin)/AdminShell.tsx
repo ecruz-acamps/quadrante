@@ -46,6 +46,7 @@ export default function AdminShell({
   missaoId,
   selecionarMissaoAction,
   logoutAction,
+  selos = {},
   children,
 }: {
   nav: readonly NavItem[];
@@ -56,6 +57,7 @@ export default function AdminShell({
   missaoId: number | null;
   selecionarMissaoAction: (formData: FormData) => void;
   logoutAction: () => void;
+  selos?: Record<string, { quantidade: number; titulo: string }>; // aviso ao lado do item do menu (ex.: atualização disponível)
   children: React.ReactNode;
 }) {
   const [aberto, setAberto] = useState(false);
@@ -118,6 +120,14 @@ export default function AdminShell({
                 }`}
               />
               <span className="truncate">{label}</span>
+              {selos[href]?.quantidade ? (
+                <span
+                  title={selos[href].titulo}
+                  className="ml-auto shrink-0 rounded-full bg-[var(--brass-bright)] px-1.5 py-0.5 text-[0.625rem] font-semibold leading-none text-[var(--ink)]"
+                >
+                  {selos[href].quantidade}
+                </span>
+              ) : null}
             </Link>
           );
         })}

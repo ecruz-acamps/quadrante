@@ -2,6 +2,7 @@ import { requireQualquerUsuario, getMissaoAtiva, getMissoesPermitidas, getContex
 import { SETOR_EVANGELIZACAO, ROTAS_SERVO_SECRETARIA } from "@/lib/coordenador";
 import { logoutAction, selecionarMissao } from "@/lib/actions";
 import { db } from "@/lib/db";
+import { quantidadeDisponivel } from "@/lib/atualizacaoSistema";
 import AdminShell from "./AdminShell";
 
 const NAV = [
@@ -58,6 +59,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     ? await db.missao.findMany({ orderBy: { id: "desc" } })
     : await getMissoesPermitidas(user.id);
   const mostrarSeletor = missoes.length > 1;
+  // só o SUPER atualiza o sistema; o selo some quando a versão nova entra no ar
+  const atualizacoes = isSuper ? quantidadeDisponivel() : 0;
+  const selos = atualizacoes
+    ? { "/configuracoes": { quantidade: atualizacoes, titulo: "Nova versão do sistema disponível" } }
+    : undefined;
   const nav =
     user.role === "SERVO_SECRETARIA"
       ? ROTAS_SERVO_SECRETARIA.map(([href, rotulo]) => [href, rotulo, false] as const)
@@ -73,6 +79,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       missoes={missoes}
       selecionarMissaoAction={selecionarMissao}
       logoutAction={logoutAction}
+      selos={selos}
     >
       {children}
     </AdminShell>

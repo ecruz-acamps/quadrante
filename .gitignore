@@ -15,6 +15,9 @@
 
 # next.js
 /.next/
+# atualização pela interface: build novo em preparo e o anterior guardado
+/.next-novo/
+/.next-antigo/
 /out/
 
 # production

@@ -6,7 +6,7 @@ import NotificacoesNativas from "./NotificacoesNativas";
 import ExportacaoOculta from "./ExportacaoOculta";
 import TunelCloudflare from "./TunelCloudflare";
 import { lerStatusTunel } from "@/lib/auxiliarTunel";
-import { lerStatusAtualizacao } from "@/lib/atualizacaoSistema";
+import { lerStatusAtualizacao, verificarDisponivel } from "@/lib/atualizacaoSistema";
 import AtualizarSistema from "./AtualizarSistema";
 
 export default async function ConfiguracoesPage({
@@ -18,7 +18,7 @@ export default async function ConfiguracoesPage({
   const { drive } = await searchParams;
   const driveConectado = Boolean(process.env.GOOGLE_DRIVE_REFRESH_TOKEN);
   const tunel = await lerStatusTunel();
-  const atualizacao = await lerStatusAtualizacao();
+  const [atualizacao, disponivel] = await Promise.all([lerStatusAtualizacao(), verificarDisponivel()]);
   const missao = await getMissaoAtiva();
   const dispositivosPushbird = await db.pushbirdDevice.findMany({ orderBy: { nome: "asc" } });
   const inscritosWebPush = await db.webPushSubscription.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } });
@@ -140,7 +140,7 @@ export default async function ConfiguracoesPage({
 
       <section id="atualizacao" className="scroll-mt-4 mt-10">
         <h2 className="font-medium text-[var(--ink)] mb-3">Atualização do sistema</h2>
-        <AtualizarSistema inicial={atualizacao} />
+        <AtualizarSistema inicial={atualizacao} disponivel={disponivel} />
       </section>
 
       <section id="exportacao" className="scroll-mt-4 mt-10">

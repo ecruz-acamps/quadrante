@@ -248,7 +248,27 @@ pm2 start ecosystem.config.cjs                  # escuta na porta 4008
 pm2 save && pm2 startup                          # volta sozinho após reiniciar a máquina
 ```
 
-Atualizações:
+### Atualizações pela interface (recomendado)
+
+O servidor de produção segue o branch `main`: o que for mesclado lá vira atualização disponível.
+
+1. A cada 30 minutos o sistema confere o GitHub. Havendo versão nova, o item **Configurações** do menu ganha um selo
+   com o número de alterações (só o perfil SUPER vê), e a seção **Atualização do sistema** lista os títulos.
+   **Verificar agora** força a consulta.
+2. **Atualizar agora** faz uma cópia do banco, baixa o código, roda as migrações e compila a versão nova em
+   `.next-novo`, **com o sistema no ar** usando a `.next` atual. `npm ci` e `prisma generate` só rodam quando
+   `package-lock.json`/`schema.prisma` mudaram.
+3. No fim o próprio app troca as pastas (a anterior fica em `.next-antigo`) e reinicia pelo pm2: **cerca de 3 a 5
+   segundos** fora do ar. A tela recarrega sozinha. Se a página estiver fechada, a troca acontece do mesmo jeito.
+4. Se algo falhar (rede, migração, build), nada é trocado e o sistema segue na versão anterior; o registro aparece na
+   tela (e em `logs/atualizacao.log`).
+
+Cuidados: migrações rodam antes da troca, então a versão antiga atende alguns minutos com o banco já migrado
+(acréscimos de colunas/tabelas não atrapalham; remoções e renomeações precisam ser feitas em duas versões). Quando
+`package-lock.json` muda, o `npm ci` substitui `node_modules` com o sistema no ar e alguma tela pode falhar nesse
+minuto. Para voltar à versão anterior manualmente: `mv .next .next-novo-ruim && mv .next-antigo .next && pm2 restart quadrante`.
+
+### Atualizações pelo terminal
 
 ```bash
 git pull
