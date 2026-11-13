@@ -19,7 +19,7 @@ const ROTULO = {
 function haQuanto(ms: number | null) {
   if (!ms) return "nunca";
   const min = Math.round((Date.now() - ms) / 60000);
-  if (min < 1) return "agora há pouco";
+  if (min < 1) return "há pouco";
   if (min < 60) return `há ${min} min`;
   const h = Math.round(min / 60);
   return h < 24 ? `há ${h} h` : `há ${Math.round(h / 24)} dia(s)`;
