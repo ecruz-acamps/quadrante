@@ -14,7 +14,7 @@ const AVISOS: Record<string, [string, boolean]> = {
   conectado: ["OneDrive conectado.", true],
   erro: ["Falha na autorização. Tente de novo.", false],
   "sem-refresh-token": ["A Microsoft não devolveu um acesso permanente. Confira se o app tem a permissão offline_access e tente de novo.", false],
-  "sem-config": ["O aplicativo do Microsoft Entra ainda não foi configurado no .env deste servidor (ENTRA_*).", false],
+  "sem-config": ["O aplicativo do Microsoft Entra ainda não foi configurado: preencha a aba Microsoft, em Configurações.", false],
 };
 
 export default function OneDriveConfig({ configurado, conta, pasta, aviso }: Props) {
@@ -29,7 +29,7 @@ export default function OneDriveConfig({ configurado, conta, pasta, aviso }: Pro
       {msg && <p className={`text-sm ${msg[1] ? "text-green-700" : "text-[var(--signal)]"}`}>{msg[0]}</p>}
       <p className="text-xs text-[var(--ink-soft)]/70">
         Status: {conta ? <>conectado como <strong>{conta}</strong></> : "não conectado"}
-        {!configurado && " · falta configurar o aplicativo do Microsoft Entra no .env"}
+        {!configurado && <> · falta configurar o aplicativo na aba <a href="#microsoft" className="underline">Microsoft</a></>}
       </p>
 
       <div className="flex flex-wrap gap-2">

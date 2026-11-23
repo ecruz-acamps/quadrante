@@ -9,6 +9,8 @@ import { lerStatusTunel } from "@/lib/auxiliarTunel";
 import { lerStatusAtualizacao, verificarDisponivel } from "@/lib/atualizacaoSistema";
 import AtualizarSistema from "./AtualizarSistema";
 import OneDriveConfig from "./OneDriveConfig";
+import EntraConfig from "./EntraConfig";
+import { urlsSugeridas } from "@/lib/entraConfig";
 import { entraConfigurado } from "@/lib/microsoftAuth";
 
 export default async function ConfiguracoesPage({
@@ -48,6 +50,9 @@ export default async function ConfiguracoesPage({
         </a>
         <a href="#acesso" className="px-1 pb-2 text-[var(--ink-soft)]/70 hover:text-[var(--ink)]">
           Acesso
+        </a>
+        <a href="#microsoft" className="px-1 pb-2 text-[var(--ink-soft)]/70 hover:text-[var(--ink)]">
+          Microsoft
         </a>
         <a href="#atualizacao" className="px-1 pb-2 text-[var(--ink-soft)]/70 hover:text-[var(--ink)]">
           Atualização
@@ -112,6 +117,18 @@ export default async function ConfiguracoesPage({
             aviso={onedrive}
           />
         </section>
+      </section>
+
+      <section id="microsoft" className="scroll-mt-4 mt-10">
+        <h2 className="font-medium text-[var(--ink)] mb-3">Microsoft Entra (login e OneDrive)</h2>
+        <EntraConfig
+          tenantId={process.env.ENTRA_TENANT_ID ?? ""}
+          clientId={process.env.ENTRA_CLIENT_ID ?? ""}
+          temSegredo={Boolean(process.env.ENTRA_CLIENT_SECRET)}
+          urlLogin={process.env.ENTRA_REDIRECT_URI ?? ""}
+          urlOneDrive={process.env.ONEDRIVE_REDIRECT_URI ?? ""}
+          sugestao={urlsSugeridas(process.env.TUNEL_HOSTNAME)}
+        />
       </section>
 
       <section id="acesso" className="scroll-mt-4 mt-10">
