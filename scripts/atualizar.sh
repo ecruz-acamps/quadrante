@@ -69,7 +69,7 @@ passo "Compilando a versão nova (alguns minutos; o sistema continua no ar)"
 rm -rf "$NOVO"
 QUADRANTE_DIST_DIR=.next-novo npm run build || falhou "o build falhou"
 # o Next pode reescrever o tsconfig ao compilar em outra pasta; volta ao do git para não travar o próximo pull
-git checkout -q -- tsconfig.json 2>/dev/null || true
+git checkout -q -- tsconfig.json tsconfig.atualizacao.json 2>/dev/null || true
 [ -s "$NOVO/BUILD_ID" ] || falhou "o build não gerou a pasta esperada"
 echo "$DEPOIS" > "$NOVO/QUADRANTE_VERSAO"
 
