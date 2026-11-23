@@ -6,6 +6,7 @@ import { acessoRegistros, podeAcessarMissao } from "./autorizacao";
 import { db } from "./db";
 import { oneDrive } from "./oneDrive";
 import { removerArquivoFicha, sincronizarFicha, sincronizarMissao } from "./fichaArquivos";
+import { removerComprovante } from "./comprovante";
 
 // "Tentar de novo" numa ficha cujo arquivo ficou fora de ordem no OneDrive
 export async function sincronizarFichaAction(fichaId: number): Promise<{ erro?: string }> {
@@ -40,4 +41,19 @@ export async function removerArquivoFichaAction(arquivoId: number): Promise<{ er
   revalidatePath("/fichas");
   revalidatePath(`/fichas/${a.neocampistaId}`);
   return r.ok ? {} : { erro: r.erro };
+}
+
+// Tira o comprovante do PIX (lixeira do OneDrive); ficha PIX que estava OK volta para PENDENTE
+export async function removerComprovanteAction(fichaId: number): Promise<{ erro?: string }> {
+  const usuario = await requireUser();
+  if (!(await acessoRegistros(usuario, ["ficha", fichaId]))) return { erro: "Sem acesso a esta ficha." };
+  if (!(await db.integracaoOneDrive.findUnique({ where: { id: 1 } }))) return { erro: "O OneDrive não está conectado (Configurações)." };
+  try {
+    await removerComprovante(fichaId, db, oneDrive(db));
+  } catch (e) {
+    return { erro: (e as Error).message };
+  }
+  revalidatePath("/fichas");
+  revalidatePath(`/fichas/${fichaId}`);
+  return {};
 }

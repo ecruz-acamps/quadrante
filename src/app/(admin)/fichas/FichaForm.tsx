@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { PAGAMENTOS, CAMISETAS } from "@/lib/constants";
 import { formatarCep, situacaoCep, type ResultadoCep } from "@/lib/cep";
+import { NUCLEOS } from "@/lib/nucleos";
+import { situacaoPermitida, exigeComprovante } from "@/lib/comprovante";
 import type { Neocampista } from "@prisma/client";
 
 export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
@@ -12,6 +14,11 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
   const cidadeRef = useRef<HTMLInputElement>(null);
   const consultaRef = useRef<AbortController | null>(null);
   const [cepMsg, setCepMsg] = useState<string | null>(null);
+  // PIX sem comprovante não pode ficar "OK - PAGO" (a mesma regra é conferida no servidor)
+  const temComprovante = Boolean(ficha?.comprovanteItemId);
+  const [pagamento, setPagamento] = useState(ficha?.pagamento ?? "");
+  const [situacao, setSituacao] = useState(situacaoPermitida(ficha?.pagamento, ficha?.situacao ?? "OK", temComprovante));
+  const bloqueiaOk = exigeComprovante(pagamento) && !temComprovante;
 
   // os campos são não controlados (defaultValue): preenche pelo ref, e só sobrescreve com o que o CEP trouxe
   async function buscarCep(cep: string) {
@@ -47,7 +54,20 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
       </label>
       <label className="text-sm">
         Núcleo
-        <input name="nucleo" required defaultValue={ficha?.nucleo} className={sel} />
+        <select name="nucleo" required defaultValue={ficha?.nucleo ?? ""} className={sel}>
+          <option value="" disabled>
+            Selecione o núcleo…
+          </option>
+          {/* ficha antiga com núcleo escrito de outro jeito: mantém o valor até alguém escolher um da lista */}
+          {ficha?.nucleo && !(NUCLEOS as readonly string[]).includes(ficha.nucleo) && (
+            <option value={ficha.nucleo}>{ficha.nucleo} (atual)</option>
+          )}
+          {NUCLEOS.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="text-sm col-span-2">
         Nome
@@ -122,7 +142,15 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
       </label>
       <label className="text-sm">
         Pagamento
-        <select name="pagamento" defaultValue={ficha?.pagamento ?? ""} className={sel}>
+        <select
+          name="pagamento"
+          value={pagamento}
+          onChange={(e) => {
+            setPagamento(e.target.value);
+            setSituacao((atual) => situacaoPermitida(e.target.value, atual, temComprovante));
+          }}
+          className={sel}
+        >
           <option value="">—</option>
           {PAGAMENTOS.map((p) => (
             <option key={p}>{p}</option>
@@ -131,12 +159,31 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
       </label>
       <label className="text-sm">
         Situação
-        <select name="situacao" defaultValue={ficha?.situacao ?? "OK"} className={sel}>
-          <option value="OK">OK</option>
+        <select
+          name="situacao"
+          value={situacao}
+          onChange={(e) => setSituacao(situacaoPermitida(pagamento, e.target.value, temComprovante))}
+          className={sel}
+        >
+          <option value="OK" disabled={bloqueiaOk}>
+            OK - PAGO{bloqueiaOk ? " (falta o comprovante do PIX)" : ""}
+          </option>
           <option value="PENDENTE">PENDENTE</option>
           <option value="CANCELADO">CANCELADO</option>
         </select>
       </label>
+      {bloqueiaOk && (
+        <p className="col-span-2 md:col-span-3 rounded border border-[var(--brass)]/40 bg-[var(--brass)]/10 px-3 py-2 text-xs text-[var(--ink)]">
+          Pagamento por <strong>PIX</strong>: a ficha fica <strong>PENDENTE</strong> até o comprovante ser enviado.{" "}
+          {ficha ? (
+            <a href={`/fichas/${ficha.id}#comprovante`} className="underline">
+              Enviar o comprovante
+            </a>
+          ) : (
+            "Salve a ficha e envie o comprovante na tela seguinte."
+          )}
+        </p>
+      )}
       <label className="text-sm col-span-2 md:col-span-3">
         Observação
         <input name="observacao" defaultValue={ficha?.observacao ?? ""} className={sel} />

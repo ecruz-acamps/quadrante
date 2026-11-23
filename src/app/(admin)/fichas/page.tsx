@@ -57,7 +57,14 @@ export default async function FichasPage() {
                   <td className="px-4 py-2">{f.numero}</td>
                   <td className="px-4 py-2">{f.nucleo}</td>
                   <td className="px-4 py-2">{f.nome}</td>
-                  <td className="px-4 py-2">{f.situacao}</td>
+                  <td className="px-4 py-2">
+                    {f.situacao === "OK" ? "OK - PAGO" : f.situacao}
+                    {f.pagamento === "PIX" && !f.comprovanteItemId && (
+                      <Link href={`/fichas/${f.id}#comprovante`} className="block text-xs text-[var(--signal)] underline">
+                        falta comprovante PIX
+                      </Link>
+                    )}
+                  </td>
                   <td className="px-4 py-2">{f.tribo?.nome || "—"}</td>
                   <td className="px-4 py-2 text-xs text-[var(--brass)]">{alertas.join(", ") || "—"}</td>
                   <td className="px-4 py-2 text-right">

@@ -170,6 +170,11 @@ model Neocampista {
   // ficha preenchida no OneDrive (um ou mais arquivos); ver src/lib/fichaArquivos.ts
   arquivos         FichaArquivo[]
   arquivoErro      String? // última falha ao sincronizar com o OneDrive (null = em dia)
+  // comprovante do PIX no OneDrive (<Missão>/Comprovantes PIX); sem ele, ficha PIX não pode ficar OK (ver src/lib/comprovante.ts)
+  comprovanteDriveId String?
+  comprovanteItemId  String?
+  comprovanteNome    String?
+  comprovanteUrl     String?
 
   missao  Missao  @relation(fields: [missaoId], references: [id])
   tribo   Tribo?  @relation(fields: [triboId], references: [id])
