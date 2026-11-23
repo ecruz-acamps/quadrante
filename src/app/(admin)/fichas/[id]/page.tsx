@@ -18,7 +18,10 @@ export default async function EditarFichaPage({
   const { id } = await params;
   const { nova } = await searchParams;
   if (!(await acessoRegistros(usuario, ["ficha", Number(id)]))) notFound();
-  const ficha = await db.neocampista.findUnique({ where: { id: Number(id) } });
+  const ficha = await db.neocampista.findUnique({
+    where: { id: Number(id) },
+    include: { arquivos: { orderBy: { ordem: "asc" }, select: { id: true, nome: true, url: true } } },
+  });
   if (!ficha) notFound();
 
   return (
@@ -34,10 +37,10 @@ export default async function EditarFichaPage({
         )}
         <h2 className="font-medium text-[var(--ink)]">Ficha preenchida</h2>
         <p className="text-xs text-[var(--ink-soft)]/70">
-          Vai para o OneDrive (pasta da missão › Fichas) com o nome &quot;{String(ficha.numero).padStart(3, "0")} - {ficha.nome}&quot;. Depois do
-          sorteio, uma cópia vai para a pasta da cor da tribo.
+          Vai para o OneDrive (pasta da missão › Fichas) com o nome &quot;{String(ficha.numero).padStart(3, "0")} - {ficha.nome}&quot;; com mais de
+          um arquivo, cada um ganha (1), (2)… Depois do sorteio, as cópias vão para a pasta da cor da tribo.
         </p>
-        <ArquivoFicha fichaId={ficha.id} nome={ficha.arquivoNome} url={ficha.arquivoUrl} erro={ficha.arquivoErro} />
+        <ArquivoFicha fichaId={ficha.id} arquivos={ficha.arquivos} erro={ficha.arquivoErro} />
       </div>
       <form action={atualizarFicha} className="card p-6 space-y-4">
         <input type="hidden" name="id" value={ficha.id} />

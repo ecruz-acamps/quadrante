@@ -6,8 +6,9 @@ import { db } from "@/lib/db";
 import { oneDrive } from "@/lib/oneDrive";
 import { enviarFichaPreenchida, EXTENSOES, extensaoDe, TAMANHO_MAXIMO } from "@/lib/fichaArquivos";
 
-// Upload da ficha preenchida (botão "Fazer upload da ficha preenchida"): vai para o OneDrive com o nome original
-// e em seguida é renomeada para "NNN - Nome[ - COR]"; com tribo, ganha também a cópia na pasta da cor.
+// Upload de UM arquivo da ficha preenchida (a tela manda um por vez, para cada um ter até 10 MB): vai para o
+// OneDrive com o nome original e em seguida todos os arquivos da ficha são renomeados para "NNN - Nome[ - COR] (n)";
+// com tribo, ganham também a cópia na pasta da cor.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const usuario = await requireUser();
   const id = Number((await params).id);
@@ -38,9 +39,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const r = await enviarFichaPreenchida(id, arquivo.name, Buffer.from(await arquivo.arrayBuffer()), db, oneDrive(db));
     revalidatePath("/fichas");
     revalidatePath(`/fichas/${id}`);
-    const f = await db.neocampista.findUnique({ where: { id }, select: { arquivoNome: true, arquivoUrl: true } });
+    const ultimo = await db.fichaArquivo.findFirst({ where: { neocampistaId: id }, orderBy: { id: "desc" }, select: { nome: true } });
     // r.ok false: o arquivo subiu, mas renomear ou copiar para a tribo falhou (fica registrado e dá para tentar de novo)
-    return Response.json({ ok: true, nome: f?.arquivoNome, url: f?.arquivoUrl, aviso: r.ok ? undefined : r.erro });
+    return Response.json({ ok: true, nome: ultimo?.nome, aviso: r.ok ? undefined : r.erro });
   } catch (e) {
     return Response.json({ erro: (e as Error).message }, { status: 502 });
   }

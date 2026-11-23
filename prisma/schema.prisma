@@ -164,17 +164,8 @@ model Neocampista {
   equipeEvangelizacaoId Int?
   casaFixada  Boolean @default(false)
 
-  // ficha preenchida no OneDrive (pasta "Fichas" da missão); ver src/lib/fichaArquivos.ts
-  arquivoDriveId   String?
-  arquivoId        String?
-  arquivoNome      String? // nome atual lá ("012 - Maria da Silva - AZUL.pdf")
-  arquivoExt       String? // ".pdf", ".jpg"…
-  arquivoUrl       String? // link para abrir no OneDrive
-  // cópia na pasta da cor da tribo
-  arquivoCopiaDriveId String?
-  arquivoCopiaId   String?
-  arquivoCopiaNome String?
-  arquivoTriboId   Int?    // tribo em cuja pasta a cópia está
+  // ficha preenchida no OneDrive (um ou mais arquivos); ver src/lib/fichaArquivos.ts
+  arquivos         FichaArquivo[]
   arquivoErro      String? // última falha ao sincronizar com o OneDrive (null = em dia)
 
   missao  Missao  @relation(fields: [missaoId], references: [id])
@@ -364,4 +355,26 @@ model IntegracaoOneDrive {
   raizNome     String?
   raizUrl      String?
   atualizadoEm DateTime @updatedAt
+}
+
+// Um arquivo da ficha preenchida no OneDrive (a ficha costuma ter várias páginas/fotos).
+// Original em <Missão>/Fichas; cópia em <Missão>/Tribos/<COR> quando a ficha tem tribo.
+model FichaArquivo {
+  id            Int     @id @default(autoincrement())
+  neocampistaId Int
+  ordem         Int // 1, 2, 3… (vira o "(1)", "(2)" do nome quando há mais de um)
+  ext           String // ".pdf", ".jpg"…
+  driveId       String
+  itemId        String
+  nome          String // nome atual no OneDrive
+  url           String?
+  copiaDriveId  String?
+  copiaItemId   String?
+  copiaNome     String?
+  copiaTriboId  Int? // tribo em cuja pasta a cópia está
+  criadoEm      DateTime @default(now())
+
+  neocampista Neocampista @relation(fields: [neocampistaId], references: [id], onDelete: Cascade)
+
+  @@index([neocampistaId])
 }

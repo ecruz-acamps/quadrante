@@ -36,7 +36,7 @@ export default async function TribosPage() {
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
   const [comArquivo, comErro] = await Promise.all([
-    db.neocampista.count({ where: { missaoId: missao.id, NOT: { arquivoId: null } } }),
+    db.neocampista.count({ where: { missaoId: missao.id, arquivos: { some: {} } } }),
     db.neocampista.count({ where: { missaoId: missao.id, NOT: { arquivoErro: null } } }),
   ]);
   const [tribos, fichasSemTribo, servosAtivos] = await Promise.all([
