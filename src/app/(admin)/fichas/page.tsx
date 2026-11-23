@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { excluirFicha, adicionarAlerta, removerAlerta } from "@/lib/actions";
+import { adicionarAlerta, removerAlerta } from "@/lib/actions";
+import ExcluirFichaButton from "./ExcluirFichaButton";
 import VerEditarFichaButton from "./VerEditarFichaButton";
 import ArquivoFicha from "./ArquivoFicha";
 
@@ -64,10 +65,7 @@ export default async function FichasPage() {
                   </td>
                   <td className="px-4 py-2 text-right space-x-2">
                     <VerEditarFichaButton ficha={f} />
-                    <form action={excluirFicha} className="inline">
-                      <input type="hidden" name="id" value={f.id} />
-                      <button className="btn-danger-link">Excluir</button>
-                    </form>
+                    <ExcluirFichaButton id={f.id} numero={f.numero} nome={f.nome} arquivos={f.arquivos.length} />
                   </td>
                 </tr>
               );
