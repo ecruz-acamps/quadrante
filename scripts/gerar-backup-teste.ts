@@ -1,5 +1,5 @@
 /*
- * Gera um backup SINTÉTICO (quadrante-backup-teste.tar.gz.gpg) no mesmo formato do backup do Drive, para testar a
+ * Gera um backup SINTÉTICO (quadrante-backup-teste.tar.gz.gpg) no mesmo formato do backup diário, para testar a
  * restauração sem tocar em dados reais: banco migrado com 1 Pessoa e 1 Usuario SUPER (teste@quadrante.local),
  * e um .env com AUTH_SECRET="segredo-do-backup" e a BACKUP_PASSPHRASE informada.
  *

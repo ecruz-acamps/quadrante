@@ -6,6 +6,7 @@ import { adicionarLiderTribo, removerLiderTribo } from "@/lib/actions";
 import { ehSetorLideres } from "@/lib/setorLideres";
 import AlocarFichaForm from "./AlocarFichaForm";
 import SortearTribosButton from "./SortearTribosButton";
+import SincronizarOneDrive from "./SincronizarOneDrive";
 
 async function garantirTribos(missaoId: number) {
   const existentes = await db.tribo.findMany({ where: { missaoId } });
@@ -34,6 +35,10 @@ export default async function TribosPage() {
   const missao = await getMissaoAtiva();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
+  const [comArquivo, comErro] = await Promise.all([
+    db.neocampista.count({ where: { missaoId: missao.id, NOT: { arquivoId: null } } }),
+    db.neocampista.count({ where: { missaoId: missao.id, NOT: { arquivoErro: null } } }),
+  ]);
   const [tribos, fichasSemTribo, servosAtivos] = await Promise.all([
     garantirTribos(missao.id),
     db.neocampista.findMany({ where: { missaoId: missao.id, triboId: null }, orderBy: { numero: "asc" } }),
@@ -47,6 +52,7 @@ export default async function TribosPage() {
       <h1 className="page-title mb-6">Divisão de Tribos</h1>
 
       <SortearTribosButton missaoId={missao.id} quantidade={fichasSemTribo.length} />
+      <SincronizarOneDrive missaoId={missao.id} comArquivo={comArquivo} comErro={comErro} />
 
       <div className="card p-4 mb-6">
         <h2 className="font-medium mb-3 text-[var(--ink)]">Fichas sem tribo ({fichasSemTribo.length})</h2>

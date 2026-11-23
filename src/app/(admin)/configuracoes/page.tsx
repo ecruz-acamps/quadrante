@@ -8,15 +8,17 @@ import TunelCloudflare from "./TunelCloudflare";
 import { lerStatusTunel } from "@/lib/auxiliarTunel";
 import { lerStatusAtualizacao, verificarDisponivel } from "@/lib/atualizacaoSistema";
 import AtualizarSistema from "./AtualizarSistema";
+import OneDriveConfig from "./OneDriveConfig";
+import { entraConfigurado } from "@/lib/microsoftAuth";
 
 export default async function ConfiguracoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ drive?: string }>;
+  searchParams: Promise<{ onedrive?: string }>;
 }) {
   await requireRole("SUPER");
-  const { drive } = await searchParams;
-  const driveConectado = Boolean(process.env.GOOGLE_DRIVE_REFRESH_TOKEN);
+  const { onedrive } = await searchParams;
+  const integracao = await db.integracaoOneDrive.findUnique({ where: { id: 1 } });
   const tunel = await lerStatusTunel();
   const [atualizacao, disponivel] = await Promise.all([lerStatusAtualizacao(), verificarDisponivel()]);
   const missao = await getMissaoAtiva();
@@ -102,35 +104,14 @@ export default async function ConfiguracoesPage({
           </div>
         )}
 
-        <div className="card p-4 mt-4">
-          <p className="text-sm text-[var(--ink-soft)]/80 mb-2">
-            Backup automático diário (banco + .env, criptografados) enviado para uma pasta
-            própria no Google Drive, criada pelo Quadrante (&quot;Backups Quadrante&quot;). Se o backup
-            falhar, você recebe um aviso no celular. Autorize com a conta Google que deve ficar
-            dona dessa pasta.
-          </p>
-          {drive === "conectado" && (
-            <p className="text-sm text-green-700 mb-2">Google Drive conectado com sucesso.</p>
-          )}
-          {drive === "sem-refresh-token" && (
-            <p className="text-sm text-[var(--signal)] mb-2">
-              O Google não retornou um token permanente. Acesse
-              myaccount.google.com/permissions, remova o acesso do Quadrante e tente conectar de novo.
-            </p>
-          )}
-          {drive === "erro" && (
-            <p className="text-sm text-[var(--signal)] mb-2">Falha na autorização. Tente novamente.</p>
-          )}
-          <p className="text-xs text-[var(--ink-soft)]/60 mb-4">
-            Status: {driveConectado ? "conectado" : "não conectado"}
-          </p>
-          <a
-            href="/api/backup/drive/connect"
-            className="inline-block rounded px-4 py-2 bg-[var(--brass)] text-[var(--ink)] font-medium"
-          >
-            {driveConectado ? "Reconectar Google Drive" : "Conectar Google Drive"}
-          </a>
-        </div>
+        <section id="onedrive" className="scroll-mt-4">
+          <OneDriveConfig
+            configurado={entraConfigurado()}
+            conta={integracao?.conta ?? null}
+            pasta={integracao?.raizId ? { nome: integracao.raizNome ?? "pasta escolhida", url: integracao.raizUrl } : null}
+            aviso={onedrive}
+          />
+        </section>
       </section>
 
       <section id="acesso" className="scroll-mt-4 mt-10">

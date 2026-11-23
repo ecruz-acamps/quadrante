@@ -33,7 +33,7 @@ model Usuario {
   id    Int    @id @default(autoincrement())
   nome  String
   email String  @unique
-  senha String? // hash bcrypt; null para contas criadas via login Google
+  senha String? // hash bcrypt; null para contas criadas via login Microsoft (ou Google, antes)
   role  String  @default("ADMIN") // SUPER | ADMIN | COORDENADOR
   setor String? // só para COORDENADOR: nome do setor (igual a Setor.nome / Servo.setor)
   sessaoVersao Int @default(0) // incrementa no logout/troca de senha → invalida tokens de sessão antigos
@@ -163,6 +163,19 @@ model Neocampista {
   triboId     Int?
   equipeEvangelizacaoId Int?
   casaFixada  Boolean @default(false)
+
+  // ficha preenchida no OneDrive (pasta "Fichas" da missão); ver src/lib/fichaArquivos.ts
+  arquivoDriveId   String?
+  arquivoId        String?
+  arquivoNome      String? // nome atual lá ("012 - Maria da Silva - AZUL.pdf")
+  arquivoExt       String? // ".pdf", ".jpg"…
+  arquivoUrl       String? // link para abrir no OneDrive
+  // cópia na pasta da cor da tribo
+  arquivoCopiaDriveId String?
+  arquivoCopiaId   String?
+  arquivoCopiaNome String?
+  arquivoTriboId   Int?    // tribo em cuja pasta a cópia está
+  arquivoErro      String? // última falha ao sincronizar com o OneDrive (null = em dia)
 
   missao  Missao  @relation(fields: [missaoId], references: [id])
   tribo   Tribo?  @relation(fields: [triboId], references: [id])
@@ -337,4 +350,18 @@ model PerguntaServir {
   ativa        Boolean @default(true) // "excluir" só desativa, para preservar respostas antigas
 
   @@index([ordem])
+}
+
+// Conexão com o OneDrive/SharePoint (no máximo uma linha). Fica no banco, e não no .env, porque a Microsoft
+// devolve um refresh token novo a cada renovação e o app e o script de backup precisam ler o mais recente.
+model IntegracaoOneDrive {
+  id           Int      @id // sempre 1
+  conta        String // e-mail da conta Microsoft que autorizou
+  refreshToken String
+  // pasta raiz escolhida por link (OneDrive ou SharePoint); vazio = pasta "Quadrante" no OneDrive da conta
+  raizDriveId  String?
+  raizId       String?
+  raizNome     String?
+  raizUrl      String?
+  atualizadoEm DateTime @updatedAt
 }

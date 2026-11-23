@@ -158,7 +158,7 @@ if [ -n "$CODIGO" ]; then
   echo "  ✓ Quadrante instalado. Abra no navegador (rede local):"
   echo "      http://${IP:-IP-DO-SERVIDOR}:$PORTA/restaurar"
   echo "    Código de restauração (uso único): $CODIGO"
-  echo "    Envie o backup do Google Drive e a senha dele (BACKUP_PASSPHRASE)."
+  echo "    Envie o backup (OneDrive, pasta Backups) e a senha dele (BACKUP_PASSPHRASE)."
   echo "    Depois de restaurar, ligue o acesso pela internet em Configurações."
 else
   echo "  ✓ Quadrante atualizado: http://${IP:-IP-DO-SERVIDOR}:$PORTA"

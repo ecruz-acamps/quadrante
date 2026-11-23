@@ -1,5 +1,5 @@
 /*
- * Teste de restauração: baixa o backup MAIS RECENTE do Drive, descriptografa, extrai numa pasta temporária
+ * Teste de restauração: baixa o backup MAIS RECENTE do OneDrive, descriptografa, extrai numa pasta temporária
  * e confere o banco restaurado (integridade + contagem de pessoas), sem tocar no banco de produção.
  * Rode antes de cada evento e a cada poucos meses.
  * Uso: npx tsx scripts/testar-restauracao.ts
@@ -13,7 +13,8 @@ import os from "node:os";
 import { db } from "../src/lib/db";
 import { verificarSnapshot } from "../src/lib/snapshotDb";
 import { descriptografarArquivo } from "../src/lib/criptografia";
-import { obterAccessToken, garantirPasta, listarBackups, baixarArquivo } from "../src/lib/driveBackup";
+import { oneDrive } from "../src/lib/oneDrive";
+import { pastaBackups, listarBackups, baixarBackup } from "../src/lib/backupOneDrive";
 
 const execFileAsync = promisify(execFile);
 
@@ -22,14 +23,14 @@ async function main() {
   if (!senha) throw new Error("BACKUP_PASSPHRASE não configurada.");
   const trabalho = await fs.mkdtemp(path.join(os.tmpdir(), "qd-restore-"));
   try {
-    const token = await obterAccessToken();
-    const arquivos = await listarBackups(token, await garantirPasta(token));
+    const od = oneDrive(db);
+    const arquivos = await listarBackups(od, await pastaBackups(od));
     const ultimo = arquivos.filter((a) => a.name.endsWith(".tar.gz.gpg")).at(-1);
-    if (!ultimo) throw new Error("Nenhum backup criptografado (.tar.gz.gpg) encontrado no Drive.");
-    console.log("Backup mais recente:", ultimo.name, ultimo.createdTime);
+    if (!ultimo) throw new Error("Nenhum backup criptografado (.tar.gz.gpg) encontrado no OneDrive.");
+    console.log("Backup mais recente:", ultimo.name, ultimo.createdDateTime);
 
     const cifrado = path.join(trabalho, "backup.tar.gz.gpg");
-    await baixarArquivo(token, ultimo.id, cifrado);
+    await baixarBackup(od, ultimo, cifrado);
     const tar = path.join(trabalho, "backup.tar.gz");
     await descriptografarArquivo(cifrado, tar, senha);
     await execFileAsync("tar", ["-xzf", tar, "-C", trabalho]);
