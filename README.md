@@ -59,8 +59,8 @@ Itens do menu lateral do painel administrativo:
 | **Cerco de Jericó** | Dashboard das vagas por horário e inscrição pública por link (`/cerco/<slug>`), com notificação no celular a cada inscrição. A página pública funciona como PWA (com tela offline). |
 | **Camisetas** | Contagem por tamanho para o pedido. |
 | **Por Setor / Por Cidade** | Visões agregadas da missão. |
-| **Fichas (Neocampistas)** | Cadastro dos campistas novos, com alertas de possíveis duplicatas entre fichas. |
-| **Tribos** | Divisão dos neocampistas em tribos e seus líderes. |
+| **Fichas (Neocampistas)** | Cadastro dos campistas novos, com alertas de possíveis duplicatas entre fichas. Depois de cadastrar, **Fazer upload da ficha preenchida** envia o arquivo (PDF ou foto, até 10 MB) ao OneDrive e o renomeia para `012 - Nome`. |
+| **Tribos** | Divisão dos neocampistas em tribos e seus líderes. Depois do sorteio (e a cada troca), a ficha preenchida ganha uma cópia na pasta da cor da tribo no OneDrive e o nome passa a trazer a cor (`012 - Nome - AZUL`); quem muda de tribo sai da pasta antiga. Ver [Fichas no OneDrive](#fichas-no-onedrive). |
 | **Evangelização** (v1.2) | Equipes de 3 (com carro) formadas pelas cidades dos servos, sorteio de 3 a 4 casas de neocampistas por equipe sem nunca mandar a equipe à cidade de um membro, tela de cidades/vizinhança, fechar a distribuição (só o SUPER reabre) e folhas de impressão por equipe. |
 | **Financeiro** | Valores por categoria (interna, externa, campista), pagos e pendentes. |
 | **Não / Desistências / Faltas** | Quem recusou, desistiu ou faltou, com motivo. |
@@ -69,7 +69,7 @@ Itens do menu lateral do painel administrativo:
 | **Possíveis Duplicatas** | Detecta pessoas cadastradas duas vezes; permite ignorar falsos positivos. |
 | **Missões** | Cria e edita acampamentos (tipo, ano, valores, link do Cerco, mês). |
 | **Usuários** | Contas do sistema e quais missões cada uma enxerga. |
-| **Configurações** | Liga/desliga o Cerco público, cadastra aparelhos de notificação (Pushbird) e concentra os **backups** (download do banco, do `.env` e conexão com o Google Drive). |
+| **Configurações** | Liga/desliga o Cerco público, cadastra aparelhos de notificação (Pushbird) e concentra os **backups** (download do banco e conexão com o **OneDrive**, que guarda as fichas preenchidas e o backup diário). |
 
 ### Perfis de acesso
 
@@ -102,8 +102,8 @@ Nada desta lista está em produção. Cada item tem spec e/ou plano em `docs/sup
 - **Prisma 6** com **SQLite** (um único arquivo de banco)
 - **ExcelJS** para exportação de planilhas
 - **bcryptjs** para senhas; sessão por cookie assinado (HMAC), invalidável via `Usuario.sessaoVersao`
-- Login por senha **ou Google** (restrito ao domínio da organização)
-- Google Drive API para backup; Pushbird para notificações no celular
+- Login por senha **ou Microsoft** (Microsoft Entra ID, restrito ao tenant da organização)
+- Microsoft Graph (OneDrive/SharePoint) para as fichas preenchidas e o backup; Pushbird para notificações no celular
 - **PM2** para manter o processo no ar
 
 > Esta versão do Next.js tem mudanças em relação ao que muitos tutoriais mostram. Antes de alterar convenções
@@ -117,14 +117,15 @@ prisma/
   migrations/              migrações versionadas (aplicar com migrate deploy)
   seed.ts                  cria o usuário administrador inicial
   quadrante.db             BANCO DE DADOS (fora do git)
-scripts/                   importação de planilhas, normalização de nomes e backup para o Drive
+scripts/                   importação de planilhas, normalização de nomes e backup para o OneDrive
 src/
   app/
     login/                 tela de login
     (admin)/               painel autenticado (servos, fichas, tribos, financeiro, ...)
     cerco/[slug]/          inscrição pública do Cerco (PWA)
     servir/[slug]/         formulário público de inscrição de servos
-    api/auth, api/backup   login Google e backup/Drive
+    api/auth, api/onedrive login Microsoft e conexão com o OneDrive
+    api/fichas             upload da ficha preenchida
   lib/
     actions.ts             Server Actions (toda a escrita no banco)
     actionsServir.ts       Server Actions da inscrição de servos (envio público, perguntas, triagem)
@@ -158,7 +159,7 @@ ele guarda uma cópia em `prisma/quadrante.db.bak-antes-deploy-AAAAMMDD`). Vari�
 ### Primeiro acesso: restaurar o backup pela interface
 
 1. Abra `http://<IP>:4008/restaurar` (rede local). Em sistema recém-instalado, o login leva para essa tela.
-2. Baixe do Google Drive o `quadrante-backup-….tar.gz.gpg` mais recente e envie na tela, com o **código de restauração**
+2. Baixe do OneDrive (pasta Backups) o `quadrante-backup-….tar.gz.gpg` mais recente (backups de antes da troca ficaram no Google Drive) e envie na tela, com o **código de restauração**
    e a **senha do backup** (`BACKUP_PASSPHRASE`, do seu cofre de senhas).
 3. O sistema descriptografa, confere o banco, troca banco e `.env`, aplica as migrações e reinicia sozinho. Em qualquer
    erro (senha errada, arquivo danificado, banco reprovado, migração que falha) nada é substituído. Depois abre o login
@@ -209,12 +210,10 @@ Crie `.env` na raiz do projeto. **Nunca o envie ao git** (já está no `.gitigno
 |---|---|---|
 | `DATABASE_URL` | sim | `file:./quadrante.db` (caminho relativo à pasta `prisma/`). |
 | `AUTH_SECRET` | sim | Segredo que assina os cookies de sessão. Gere com `openssl rand -hex 32`. **Se mudar, todos precisam logar de novo.** |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | para login Google | Credenciais OAuth criadas no Google Cloud Console. |
-| `GOOGLE_REDIRECT_URI` | para login Google | `https://SEU-DOMINIO/api/auth/google/callback`. Precisa estar cadastrada idêntica no Google Cloud. |
-| `GSUITE_DOMAIN` | para login Google | Só e-mails desse domínio entram. |
-| `GOOGLE_DRIVE_REDIRECT_URI` | para backup | `https://SEU-DOMINIO/api/backup/drive/callback`. |
-| `GOOGLE_DRIVE_REFRESH_TOKEN` | para backup | Preenchido sozinho ao conectar o Drive em Configurações. |
-| `GOOGLE_DRIVE_FOLDER_ID` | para backup | ID da pasta do Drive que recebe os backups. |
+| `ENTRA_TENANT_ID` | para login Microsoft e OneDrive | ID do diretório (tenant) da organização no Microsoft Entra. Só contas desse tenant entram. |
+| `ENTRA_CLIENT_ID` / `ENTRA_CLIENT_SECRET` | para login Microsoft e OneDrive | ID e segredo do aplicativo registrado no Entra (ver [Microsoft Entra e OneDrive](#microsoft-entra-e-onedrive)). |
+| `ENTRA_REDIRECT_URI` | para login Microsoft | `https://SEU-DOMINIO/api/auth/microsoft/callback`. Idêntica à cadastrada no aplicativo. |
+| `ONEDRIVE_REDIRECT_URI` | para fichas e backup | `https://SEU-DOMINIO/api/onedrive/callback`. Idêntica à cadastrada no aplicativo. |
 | `PUSHBIRD_WEBHOOK_URL` | opcional | Webhook que envia notificação ao celular quando alguém se inscreve no Cerco. |
 | `COOKIE_SECURE` | opcional | `false` permite acessar por HTTP em rede local (o instalador grava; ligar o túnel remove). Padrão: seguro em produção. |
 | `BACKUP_PASSPHRASE` | para backup | Senha do backup criptografado (16+ caracteres; `openssl rand -base64 33`). **Guarde no cofre de senhas, fora do servidor.** |
@@ -222,7 +221,48 @@ Crie `.env` na raiz do projeto. **Nunca o envie ao git** (já está no `.gitigno
 | `TUNEL_HOSTNAME` | automática | Endereço público do túnel, preenchido ao ligar o túnel em Configurações. |
 | `SEED_ADMIN_PASSWORD` | opcional | Senha do admin criado pelo seed (senão é gerada aleatoriamente). |
 
-Se mudar de domínio, atualize os dois `*_REDIRECT_URI` **no `.env` e no Google Cloud Console**.
+Se mudar de domínio, atualize os dois `*_REDIRECT_URI` **no `.env` e no aplicativo do Microsoft Entra**.
+
+As variáveis `GOOGLE_*` e `GSUITE_DOMAIN` de instalações antigas não são mais usadas e podem ser apagadas do `.env`.
+
+### Microsoft Entra e OneDrive
+
+Um único registro de aplicativo no Entra serve para o login e para o OneDrive.
+
+1. Em **entra.microsoft.com › Aplicativos › Registros de aplicativo › Novo registro**: nome `Quadrante`, tipo de conta
+   **Somente contas deste diretório organizacional**, URI de redirecionamento **Web**
+   `https://SEU-DOMINIO/api/auth/microsoft/callback`.
+2. No aplicativo criado, em **Autenticação**, adicione o segundo URI Web: `https://SEU-DOMINIO/api/onedrive/callback`.
+3. Em **Certificados e segredos › Novo segredo do cliente**, copie o **Valor** (só aparece uma vez). Anote a validade:
+   quando vencer, gere outro e troque no `.env`.
+4. Em **Permissões de API › Microsoft Graph › Permissões delegadas**, adicione `openid`, `profile`, `email`,
+   `offline_access`, `User.Read` e `Files.ReadWrite.All`.
+5. Copie da **Visão geral** o *ID do aplicativo (cliente)* e o *ID do diretório (locatário)* e grave no `.env`
+   (`ENTRA_CLIENT_ID`, `ENTRA_TENANT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_REDIRECT_URI`, `ONEDRIVE_REDIRECT_URI`);
+   depois `pm2 restart quadrante`.
+6. Em **Configurações › OneDrive**, clique em **Conectar OneDrive** com a conta Microsoft que vai guardar os arquivos.
+
+O login com Microsoft só funciona pelo endereço `https://` (a Microsoft não aceita retorno em HTTP fora de `localhost`);
+na rede local, entre com e-mail e senha. Usuário novo que entra pela Microsoft vira ADMIN sem missões, até um SUPER
+liberar em **Usuários**, como era com o Google.
+
+### Fichas no OneDrive
+
+Dentro da pasta do Quadrante (por padrão `Quadrante`, no OneDrive da conta conectada; em Configurações dá para colar o
+link de outra pasta, inclusive de um site do SharePoint):
+
+```
+<Missão>/Fichas/012 - Maria da Silva - AZUL.pdf         todas as fichas preenchidas
+<Missão>/Tribos/AZUL/012 - Maria da Silva - AZUL.pdf    cópia de quem está na tribo azul
+Backups/quadrante-backup-AAAA-MM-DD-HHMM.tar.gz.gpg     backup diário
+```
+
+- O upload vai com o nome original do arquivo e logo em seguida é renomeado para `número - nome` (com a cor, se já houver tribo).
+- Sorteio e troca de tribo: a cópia vai para a pasta da cor nova e sai da antiga; os dois nomes passam a trazer a cor nova.
+  Isso roda em segundo plano logo depois da ação.
+- Mudou o nome ou o número na ficha: os arquivos são renomeados. Excluiu a ficha: os arquivos vão para a lixeira do OneDrive.
+- Se o OneDrive falhar, a ficha mostra **⚠ Fora de ordem no OneDrive** com **Tentar de novo**; em Tribos,
+  **Sincronizar com o OneDrive** confere todas as fichas da missão de uma vez. Rodar de novo não duplica nada.
 
 ## Rodando em desenvolvimento
 
@@ -287,32 +327,32 @@ O que **só existe no servidor** (não está no GitHub):
 | Item | Por que importa |
 |---|---|
 | `prisma/quadrante.db` | Todos os dados: servos, pessoas, fichas, pagamentos, histórico. **Insubstituível.** |
-| `.env` | Segredos. Sem `AUTH_SECRET` e as credenciais Google, o login não funciona. |
+| `.env` | Segredos. Sem `AUTH_SECRET` e as credenciais do Microsoft Entra, o login não funciona. |
 
 ### Backup manual
 
 Em **Configurações** (como SUPER) há um link para baixar o banco (`/api/backup`), gerado como snapshot
 consistente (`VACUUM INTO`) e verificado antes do download. Faça isso antes de mudanças grandes. O `.env`
-**não** é mais baixável pela aplicação: ele segue dentro do backup criptografado do Drive e deve ter uma
+**não** é mais baixável pela aplicação: ele segue dentro do backup criptografado do OneDrive e deve ter uma
 cópia no seu cofre de senhas.
 
-### Backup automático para o Google Drive (diário, criptografado)
+### Backup automático para o OneDrive (diário, criptografado)
 
 O script `scripts/backup-to-drive.ts` roda **todo dia às 03:00** e:
 
 1. tira um snapshot consistente do banco (`VACUUM INTO`) e confere `PRAGMA integrity_check`;
 2. compacta o snapshot + `.env` e **criptografa com gpg (AES256)**; a senha é `BACKUP_PASSPHRASE`, no `.env`;
-3. envia `quadrante-backup-AAAA-MM-DD-HHMM.tar.gz.gpg` ao Drive, confere o tamanho e mantém as **45 cópias mais recentes**;
+3. envia `quadrante-backup-AAAA-MM-DD-HHMM.tar.gz.gpg` à pasta **Backups** do OneDrive, confere o tamanho e mantém as **45 cópias mais recentes**;
 4. grava `/var/log/quadrante/ultimo-backup-ok`. Se algo falhar, manda **alerta no celular** (Pushbird) e sai com erro.
 
 Sem `BACKUP_PASSPHRASE` o script se recusa a enviar (nunca sobe backup sem criptografia).
 
-> ⚠️ **Guarde a `BACKUP_PASSPHRASE` no seu cofre de senhas, fora do servidor.** Sem ela, nenhum backup do Drive
+> ⚠️ **Guarde a `BACKUP_PASSPHRASE` no seu cofre de senhas, fora do servidor.** Sem ela, nenhum backup
 > pode ser aberto, nem por você: se o servidor morrer, a senha que estava no `.env` morre junto.
 
 Configuração:
 
-1. Em **Configurações**, clique em **Conectar Google Drive** (grava o refresh token no `.env`).
+1. Em **Configurações**, clique em **Conectar OneDrive** (o acesso fica guardado no banco e é renovado sozinho).
 2. Garanta a senha no `.env` (`BACKUP_PASSPHRASE="..."`, 16+ caracteres; gere com `openssl rand -base64 33`).
 3. Teste manualmente:
    ```bash
@@ -326,7 +366,7 @@ Configuração:
    0 9 * * * export PATH=/caminho/do/node/bin:/usr/bin:/bin; cd /caminho/para/quadrante && ./node_modules/.bin/tsx scripts/verificar-backup.ts >> /var/log/quadrante/backup.log 2>&1
    ```
 
-**Teste de restauração** (antes de cada evento e a cada poucos meses): baixa o backup mais recente do Drive,
+**Teste de restauração** (antes de cada evento e a cada poucos meses): baixa o backup mais recente do OneDrive,
 descriptografa, extrai numa pasta temporária e confere o banco, sem tocar na produção:
 
 ```bash
@@ -338,18 +378,18 @@ npx tsx scripts/testar-restauracao.ts      # termina com "RESTAURAÇÃO OK."
 
 ## Mudar de servidor / restaurar o servidor completo
 
-Roteiro para trocar de máquina (ou recuperar o sistema depois de perder o servidor, tendo o GitHub e o backup do Drive):
+Roteiro para trocar de máquina (ou recuperar o sistema depois de perder o servidor, tendo o GitHub e o backup do OneDrive):
 
 1. **No servidor antigo (se ainda existir):** rode um backup agora (`npx tsx scripts/backup-to-drive.ts`) e o teste de
    restauração (`npx tsx scripts/testar-restauracao.ts`, deve terminar com "RESTAURAÇÃO OK."). Confirme que a
    `BACKUP_PASSPHRASE` está no seu cofre de senhas.
 2. **No servidor novo:** rode o `install.sh` (comando acima).
-3. Abra `http://<IP>:4008/restaurar`, envie o backup mais recente do Drive e a senha (seção "Primeiro acesso").
+3. Abra `http://<IP>:4008/restaurar`, envie o backup mais recente do OneDrive e a senha (seção "Primeiro acesso").
 4. **Confira pela rede local:** login, totais do Quadrante de Servos, e rode o backup manual uma vez
-   (`cd /opt/quadrante && sudo -u quadrante ./node_modules/.bin/tsx scripts/backup-to-drive.ts`). Se o Google Drive pedir
-   para reconectar, use Configurações › Conectar Google Drive.
+   (`cd /opt/quadrante && sudo -u quadrante ./node_modules/.bin/tsx scripts/backup-to-drive.ts`). Se o OneDrive pedir
+   para reconectar, use Configurações › Conectar OneDrive.
 5. **Ligue o acesso pela internet** em Configurações, no mesmo endereço de hoje, confirmando a troca do DNS que aponta
-   para o servidor antigo (se o domínio mudar, atualize os `*_REDIRECT_URI` no `.env` e no Google Cloud). Confira o acesso
+   para o servidor antigo (se o domínio mudar, atualize os `*_REDIRECT_URI` no `.env` e no aplicativo do Entra). Confira o acesso
    de fora da rede.
 6. **Só então** desligue o servidor antigo.
 
@@ -381,7 +421,8 @@ npx tsx scripts/gerar-backup-teste.ts /tmp/qd "senha-de-teste-123"   # backup SI
 | Sintoma | O que verificar |
 |---|---|
 | Ninguém consegue logar após restaurar | `AUTH_SECRET` diferente do original (todos precisam logar de novo; é normal) ou coluna `sessaoVersao` ausente: rode `npx prisma migrate deploy`. |
-| Login Google dá `redirect_uri_mismatch` | `GOOGLE_REDIRECT_URI` no `.env` precisa ser idêntica à cadastrada no Google Cloud Console. |
+| Login Microsoft dá erro `AADSTS50011` (redirect URI) | `ENTRA_REDIRECT_URI`/`ONEDRIVE_REDIRECT_URI` no `.env` precisam ser idênticas às cadastradas no aplicativo do Entra. |
+| Ficha com "⚠ Fora de ordem no OneDrive" | Passe o mouse para ver o motivo; "reconecte em Configurações" quer dizer que o acesso venceu ou foi revogado: **Reconectar OneDrive**. |
 | Volta para o login sem erro (em HTTP) | O cookie é `secure` em produção; use HTTPS ou, só em rede local, `COOKIE_SECURE=false`. |
 | Erro de coluna/tabela do Prisma | Falta `npx prisma migrate deploy` e/ou `npx prisma generate`. |
 | Página antiga após deploy | Rode `npm run build` antes do `pm2 restart quadrante`. |

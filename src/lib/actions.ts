@@ -2,12 +2,26 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { createSession, destroySession, requireUser, requireRole, requireCoordenador, setMissaoAtiva } from "./auth";
 import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaValida } from "./coordenador";
 import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
 import { ehSetorLideres } from "./setorLideres";
+import { oneDrive } from "./oneDrive";
+import { apagarArquivosDaFicha, sincronizarFicha, sincronizarMissao } from "./fichaArquivos";
+
+// Mantém o arquivo da ficha no OneDrive em dia (nome e pasta da tribo) depois da resposta: a tela não espera
+// o OneDrive. Falhas ficam gravadas na ficha (arquivoErro) e aparecem com "Tentar de novo".
+async function temOneDrive() {
+  return Boolean(await db.integracaoOneDrive.findUnique({ where: { id: 1 }, select: { id: true } }));
+}
+function sincronizarDepois(fichaId: number) {
+  after(async () => {
+    if (await temOneDrive()) await sincronizarFicha(fichaId, db, oneDrive(db));
+  });
+}
 import { normalizarNome } from "./nomes";
 import { FUNCOES, PAGAMENTOS, HORARIOS_CERCO, CAMISETAS } from "./constants";
 import { reservarHorarioCerco } from "./cercoReserva";
@@ -959,10 +973,12 @@ export async function criarFicha(formData: FormData) {
   } else if (await db.neocampista.findUnique({ where: { missaoId_numero: { missaoId, numero } } })) {
     throw new Error(`Já existe a ficha número ${numero} nesta missão.`);
   }
-  await db.neocampista.create({
+  const criada = await db.neocampista.create({
     data: { missaoId, numero, ...fichaData(formData) },
   });
   revalidatePath("/fichas");
+  // abre a ficha recém-criada, com o botão "Fazer upload da ficha preenchida"
+  redirect(`/fichas/${criada.id}?nova=1`);
 }
 
 export async function atualizarFicha(formData: FormData) {
@@ -978,6 +994,7 @@ export async function atualizarFicha(formData: FormData) {
     if (dup) throw new Error(`Já existe a ficha número ${numero} nesta missão.`);
   }
   await db.neocampista.update({ where: { id }, data: { ...fichaData(formData), numero } });
+  if (atual.arquivoId) sincronizarDepois(id); // nome ou número mudou: renomeia no OneDrive
   revalidatePath("/fichas");
   redirect("/fichas");
 }
@@ -986,8 +1003,15 @@ export async function excluirFicha(formData: FormData) {
   const usuario = await requireUser();
   const id = Number(formData.get("id"));
   await exigirRegistros(usuario, ["ficha", id]);
+  const ficha = await db.neocampista.findUnique({ where: { id } });
   await db.fichaAlerta.deleteMany({ where: { OR: [{ origemId: id }, { alvoId: id }] } });
   await db.neocampista.delete({ where: { id } });
+  // a ficha preenchida e a cópia da tribo vão para a lixeira do OneDrive (dá para recuperar lá)
+  if (ficha?.arquivoId) {
+    after(async () => {
+      if (await temOneDrive()) await apagarArquivosDaFicha(ficha, oneDrive(db)).catch(() => {});
+    });
+  }
   revalidatePath("/fichas");
 }
 
@@ -1040,7 +1064,9 @@ export async function alocarTribo(_prev: unknown, formData: FormData) {
       }
     }
   }
-  await db.neocampista.update({ where: { id: fichaId }, data: { triboId } });
+  const atualizada = await db.neocampista.update({ where: { id: fichaId }, data: { triboId } });
+  // trocou de tribo: a cópia sai da pasta da cor antiga e entra na nova
+  if (atualizada.arquivoId) sincronizarDepois(fichaId);
   revalidatePath("/tribos");
   return { ok: true };
 }
@@ -1185,6 +1211,12 @@ export async function sortearTribos(_prev: unknown, formData: FormData) {
 
   for (const [fichaId, triboId] of alocacoes) {
     await db.neocampista.update({ where: { id: fichaId }, data: { triboId } });
+  }
+  // fichas preenchidas: cópia na pasta da cor de cada tribo (em segundo plano; pode levar alguns minutos)
+  if (alocacoes.size) {
+    after(async () => {
+      if (await temOneDrive()) await sincronizarMissao(missaoId, db, oneDrive(db));
+    });
   }
 
   revalidatePath("/tribos");

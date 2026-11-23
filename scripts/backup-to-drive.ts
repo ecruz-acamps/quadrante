@@ -1,8 +1,9 @@
 /*
- * Backup diário do Quadrante para o Google Drive.
+ * Backup diário do Quadrante para o OneDrive (pasta Backups; ver src/lib/backupOneDrive.ts).
+ * O nome do arquivo continua backup-to-drive.ts porque o cron dos servidores já chama este caminho.
  *   1. snapshot consistente do banco (VACUUM INTO) e checagem de integridade
  *   2. compacta snapshot + .env e CRIPTOGRAFA (gpg AES256, senha BACKUP_PASSPHRASE do .env)
- *   3. envia ao Drive, confere o tamanho, apaga os mais antigos (RETENCAO)
+ *   3. envia ao OneDrive, confere o tamanho, apaga os mais antigos (RETENCAO)
  *   4. grava o marcador de sucesso lido por scripts/verificar-backup.ts
  * Qualquer falha manda alerta no celular (Pushbird) e sai com código 1. Sem BACKUP_PASSPHRASE não envia nada.
  *
@@ -17,7 +18,8 @@ import os from "node:os";
 import { db } from "../src/lib/db";
 import { criarSnapshot, verificarSnapshot } from "../src/lib/snapshotDb";
 import { criptografarArquivo } from "../src/lib/criptografia";
-import { obterAccessToken, garantirPasta, enviarArquivo, listarBackups, apagarArquivo, excedentes } from "../src/lib/driveBackup";
+import { oneDrive } from "../src/lib/oneDrive";
+import { pastaBackups, enviarBackup, listarBackups, excedentes } from "../src/lib/backupOneDrive";
 import { notificarOperacao } from "../src/lib/notificacoes";
 
 const execFileAsync = promisify(execFile);
@@ -52,13 +54,13 @@ async function main() {
     const cifrado = `${tar}.gpg`;
     await criptografarArquivo(tar, cifrado, senha);
 
-    const token = await obterAccessToken();
-    const pasta = await garantirPasta(token);
-    const enviado = await enviarArquivo(token, pasta, cifrado, `${base}.tar.gz.gpg`);
-    console.log("Enviado ao Drive:", enviado.name, enviado.id, `(${verificacao.pessoas} pessoas no snapshot)`);
+    const arquivos = oneDrive(db);
+    const pasta = await pastaBackups(arquivos);
+    const enviado = await enviarBackup(arquivos, pasta, cifrado, `${base}.tar.gz.gpg`);
+    console.log("Enviado ao OneDrive:", enviado.name, enviado.id, `(${verificacao.pessoas} pessoas no snapshot)`);
 
-    for (const antigo of excedentes(await listarBackups(token, pasta), RETENCAO)) {
-      await apagarArquivo(token, antigo.id);
+    for (const antigo of excedentes(await listarBackups(arquivos, pasta), RETENCAO)) {
+      await arquivos.apagar(antigo); // vai para a lixeira do OneDrive
       console.log("Removido backup antigo:", antigo.name);
     }
     await fs.writeFile(MARCADOR, `${new Date().toISOString()} ${enviado.name}\n`);
@@ -71,7 +73,7 @@ async function main() {
 main()
   .then(() => db.$disconnect())
   .catch(async (err) => {
-    console.error("Erro no backup para o Drive:", err);
+    console.error("Erro no backup para o OneDrive:", err);
     await notificarOperacao("Backup do Quadrante FALHOU", String(err?.message ?? err).slice(0, 300)).catch(() => {});
     await db.$disconnect().catch(() => {});
     process.exit(1);

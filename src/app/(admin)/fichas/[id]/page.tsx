@@ -3,18 +3,42 @@ import { requireUser } from "@/lib/auth";
 import { acessoRegistros } from "@/lib/autorizacao";
 import { atualizarFicha } from "@/lib/actions";
 import FichaForm from "../FichaForm";
+import ArquivoFicha from "../ArquivoFicha";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
-export default async function EditarFichaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditarFichaPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ nova?: string }>;
+}) {
   const usuario = await requireUser();
   const { id } = await params;
+  const { nova } = await searchParams;
   if (!(await acessoRegistros(usuario, ["ficha", Number(id)]))) notFound();
   const ficha = await db.neocampista.findUnique({ where: { id: Number(id) } });
   if (!ficha) notFound();
 
   return (
     <div className="max-w-3xl">
-      <h1 className="page-title mb-6">Editar ficha #{ficha.numero}</h1>
+      <h1 className="page-title mb-6">{nova ? "Ficha cadastrada" : "Editar ficha"} #{ficha.numero}</h1>
+
+      <div className="card p-4 mb-6 space-y-2">
+        {nova && (
+          <p className="text-sm text-green-700">
+            Ficha de {ficha.nome} salva. Agora envie a ficha preenchida (foto ou PDF).{" "}
+            <Link href="/fichas/novo" className="underline text-[var(--ink)]">Cadastrar outra ficha</Link>
+          </p>
+        )}
+        <h2 className="font-medium text-[var(--ink)]">Ficha preenchida</h2>
+        <p className="text-xs text-[var(--ink-soft)]/70">
+          Vai para o OneDrive (pasta da missão › Fichas) com o nome &quot;{String(ficha.numero).padStart(3, "0")} - {ficha.nome}&quot;. Depois do
+          sorteio, uma cópia vai para a pasta da cor da tribo.
+        </p>
+        <ArquivoFicha fichaId={ficha.id} nome={ficha.arquivoNome} url={ficha.arquivoUrl} erro={ficha.arquivoErro} />
+      </div>
       <form action={atualizarFicha} className="card p-6 space-y-4">
         <input type="hidden" name="id" value={ficha.id} />
         <FichaForm ficha={ficha} />

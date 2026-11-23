@@ -82,7 +82,7 @@ export default function RestaurarForm({ tunel }: { tunel: { disponivel: boolean;
         <form onSubmit={restaurar} className="bg-[var(--card)] rounded-lg shadow-2xl p-6 space-y-4 border border-[var(--line)]">
           <h2 className="font-medium text-[var(--ink)]">Restaurar um backup</h2>
           <p className="text-sm text-[var(--ink-soft)]/80">
-            Baixe do Google Drive o arquivo <code>quadrante-backup-….tar.gz.gpg</code> mais recente e envie aqui, com a
+            Baixe do OneDrive (pasta Backups) ou dos backups antigos do Google Drive o arquivo <code>quadrante-backup-….tar.gz.gpg</code> mais recente e envie aqui, com a
             senha do backup, se ele for criptografado.
           </p>
           <input name="arquivo" type="file" required accept=".gpg,.gz,.tgz" className="input" />

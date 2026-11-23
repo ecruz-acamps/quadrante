@@ -1,4 +1,4 @@
-// Restauração de um backup do Drive (quadrante-backup-*.tar.gz.gpg): descriptografa, valida e troca banco + .env.
+// Restauração de um backup diário (OneDrive; os antigos ficaram no Google Drive) (quadrante-backup-*.tar.gz.gpg): descriptografa, valida e troca banco + .env.
 // Formato (de scripts/backup-to-drive.ts): tar.gz com `prisma/quadrante.db` e `.env`, criptografado com gpg AES256.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";

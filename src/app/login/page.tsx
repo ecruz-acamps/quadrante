@@ -14,9 +14,10 @@ export default function LoginPage() {
 
 function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, null);
-  const erroGoogle = {
-    oauth: "Não foi possível concluir o login com Google. Tente novamente.",
-    dominio: "Use uma conta Google verificada do domínio do acampamento.",
+  const erroExterno = {
+    oauth: "Não foi possível concluir o login com Microsoft. Tente novamente.",
+    dominio: "Use uma conta Microsoft da organização do acampamento.",
+    "entra-config": "O login com Microsoft ainda não foi configurado neste servidor.",
     "outra-sessao": "Sua conta foi acessada em outro dispositivo.",
   }[useSearchParams().get("error") ?? ""];
   return (
@@ -63,7 +64,7 @@ function LoginForm() {
             className="input"
           />
         </div>
-        {(state?.error || erroGoogle) && <p className="text-[var(--signal)] text-sm">{state?.error ?? erroGoogle}</p>}
+        {(state?.error || erroExterno) && <p className="text-[var(--signal)] text-sm">{state?.error ?? erroExterno}</p>}
         <button
           disabled={pending}
           className="btn-primary w-full py-2.5"
@@ -76,16 +77,16 @@ function LoginForm() {
           <div className="h-px flex-1 bg-[var(--line)]" />
         </div>
         <a
-          href="/api/auth/google"
+          href="/api/auth/microsoft"
           className="flex items-center justify-center gap-2 w-full py-2.5 rounded border border-[var(--line)] text-sm text-[var(--ink)] hover:bg-black/5 transition"
         >
-          <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden>
-            <path fill="#FFC107" d="M43.6 20.5H42V20.4H24v7.2h11.3c-1.6 4.7-6.1 8.1-11.3 8.1-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.4-5.4C34.5 6 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z" />
-            <path fill="#FF3D00" d="M6.3 14.7l5.9 4.3C13.9 15.1 18.6 12 24 12c3.1 0 5.9 1.2 8 3.1l5.4-5.4C34.5 6 29.5 4 24 4 16 4 9.1 8.5 6.3 14.7z" />
-            <path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.3C29.5 34.9 26.9 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.2 4.8C9.1 39.5 16 44 24 44z" />
-            <path fill="#1976D2" d="M43.6 20.5H42V20.4H24v7.2h11.3c-.8 2.3-2.2 4.3-4.1 5.8l6.5 5.3C41.5 35.5 44 30.2 44 24c0-1.3-.1-2.7-.4-3.5z" />
+          <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden>
+            <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+            <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+            <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+            <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
           </svg>
-          Entrar com Google
+          Entrar com Microsoft
         </a>
       </form>
     </main>

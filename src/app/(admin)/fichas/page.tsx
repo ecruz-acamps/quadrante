@@ -3,6 +3,7 @@ import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { excluirFicha, adicionarAlerta, removerAlerta } from "@/lib/actions";
 import VerEditarFichaButton from "./VerEditarFichaButton";
+import ArquivoFicha from "./ArquivoFicha";
 
 export default async function FichasPage() {
   await requireUser();
@@ -39,6 +40,7 @@ export default async function FichasPage() {
               <th className="text-left px-4 py-2">Situação</th>
               <th className="text-left px-4 py-2">Tribo</th>
               <th className="text-left px-4 py-2">Alertas</th>
+              <th className="text-right px-4 py-2">Ficha preenchida</th>
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
@@ -56,6 +58,9 @@ export default async function FichasPage() {
                   <td className="px-4 py-2">{f.situacao}</td>
                   <td className="px-4 py-2">{f.tribo?.nome || "—"}</td>
                   <td className="px-4 py-2 text-xs text-[var(--brass)]">{alertas.join(", ") || "—"}</td>
+                  <td className="px-4 py-2 text-right">
+                    <ArquivoFicha fichaId={f.id} nome={f.arquivoNome} url={f.arquivoUrl} erro={f.arquivoErro} compacto />
+                  </td>
                   <td className="px-4 py-2 text-right space-x-2">
                     <VerEditarFichaButton ficha={f} />
                     <form action={excluirFicha} className="inline">
