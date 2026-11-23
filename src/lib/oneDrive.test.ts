@@ -101,3 +101,15 @@ test("sem conexão: erro claro pedindo para conectar", async () => {
   const od = criarClienteGraph(db as never, (async () => json({})) as typeof fetch);
   await assert.rejects(od.garantirPasta(["x"]), /Conectar OneDrive/);
 });
+
+test("urlDaPasta: devolve o endereço web da pasta", async () => {
+  reiniciarOneDrive();
+  const db = dbFalso();
+  const { f, chamadas } = microsoftFalsa([
+    [/POST .*\/token/, () => json({ access_token: "at", expires_in: 3600 })],
+    [/GET .*\/drives\/D\/items\/M\?\$select=webUrl$/, () => json({ webUrl: "https://contoso-my.sharepoint.com/personal/x/Documents/Quadrante/23" })],
+  ]);
+  const od = criarClienteGraph(db as never, f);
+  assert.equal(await od.urlDaPasta({ driveId: "D", id: "M" }), "https://contoso-my.sharepoint.com/personal/x/Documents/Quadrante/23");
+  assert.equal(chamadas.length, 2);
+});
