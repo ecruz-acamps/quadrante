@@ -28,3 +28,13 @@ test("decimal usa vírgula e o número de casas pedido", () => {
   assert.equal(decimal(1234.5, 1), "1.234,5");
   assert.equal(decimal(NaN, 2), "0,00");
 });
+
+test("telefone formata celular e fixo, tira o +55 e mantém o que não reconhece", async () => {
+  const { telefone } = await import("./format");
+  assert.equal(telefone("48991234567"), "(48) 99123-4567");
+  assert.equal(telefone("(48) 9 9123-4567"), "(48) 99123-4567");
+  assert.equal(telefone("+55 48 99123-4567"), "(48) 99123-4567");
+  assert.equal(telefone("4832221100"), "(48) 3222-1100");
+  assert.equal(telefone(" 9123-4567 "), "9123-4567");
+  assert.equal(telefone(null), "");
+});
