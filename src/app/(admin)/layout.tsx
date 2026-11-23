@@ -12,6 +12,7 @@ const NAV = [
   ["/formacao", "Formação", false],
   ["/cerco-dashboard", "Cerco de Jericó", false],
   ["/camisetas", "Camisetas", false],
+  ["/camisetas-neocampistas", "Camisetas Neocampistas", false],
   ["/setores", "Por Setor", false],
   ["/cidades", "Por Cidade", false],
   ["/fichas", "Fichas (Neocampistas)", false],

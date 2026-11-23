@@ -58,6 +58,7 @@ Itens do menu lateral do painel administrativo:
 | **Formação** | Presença nas formações e motivo de falta de cada servo. |
 | **Cerco de Jericó** | Dashboard das vagas por horário e inscrição pública por link (`/cerco/<slug>`), com notificação no celular a cada inscrição. A página pública funciona como PWA (com tela offline). |
 | **Camisetas** | Contagem por tamanho para o pedido. |
+| **Camisetas Neocampistas** | Neocampistas separados por tribo (e `SEM TRIBO`) com o tamanho da camiseta ao lado, contagem por tamanho de cada tribo e total geral; quem está sem tamanho aparece destacado. |
 | **Por Setor / Por Cidade** | Visões agregadas da missão. |
 | **Fichas (Neocampistas)** | Cadastro dos campistas novos, com alertas de possíveis duplicatas entre fichas. Depois de cadastrar, **Fazer upload da ficha preenchida** envia os arquivos (vários de uma vez; PDF ou fotos, até 10 MB cada) ao OneDrive e os renomeia para `012 - Nome (1)`, `(2)`… |
 | **Tribos** | Divisão dos neocampistas em tribos e seus líderes. Depois do sorteio (e a cada troca), a ficha preenchida ganha uma cópia na pasta da cor da tribo no OneDrive e o nome passa a trazer a cor (`012 - Nome - AZUL`); quem muda de tribo sai da pasta antiga. Ver [Fichas no OneDrive](#fichas-no-onedrive). |
