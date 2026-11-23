@@ -259,3 +259,39 @@ test("excluir a ficha: todos os arquivos e cópias vão para a lixeira", async (
   await m.apagarArquivosDaFicha(await db.fichaArquivo.findMany({ where: { neocampistaId: id } }), od);
   assert.deepEqual(od.arquivos(), []);
 });
+
+// ---------- comprovante do PIX ----------
+
+test("regra do PIX: sem comprovante, OK vira PENDENTE; com comprovante ou outro pagamento, fica como está", async () => {
+  const { situacaoPermitida } = await import("./comprovante");
+  assert.equal(situacaoPermitida("PIX", "OK", false), "PENDENTE");
+  assert.equal(situacaoPermitida("PIX", "OK", true), "OK");
+  assert.equal(situacaoPermitida("DINHEIRO", "OK", false), "OK");
+  assert.equal(situacaoPermitida("PIX", "CANCELADO", false), "CANCELADO");
+  assert.equal(situacaoPermitida(null, "OK", false), "OK");
+});
+
+test("comprovante: vai para Comprovantes PIX no OneDrive, renomeado; trocar manda o anterior para a lixeira; remover volta para PENDENTE", async () => {
+  const c = await import("./comprovante");
+  const od = new OneDriveFalso();
+  const id = await novaFicha(80, "Rita Souza");
+  await db.neocampista.update({ where: { id }, data: { pagamento: "PIX", situacao: "PENDENTE" } });
+
+  await c.enviarComprovante(id, "Comprovante_Nubank.PDF", Buffer.from("pix1"), db, od);
+  assert.deepEqual(od.arquivos(), ["Quadrante/23º Sênior/Comprovantes PIX/080 - Rita Souza - PIX.pdf"]);
+  // agora pode ficar OK
+  await db.neocampista.update({ where: { id }, data: { situacao: "OK" } });
+
+  await c.enviarComprovante(id, "foto.jpg", Buffer.from("pix2"), db, od);
+  assert.deepEqual(od.arquivos(), ["Quadrante/23º Sênior/Comprovantes PIX/080 - Rita Souza - PIX.jpg"]);
+
+  // mudou o nome na ficha: o comprovante acompanha
+  const f = await db.neocampista.update({ where: { id }, data: { nome: "Rita de Souza" } });
+  await c.renomearComprovante(f, db, od);
+  assert.deepEqual(od.arquivos(), ["Quadrante/23º Sênior/Comprovantes PIX/080 - Rita de Souza - PIX.jpg"]);
+
+  const depois = await c.removerComprovante(id, db, od);
+  assert.deepEqual(od.arquivos(), []);
+  assert.equal(depois.situacao, "PENDENTE");
+  assert.equal(depois.comprovanteItemId, null);
+});

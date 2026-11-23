@@ -10,6 +10,7 @@ import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaV
 import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
 import { ehSetorLideres } from "./setorLideres";
 import { nucleoAceito } from "./nucleos";
+import { renomearComprovante, situacaoPermitida } from "./comprovante";
 import { oneDrive } from "./oneDrive";
 import { apagarArquivosDaFicha, sincronizarFicha, sincronizarMissao } from "./fichaArquivos";
 
@@ -975,8 +976,11 @@ export async function criarFicha(formData: FormData) {
   } else if (await db.neocampista.findUnique({ where: { missaoId_numero: { missaoId, numero } } })) {
     throw new Error(`Já existe a ficha número ${numero} nesta missão.`);
   }
+  const dados = fichaData(formData);
+  // ficha nova ainda não tem comprovante: PIX entra como PENDENTE
+  dados.situacao = situacaoPermitida(dados.pagamento, dados.situacao, false);
   const criada = await db.neocampista.create({
-    data: { missaoId, numero, ...fichaData(formData) },
+    data: { missaoId, numero, ...dados },
   });
   revalidatePath("/fichas");
   // abre a ficha recém-criada, com o botão "Fazer upload da ficha preenchida"
@@ -996,9 +1000,17 @@ export async function atualizarFicha(formData: FormData) {
     const dup = await db.neocampista.findUnique({ where: { missaoId_numero: { missaoId: atual.missaoId, numero } } });
     if (dup) throw new Error(`Já existe a ficha número ${numero} nesta missão.`);
   }
-  await db.neocampista.update({ where: { id }, data: { ...fichaData(formData), numero } });
+  const dados = fichaData(formData);
+  // PIX sem comprovante não fica "OK - PAGO"
+  dados.situacao = situacaoPermitida(dados.pagamento, dados.situacao, Boolean(atual.comprovanteItemId));
+  const salva = await db.neocampista.update({ where: { id }, data: { ...dados, numero } });
   // nome ou número mudou: renomeia no OneDrive
   if (await db.fichaArquivo.count({ where: { neocampistaId: id } })) sincronizarDepois(id);
+  if (salva.comprovanteItemId) {
+    after(async () => {
+      if (await temOneDrive()) await renomearComprovante(salva, db, oneDrive(db)).catch(() => {});
+    });
+  }
   revalidatePath("/fichas");
   redirect("/fichas");
 }
@@ -1008,12 +1020,18 @@ export async function excluirFicha(formData: FormData) {
   const id = Number(formData.get("id"));
   await exigirRegistros(usuario, ["ficha", id]);
   const arquivos = await db.fichaArquivo.findMany({ where: { neocampistaId: id } });
+  const ficha = await db.neocampista.findUnique({ where: { id }, select: { comprovanteDriveId: true, comprovanteItemId: true } });
   await db.fichaAlerta.deleteMany({ where: { OR: [{ origemId: id }, { alvoId: id }] } });
   await db.neocampista.delete({ where: { id } });
   // os arquivos da ficha preenchida e as cópias da tribo vão para a lixeira do OneDrive (dá para recuperar lá)
-  if (arquivos.length) {
+  if (arquivos.length || ficha?.comprovanteItemId) {
     after(async () => {
-      if (await temOneDrive()) await apagarArquivosDaFicha(arquivos, oneDrive(db)).catch(() => {});
+      if (!(await temOneDrive())) return;
+      const od = oneDrive(db);
+      await apagarArquivosDaFicha(arquivos, od).catch(() => {});
+      if (ficha?.comprovanteItemId && ficha.comprovanteDriveId) {
+        await od.apagar({ driveId: ficha.comprovanteDriveId, id: ficha.comprovanteItemId }).catch(() => {});
+      }
     });
   }
   revalidatePath("/fichas");
