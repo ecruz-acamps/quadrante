@@ -380,6 +380,9 @@ model FichaArquivo {
   copiaItemId   String?
   copiaNome     String?
   copiaTriboId  Int? // tribo em cuja pasta a cópia está
+  // PDF único da ficha: de onde veio cada trecho de páginas, em ordem (JSON [{"nome":"foto.jpg","paginas":1}]).
+  // null = arquivo de antes do PDF único (enviado como está).
+  partes        String?
   criadoEm      DateTime @default(now())
 
   neocampista Neocampista @relation(fields: [neocampistaId], references: [id], onDelete: Cascade)

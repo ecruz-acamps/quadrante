@@ -60,7 +60,7 @@ Itens do menu lateral do painel administrativo:
 | **Camisetas** | Contagem por tamanho para o pedido. |
 | **Camisetas Neocampistas** | Neocampistas separados por tribo (e `SEM TRIBO`) com o tamanho da camiseta ao lado, contagem por tamanho de cada tribo e total geral; quem está sem tamanho aparece destacado. |
 | **Por Setor / Por Cidade** | Visões agregadas da missão. |
-| **Fichas (Neocampistas)** | Cadastro dos campistas novos, com alertas de possíveis duplicatas entre fichas. O núcleo é escolhido numa lista fixa (`src/lib/nucleos.ts`). Pagamento **PIX** exige o comprovante (enviado na página da ficha, salvo no OneDrive em `<Missão>/Comprovantes PIX`): sem ele a ficha fica PENDENTE e não pode ser marcada **OK - PAGO**. Depois de cadastrar, **Fazer upload da ficha preenchida** envia os arquivos (vários de uma vez; PDF ou fotos, até 10 MB cada) ao OneDrive e os renomeia para `012 - Nome (1)`, `(2)`… |
+| **Fichas (Neocampistas)** | Cadastro dos campistas novos, com alertas de possíveis duplicatas entre fichas. O núcleo é escolhido numa lista fixa (`src/lib/nucleos.ts`). Pagamento **PIX** exige o comprovante (enviado na página da ficha, salvo no OneDrive em `<Missão>/Comprovantes PIX`): sem ele a ficha fica PENDENTE e não pode ser marcada **OK - PAGO**. Depois de cadastrar, **Fazer upload da ficha preenchida** junta as fotos (frente e verso) e PDFs num **PDF único** da ficha, uma foto por página A4, salvo no OneDrive como `012 - Nome.pdf` |
 | **Tribos** | Divisão dos neocampistas em tribos e seus líderes. Depois do sorteio (e a cada troca), a ficha preenchida ganha uma cópia na pasta da cor da tribo no OneDrive e o nome passa a trazer a cor (`012 - Nome - AZUL`); quem muda de tribo sai da pasta antiga. Ver [Fichas no OneDrive](#fichas-no-onedrive). |
 | **Evangelização** (v1.2) | Equipes de 3 (com carro) formadas pelas cidades dos servos, sorteio de 3 a 4 casas de neocampistas por equipe sem nunca mandar a equipe à cidade de um membro, tela de cidades/vizinhança, fechar a distribuição (só o SUPER reabre) e folhas de impressão por equipe. **Baixar fichas por tribo (.zip)** (liberado só depois que a secretaria clica em **QUADRANTE OK - Liberar Evangelização**, na tela de Tribos) traz as fichas preenchidas do OneDrive numa pasta por cor de tribo (e `SEM TRIBO`); o zip é montado enquanto baixa, sem juntar tudo na memória, e o que não puder ser baixado vem listado num `LEIA-ME`. |
 | **Financeiro** | Valores por categoria (interna, externa, campista), pagos e pendentes. |
@@ -261,9 +261,10 @@ link de outra pasta, inclusive de um site do SharePoint):
 Backups/quadrante-backup-AAAA-MM-DD-HHMM.tar.gz.gpg     backup diário
 ```
 
-- A ficha aceita vários arquivos (frente, verso, fotos). Cada um vai com o nome original e logo em seguida é renomeado para
-  `número - nome` (com a cor, se já houver tribo); com mais de um arquivo, cada um ganha `(1)`, `(2)`… na ordem de envio.
-  Remover um arquivo (lixeira do OneDrive) renumera os outros.
+- **Um PDF por ficha**, pronto para imprimir: as fotos (frente e verso; JPG, PNG, HEIC do iPhone, WEBP) são endireitadas e
+  reduzidas a 2000 px no navegador e cada uma vira uma página A4; PDFs enviados entram com todas as páginas. Novos envios
+  entram no fim do mesmo PDF; a ficha lista de onde veio cada trecho e permite remover um deles. Nome: `número - nome`
+  (com a cor, se já houver tribo). Arquivos soltos de antes são juntados no próximo envio.
 - Sorteio e troca de tribo: as cópias vão para a pasta da cor nova e saem da antiga; os dois nomes passam a trazer a cor nova.
   Isso roda em segundo plano logo depois da ação.
 - Mudou o nome ou o número na ficha: os arquivos são renomeados. Excluiu a ficha: os arquivos vão para a lixeira do OneDrive.

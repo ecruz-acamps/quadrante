@@ -1,4 +1,5 @@
-// Ficha preenchida no OneDrive: um ou mais arquivos por ficha (páginas, fotos).
+// Ficha preenchida no OneDrive: um PDF único por ficha (as fotos viram páginas A4; ver src/lib/pdfFicha.ts).
+// Arquivos enviados antes do PDF único podem ainda estar soltos (um ou mais por ficha) e são juntados no próximo envio.
 //
 // Na pasta raiz (ver src/lib/oneDrive.ts):
 //   <Missão>/Fichas/012 - Maria da Silva - AZUL (1).pdf         todos os arquivos (os originais)
@@ -15,9 +16,11 @@
 // de novo depois de uma falha ("Tentar de novo", "Sincronizar com o OneDrive" em Tribos) sem duplicar nada.
 import type { PrismaClient } from "@prisma/client";
 import type { Arquivos } from "./oneDrive";
+import { anexarAoPdf, removerPaginas, EXTENSOES_PDF_FICHA } from "./pdfFicha";
 
 export const TAMANHO_MAXIMO = 10 * 1024 * 1024; // 10 MB por arquivo (o proxy do Next limita o corpo do envio a 10 MB)
-export const EXTENSOES = [".pdf", ".jpg", ".jpeg", ".png", ".heic", ".webp", ".doc", ".docx"];
+// fotos HEIC/WEBP são convertidas para JPG no navegador antes de subir; o servidor recebe PDF, JPG ou PNG
+export const EXTENSOES = EXTENSOES_PDF_FICHA;
 
 export function corDaTribo(nomeTribo: string): string {
   return nomeTribo.replace(/^\s*tribo\s+/i, "").trim().toUpperCase();
@@ -130,7 +133,21 @@ async function sincronizarAgora(fichaId: number, db: Db, od: Arquivos) {
   }
 }
 
-// Mais um arquivo da ficha preenchida: envia com o nome original e depois sincroniza (renomeia todos e copia).
+export type Parte = { nome: string; paginas: number };
+
+export function lerPartes(json: string | null | undefined): Parte[] {
+  if (!json) return [];
+  try {
+    const v = JSON.parse(json) as unknown;
+    return Array.isArray(v) ? v.filter((p): p is Parte => !!p && typeof p.nome === "string" && Number.isInteger(p.paginas)) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Mais um arquivo na ficha preenchida: entra no fim do PDF único da ficha (foto vira página A4; PDF entra com as
+// páginas dele). Sem PDF ainda, cria um. Arquivos soltos de antes (PDF/JPG/PNG) são juntados no mesmo PDF.
+// Depois sincroniza: nome "NNN - Nome[ - COR].pdf" e cópia na pasta da tribo (refeita, porque o conteúdo mudou).
 export async function enviarFichaPreenchida(
   fichaId: number,
   nomeOriginal: string,
@@ -138,24 +155,91 @@ export async function enviarFichaPreenchida(
   db: Db,
   od: Arquivos,
 ): Promise<ResultadoSync> {
-  const f = await db.neocampista.findUniqueOrThrow({ where: { id: fichaId }, include: { missao: { select: { nome: true } } } });
+  const ext = extensaoDe(nomeOriginal);
+  if (!EXTENSOES_PDF_FICHA.includes(ext)) throw new Error(`Formato não aceito: "${nomeOriginal}". Use foto (JPG/PNG) ou PDF.`);
   await emFila(fichaId, async () => {
-    const pasta = await od.garantirPasta(caminhoFichas(f.missao.nome));
-    const item = await od.enviar(pasta, nomeOriginal, conteudo, "rename");
-    const ultimo = await db.fichaArquivo.findFirst({ where: { neocampistaId: fichaId }, orderBy: { ordem: "desc" }, select: { ordem: true } });
-    await db.fichaArquivo.create({
-      data: {
-        neocampistaId: fichaId,
-        ordem: (ultimo?.ordem ?? 0) + 1,
-        ext: extensaoDe(nomeOriginal),
-        driveId: item.driveId,
-        itemId: item.id,
-        nome: item.name,
-        url: item.webUrl ?? null,
-      },
+    const f = await db.neocampista.findUniqueOrThrow({
+      where: { id: fichaId },
+      include: { missao: { select: { nome: true } }, arquivos: { orderBy: [{ ordem: "asc" }, { id: "asc" }] } },
     });
+    const pdfAtual = f.arquivos.find((a) => a.partes != null) ?? null;
+    const legados = f.arquivos.filter((a) => a.partes == null && EXTENSOES_PDF_FICHA.includes(a.ext));
+
+    let base: Uint8Array | null = pdfAtual ? await od.baixar({ driveId: pdfAtual.driveId, id: pdfAtual.itemId }) : null;
+    const partes = pdfAtual ? lerPartes(pdfAtual.partes) : [];
+    for (const l of legados) {
+      const r = await anexarAoPdf(base, { nome: l.nome, conteudo: await od.baixar({ driveId: l.driveId, id: l.itemId }), ext: l.ext });
+      base = r.pdf;
+      partes.push({ nome: l.nome, paginas: r.paginas });
+    }
+    const r = await anexarAoPdf(base, { nome: nomeOriginal, conteudo, ext });
+    partes.push({ nome: nomeOriginal, paginas: r.paginas });
+    const pdf = Buffer.from(r.pdf);
+
+    if (pdfAtual) {
+      await od.substituir({ driveId: pdfAtual.driveId, id: pdfAtual.itemId }, pdf);
+      await refazerCopia(pdfAtual, db, od);
+      await db.fichaArquivo.update({ where: { id: pdfAtual.id }, data: { partes: JSON.stringify(partes), ext: ".pdf" } });
+    } else {
+      // sobe com o nome do arquivo enviado (em .pdf) e a sincronização renomeia para "NNN - Nome"
+      const pasta = await od.garantirPasta(caminhoFichas(f.missao.nome));
+      const item = await od.enviar(pasta, `${nomeOriginal.replace(/\.[^.]+$/, "")}.pdf`, pdf, "rename");
+      await db.fichaArquivo.create({
+        data: {
+          neocampistaId: fichaId,
+          ordem: 0, // o PDF vem antes de arquivos antigos que não puderam ser juntados
+          ext: ".pdf",
+          driveId: item.driveId,
+          itemId: item.id,
+          nome: item.name,
+          url: item.webUrl ?? null,
+          partes: JSON.stringify(partes),
+        },
+      });
+    }
+    // os soltos que entraram no PDF (e as cópias deles) vão para a lixeira do OneDrive
+    for (const l of legados) {
+      await od.apagar({ driveId: l.driveId, id: l.itemId });
+      if (l.copiaItemId && l.copiaDriveId) await od.apagar({ driveId: l.copiaDriveId, id: l.copiaItemId });
+      await db.fichaArquivo.delete({ where: { id: l.id } });
+    }
   });
   return sincronizarFicha(fichaId, db, od);
+}
+
+// o conteúdo do PDF mudou: a cópia da tribo sai e a sincronização faz outra
+async function refazerCopia(
+  a: { id: number; copiaDriveId: string | null; copiaItemId: string | null },
+  db: Db,
+  od: Arquivos,
+) {
+  if (!a.copiaItemId || !a.copiaDriveId) return;
+  await od.apagar({ driveId: a.copiaDriveId, id: a.copiaItemId });
+  await db.fichaArquivo.update({ where: { id: a.id }, data: { copiaDriveId: null, copiaItemId: null, copiaNome: null, copiaTriboId: null } });
+}
+
+// Tira uma parte (ex.: uma das fotos) do PDF da ficha. Se era a única, o PDF vai para a lixeira do OneDrive.
+export async function removerParteFicha(arquivoId: number, indice: number, db: Db, od: Arquivos): Promise<ResultadoSync> {
+  const a = await db.fichaArquivo.findUniqueOrThrow({ where: { id: arquivoId } });
+  const partes = lerPartes(a.partes);
+  if (!partes[indice]) throw new Error("Parte não encontrada.");
+  return emFila(a.neocampistaId, () =>
+    registrar(a.neocampistaId, db, async () => {
+      const inicio = partes.slice(0, indice).reduce((n, p) => n + p.paginas, 0);
+      const r = await removerPaginas(await od.baixar({ driveId: a.driveId, id: a.itemId }), inicio, partes[indice].paginas);
+      if (!r) {
+        await od.apagar({ driveId: a.driveId, id: a.itemId });
+        if (a.copiaItemId && a.copiaDriveId) await od.apagar({ driveId: a.copiaDriveId, id: a.copiaItemId });
+        await db.fichaArquivo.delete({ where: { id: a.id } });
+      } else {
+        await od.substituir({ driveId: a.driveId, id: a.itemId }, Buffer.from(r.pdf));
+        await refazerCopia(a, db, od);
+        partes.splice(indice, 1);
+        await db.fichaArquivo.update({ where: { id: a.id }, data: { partes: JSON.stringify(partes) } });
+      }
+      await sincronizarAgora(a.neocampistaId, db, od);
+    }),
+  );
 }
 
 // Tira um arquivo da ficha: original e cópia vão para a lixeira do OneDrive e os outros são renumerados.

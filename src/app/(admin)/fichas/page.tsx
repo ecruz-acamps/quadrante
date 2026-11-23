@@ -5,6 +5,7 @@ import { adicionarAlerta, removerAlerta } from "@/lib/actions";
 import ExcluirFichaButton from "./ExcluirFichaButton";
 import VerEditarFichaButton from "./VerEditarFichaButton";
 import ArquivoFicha from "./ArquivoFicha";
+import { lerPartes } from "@/lib/fichaArquivos";
 
 export default async function FichasPage() {
   await requireUser();
@@ -15,7 +16,7 @@ export default async function FichasPage() {
     where: { missaoId: missao.id },
     include: {
       tribo: true,
-      arquivos: { orderBy: { ordem: "asc" }, select: { id: true, nome: true, url: true } },
+      arquivos: { orderBy: [{ ordem: "asc" }, { id: "asc" }], select: { id: true, nome: true, url: true, partes: true } },
       alertas: { include: { alvo: true } },
       alvos: { include: { origem: true } },
     },
@@ -68,7 +69,12 @@ export default async function FichasPage() {
                   <td className="px-4 py-2">{f.tribo?.nome || "—"}</td>
                   <td className="px-4 py-2 text-xs text-[var(--brass)]">{alertas.join(", ") || "—"}</td>
                   <td className="px-4 py-2 text-right">
-                    <ArquivoFicha fichaId={f.id} arquivos={f.arquivos} erro={f.arquivoErro} compacto />
+                    <ArquivoFicha
+                      fichaId={f.id}
+                      arquivos={f.arquivos.map((a) => ({ ...a, partes: a.partes == null ? null : lerPartes(a.partes) }))}
+                      erro={f.arquivoErro}
+                      compacto
+                    />
                   </td>
                   <td className="px-4 py-2 text-right space-x-2">
                     <VerEditarFichaButton ficha={f} />

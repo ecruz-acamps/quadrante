@@ -20,6 +20,7 @@ export interface Arquivos {
   enviar(pasta: Ref, nome: string, conteudo: Buffer, seExistir: "rename" | "replace"): Promise<Item>;
   renomear(item: Ref, nome: string): Promise<Item>;
   baixar(item: Ref): Promise<Buffer>;
+  substituir(item: Ref, conteudo: Buffer): Promise<Item>; // troca o conteúdo mantendo o mesmo arquivo (e link)
   apagar(item: Ref): Promise<void>; // vai para a lixeira do OneDrive; já apagado não é erro
 }
 
@@ -232,6 +233,14 @@ export function criarClienteGraph(db: Db, f: typeof fetch = fetch) {
         res = await tentar(ponto > 0 ? `${n.slice(0, ponto)} (${i})${n.slice(ponto)}` : `${n} (${i})`);
       }
       return paraItem(await json(res, `renomear para "${n}"`), ref.driveId);
+    },
+
+    async substituir(ref, conteudo) {
+      const item = paraItem(await json(await chamar("PUT", `/drives/${ref.driveId}/items/${ref.id}/content`, conteudo), "atualizar o arquivo"), ref.driveId);
+      if (item.size != null && item.size !== conteudo.length) {
+        throw new ErroOneDrive(`OneDrive guardou ${item.size} bytes, mas o arquivo tem ${conteudo.length}.`);
+      }
+      return item;
     },
 
     async baixar(ref) {

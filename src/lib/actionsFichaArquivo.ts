@@ -5,7 +5,7 @@ import { requireUser } from "./auth";
 import { acessoRegistros, podeAcessarMissao } from "./autorizacao";
 import { db } from "./db";
 import { oneDrive } from "./oneDrive";
-import { removerArquivoFicha, sincronizarFicha, sincronizarMissao } from "./fichaArquivos";
+import { removerArquivoFicha, removerParteFicha, sincronizarFicha, sincronizarMissao } from "./fichaArquivos";
 import { removerComprovante } from "./comprovante";
 
 // "Tentar de novo" numa ficha cujo arquivo ficou fora de ordem no OneDrive
@@ -56,4 +56,21 @@ export async function removerComprovanteAction(fichaId: number): Promise<{ erro?
   revalidatePath("/fichas");
   revalidatePath(`/fichas/${fichaId}`);
   return {};
+}
+
+// Tira uma parte (ex.: uma das fotos) do PDF único da ficha
+export async function removerParteFichaAction(arquivoId: number, indice: number): Promise<{ erro?: string }> {
+  const usuario = await requireUser();
+  const a = await db.fichaArquivo.findUnique({ where: { id: arquivoId }, select: { neocampistaId: true } });
+  if (!a || !(await acessoRegistros(usuario, ["ficha", a.neocampistaId]))) return { erro: "Sem acesso a este arquivo." };
+  if (!(await db.integracaoOneDrive.findUnique({ where: { id: 1 } }))) return { erro: "O OneDrive não está conectado (Configurações)." };
+  let r;
+  try {
+    r = await removerParteFicha(arquivoId, indice, db, oneDrive(db));
+  } catch (e) {
+    return { erro: (e as Error).message };
+  }
+  revalidatePath("/fichas");
+  revalidatePath(`/fichas/${a.neocampistaId}`);
+  return r.ok ? {} : { erro: r.erro };
 }

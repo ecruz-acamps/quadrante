@@ -3,67 +3,70 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { removerArquivoFichaAction, sincronizarFichaAction } from "@/lib/actionsFichaArquivo";
+import { removerArquivoFichaAction, removerParteFichaAction, sincronizarFichaAction } from "@/lib/actionsFichaArquivo";
+import { prepararParaEnvio } from "./converterFoto";
 
-const ACEITOS = ".pdf,.jpg,.jpeg,.png,.heic,.webp,.doc,.docx";
+const ACEITOS = ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,image/*";
 
-export type ArquivoNaTela = { id: number; nome: string; url: string | null };
+export type ParteNaTela = { nome: string; paginas: number };
+// partes != null: o PDF único da ficha; null: arquivo solto de antes do PDF único
+export type ArquivoNaTela = { id: number; nome: string; url: string | null; partes: ParteNaTela[] | null };
 
 type Props = {
   fichaId: number;
-  arquivos: ArquivoNaTela[]; // na ordem
+  arquivos: ArquivoNaTela[];
   erro: string | null; // última falha ao sincronizar
   compacto?: boolean; // na linha da tabela de fichas
 };
 
+function faixa(partes: ParteNaTela[], i: number) {
+  const inicio = partes.slice(0, i).reduce((n, p) => n + p.paginas, 0) + 1;
+  const fim = inicio + partes[i].paginas - 1;
+  return fim > inicio ? `páginas ${inicio}–${fim}` : `página ${inicio}`;
+}
+
 export default function ArquivoFicha({ fichaId, arquivos, erro, compacto }: Props) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
-  const [ocupado, setOcupado] = useState<string | null>(null); // texto do que está acontecendo
+  const [ocupado, setOcupado] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState<{ texto: string; ruim: boolean } | null>(null);
+  const pdf = arquivos.find((a) => a.partes) ?? null;
+  const paginas = pdf?.partes?.reduce((n, p) => n + p.paginas, 0) ?? 0;
 
-  // um arquivo por requisição: cada um pode ter até 10 MB e um erro não perde os outros
+  // um arquivo por vez, na ordem escolhida: cada um entra no fim do PDF da ficha
   async function enviar(lista: File[]) {
     setMensagem(null);
     const falhas: string[] = [];
     let enviados = 0;
-    for (const [i, arquivo] of lista.entries()) {
+    for (const [i, original] of lista.entries()) {
       setOcupado(lista.length > 1 ? `Enviando ${i + 1} de ${lista.length}…` : "Enviando…");
       try {
+        const arquivo = await prepararParaEnvio(original);
         const corpo = new FormData();
         corpo.append("arquivo", arquivo);
         const res = await fetch(`/api/fichas/${fichaId}/arquivo`, { method: "POST", body: corpo });
         const r = (await res.json().catch(() => ({ erro: "resposta inesperada do servidor" }))) as { erro?: string; aviso?: string };
-        if (r.erro) falhas.push(`${arquivo.name}: ${r.erro}`);
+        if (r.erro) falhas.push(`${original.name}: ${r.erro}`);
         else {
           enviados++;
-          if (r.aviso) falhas.push(`${arquivo.name} foi enviado, mas: ${r.aviso}`);
+          if (r.aviso) falhas.push(`${original.name} foi enviado, mas: ${r.aviso}`);
         }
-      } catch {
-        falhas.push(`${arquivo.name}: falha na conexão`);
+      } catch (e) {
+        falhas.push(e instanceof Error ? e.message : `${original.name}: falha na conexão`);
       }
     }
     setOcupado(null);
     if (input.current) input.current.value = "";
     if (falhas.length) setMensagem({ texto: falhas.join(" · "), ruim: true });
-    else setMensagem({ texto: enviados === 1 ? "Arquivo enviado." : `${enviados} arquivos enviados.`, ruim: false });
+    else setMensagem({ texto: enviados === 1 ? "Enviado e juntado ao PDF da ficha." : `${enviados} arquivos juntados ao PDF da ficha.`, ruim: false });
     router.refresh();
   }
 
-  async function remover(a: ArquivoNaTela) {
-    if (!window.confirm(`Remover "${a.nome}"? Ele vai para a lixeira do OneDrive e os outros arquivos são renumerados.`)) return;
-    setOcupado("Removendo…");
-    const r = await removerArquivoFichaAction(a.id).catch(() => ({ erro: "Falha na conexão." }));
+  async function executar(acao: () => Promise<{ erro?: string }>, ok: string) {
+    setOcupado("Atualizando…");
+    const r = await acao().catch(() => ({ erro: "Falha na conexão." }));
     setOcupado(null);
-    setMensagem(r.erro ? { texto: r.erro, ruim: true } : { texto: "Arquivo removido.", ruim: false });
-    router.refresh();
-  }
-
-  async function tentarDeNovo() {
-    setOcupado("Conferindo…");
-    const r = await sincronizarFichaAction(fichaId).catch(() => ({ erro: "Falha na conexão." }));
-    setOcupado(null);
-    setMensagem(r.erro ? { texto: r.erro, ruim: true } : { texto: "Arquivos em dia no OneDrive.", ruim: false });
+    setMensagem(r.erro ? { texto: r.erro, ruim: true } : { texto: ok, ruim: false });
     router.refresh();
   }
 
@@ -90,7 +93,7 @@ export default function ArquivoFicha({ fichaId, arquivos, erro, compacto }: Prop
       {erro && !mensagem && (
         <span className="block text-xs text-[var(--signal)]" title={erro}>
           ⚠ Fora de ordem no OneDrive.{" "}
-          <button type="button" disabled={Boolean(ocupado)} onClick={tentarDeNovo} className="underline">
+          <button type="button" disabled={Boolean(ocupado)} onClick={() => executar(() => sincronizarFichaAction(fichaId), "Arquivos em dia no OneDrive.")} className="underline">
             Tentar de novo
           </button>
         </span>
@@ -104,11 +107,11 @@ export default function ArquivoFicha({ fichaId, arquivos, erro, compacto }: Prop
       <div className="inline-flex flex-col items-end gap-1">
         {seletor}
         {arquivos.length > 0 && (
-          <Link href={`/fichas/${fichaId}`} className="text-xs underline text-[var(--ink)]" title="Ver os arquivos">
-            {arquivos.length === 1 ? "1 arquivo" : `${arquivos.length} arquivos`}
+          <Link href={`/fichas/${fichaId}`} className="text-xs underline text-[var(--ink)]" title="Ver o PDF da ficha">
+            {pdf ? `PDF · ${paginas} ${paginas === 1 ? "página" : "páginas"}` : `${arquivos.length} ${arquivos.length === 1 ? "arquivo" : "arquivos"}`}
           </Link>
         )}
-        {botao(arquivos.length ? "Adicionar arquivos" : "Fazer upload da ficha preenchida", "btn-link text-xs")}
+        {botao(arquivos.length ? "Adicionar fotos ou PDF" : "Fazer upload da ficha preenchida", "btn-link text-xs")}
         {avisos}
       </div>
     );
@@ -117,26 +120,60 @@ export default function ArquivoFicha({ fichaId, arquivos, erro, compacto }: Prop
   return (
     <div className="space-y-2">
       {seletor}
-      {arquivos.length > 0 && (
-        <ul className="text-sm divide-y divide-[var(--line)] border border-[var(--line)] rounded">
-          {arquivos.map((a) => (
-            <li key={a.id} className="flex items-center justify-between gap-3 px-3 py-1.5">
-              {a.url ? (
-                <a href={a.url} target="_blank" rel="noreferrer" className="underline text-[var(--ink)] truncate" title="Abrir no OneDrive">
-                  {a.nome}
-                </a>
-              ) : (
-                <span className="truncate">{a.nome}</span>
-              )}
-              <button type="button" disabled={Boolean(ocupado)} onClick={() => remover(a)} className="btn-danger-link text-xs shrink-0">
+      {arquivos.map((a) => (
+        <div key={a.id} className="text-sm border border-[var(--line)] rounded">
+          <div className="flex items-center justify-between gap-3 px-3 py-1.5 bg-[var(--paper)]">
+            {a.url ? (
+              <a href={a.url} target="_blank" rel="noreferrer" className="underline text-[var(--ink)] truncate font-medium" title="Abrir no OneDrive">
+                {a.nome}
+              </a>
+            ) : (
+              <span className="truncate font-medium">{a.nome}</span>
+            )}
+            {a.partes ? (
+              <span className="text-xs text-[var(--ink-soft)]/70 shrink-0">
+                {paginas} {paginas === 1 ? "página" : "páginas"}
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={Boolean(ocupado)}
+                onClick={() => window.confirm(`Remover "${a.nome}"? Ele vai para a lixeira do OneDrive.`) && executar(() => removerArquivoFichaAction(a.id), "Arquivo removido.")}
+                className="btn-danger-link text-xs shrink-0"
+              >
                 Remover
               </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {botao(arquivos.length ? "Adicionar mais arquivos" : "Fazer upload da ficha preenchida", "btn-primary px-4 py-2 text-sm")}
-      <p className="text-xs text-[var(--ink-soft)]/70">Pode escolher vários arquivos de uma vez (PDF ou fotos, até 10 MB cada).</p>
+            )}
+          </div>
+          {a.partes && (
+            <ul className="divide-y divide-[var(--line)]">
+              {a.partes.map((p, i) => (
+                <li key={i} className="flex items-center justify-between gap-3 px-3 py-1 text-xs">
+                  <span className="truncate text-[var(--ink-soft)]">
+                    {faixa(a.partes!, i)}: {p.nome}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={Boolean(ocupado)}
+                    onClick={() =>
+                      window.confirm(`Tirar "${p.nome}" (${faixa(a.partes!, i)}) do PDF da ficha?`) &&
+                      executar(() => removerParteFichaAction(a.id, i), "Páginas removidas do PDF.")
+                    }
+                    className="btn-danger-link text-xs shrink-0"
+                  >
+                    Remover
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+      {botao(arquivos.length ? "Adicionar mais fotos ou PDF" : "Fazer upload da ficha preenchida", "btn-primary px-4 py-2 text-sm")}
+      <p className="text-xs text-[var(--ink-soft)]/70">
+        Escolha as 2 fotos da ficha (frente e verso) de uma vez, na ordem: elas viram um PDF único, uma foto por página A4, pronto
+        para imprimir. Aceita fotos (inclusive do iPhone) e PDF, até 10 MB cada.
+      </p>
       {avisos}
     </div>
   );
