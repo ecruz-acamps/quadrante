@@ -65,6 +65,9 @@ model Missao {
   usuarios     UsuarioMissao[]
   liberacoesConflito LiberacaoConflitoServo[]
   evangelizacaoFechada Boolean @default(false) // distribuição das casas fechada (só SUPER reabre)
+  // "QUADRANTE OK - Liberar Evangelização" (em Tribos): libera o download das fichas por tribo na Evangelização
+  fichasEvangelizacaoLiberadasEm  DateTime?
+  fichasEvangelizacaoLiberadasPor String?
   equipesEvangelizacao EquipeEvangelizacao[]
   servirPublicado Boolean @default(false) // página pública /servir/[cercoSlug] aceita candidaturas
   servirDatas     String? // ex.: "26 a 30 de dezembro" (aparece na pergunta de disponibilidade)

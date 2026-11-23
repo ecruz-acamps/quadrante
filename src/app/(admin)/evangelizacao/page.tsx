@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireEvangelizacao } from "@/lib/auth";
 import { carregarPainel } from "@/lib/evangelizacaoDados";
+import { db } from "@/lib/db";
 import { BarraAcoes, CarroCheck, MoverSelect, ApagarEquipe } from "./Controles";
 
 const AVISO_EQUIPE: Record<string, string> = {
@@ -28,7 +29,11 @@ export default async function EvangelizacaoPage() {
   const { usuario: user, missao } = await requireEvangelizacao();
   if (!missao) return <p>Nenhuma missão ativa.</p>;
 
-  const p = await carregarPainel(missao.id);
+  const [p, fichasComArquivo, arquivosFichas] = await Promise.all([
+    carregarPainel(missao.id),
+    db.neocampista.count({ where: { missaoId: missao.id, arquivos: { some: {} } } }),
+    db.fichaArquivo.count({ where: { neocampista: { missaoId: missao.id } } }),
+  ]);
   const equipesOpcoes = p.equipes.map((e) => ({ id: e.id, nome: e.nome }));
   const travada = p.fechada;
   const totalCasas = p.equipes.reduce((n, e) => n + e.casas.length, 0);
@@ -50,6 +55,20 @@ export default async function EvangelizacaoPage() {
       )}
 
       <BarraAcoes missaoId={missao.id} fechada={travada} souSuper={user.role === "SUPER"} />
+      <div className="card p-3 mb-4 flex flex-wrap items-center gap-3 text-sm">
+        <span className="flex-1 min-w-[14rem] text-[var(--ink-soft)]">
+          {!missao.fichasEvangelizacaoLiberadasEm
+            ? "Fichas por tribo: aguardando a secretaria liberar (em Tribos, botão \"QUADRANTE OK - Liberar Evangelização\")."
+            : fichasComArquivo > 0
+            ? `${fichasComArquivo} ${fichasComArquivo === 1 ? "ficha preenchida" : "fichas preenchidas"} (${arquivosFichas} ${arquivosFichas === 1 ? "arquivo" : "arquivos"}) no OneDrive. O zip traz uma pasta por cor de tribo e "SEM TRIBO".`
+            : "Nenhuma ficha preenchida foi enviada ainda (envie em Fichas › Fazer upload da ficha preenchida)."}
+        </span>
+        {missao.fichasEvangelizacaoLiberadasEm && fichasComArquivo > 0 && (
+          <a href="/evangelizacao/fichas-por-tribo" className="qd-btn qd-btn-ghost">
+            Baixar fichas por tribo (.zip)
+          </a>
+        )}
+      </div>
 
       <p className="text-sm mb-6">
         <Link href="/evangelizacao/cidades" className="underline">
