@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { PAGAMENTOS, CAMISETAS } from "@/lib/constants";
-import { cepDeTexto, formatarCep, interpretarViaCep } from "@/lib/cep";
+import { formatarCep, interpretarViaCep, situacaoCep } from "@/lib/cep";
 import type { Neocampista } from "@prisma/client";
 
 export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
@@ -14,13 +14,7 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
   const [cepMsg, setCepMsg] = useState<string | null>(null);
 
   // os campos são não controlados (defaultValue): preenche pelo ref, e só sobrescreve com o que o CEP trouxe
-  async function buscarCep(texto: string) {
-    const cep = cepDeTexto(texto);
-    if (!cep) {
-      consultaRef.current?.abort();
-      setCepMsg(null);
-      return;
-    }
+  async function buscarCep(cep: string) {
     consultaRef.current?.abort();
     const controle = new AbortController();
     consultaRef.current = controle;
@@ -30,7 +24,7 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
       if (!r.ok) throw new Error("falha");
       const dados = interpretarViaCep(await r.json());
       if (!dados) {
-        setCepMsg("CEP não encontrado.");
+        setCepMsg(`CEP ${formatarCep(cep)} não encontrado. Confira os números.`);
         return;
       }
       if (dados.endereco && enderecoRef.current) enderecoRef.current.value = dados.endereco;
@@ -63,11 +57,14 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
           inputMode="numeric"
           autoComplete="postal-code"
           placeholder="00000-000"
-          maxLength={9}
+          maxLength={14}
           className={sel}
           onChange={(e) => {
-            e.target.value = formatarCep(e.target.value);
-            buscarCep(e.target.value);
+            const s = situacaoCep(e.target.value);
+            e.target.value = s.texto;
+            if (s.tipo === "completo") return void buscarCep(s.cep);
+            consultaRef.current?.abort();
+            setCepMsg(s.tipo === "excesso" ? `CEP tem 8 dígitos; este tem ${s.digitos}. Confira os números.` : null);
           }}
         />
         {cepMsg && <span className="block text-xs text-[var(--ink-soft)]/70 mt-1">{cepMsg}</span>}
