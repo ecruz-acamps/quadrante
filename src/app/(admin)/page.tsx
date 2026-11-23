@@ -5,7 +5,7 @@ import { HORARIOS_CERCO } from "@/lib/constants";
 import { IconUsers, IconClipboard, IconClock, IconAlert, IconCoin } from "./DashboardIcons";
 
 export default async function Home() {
-  await requireUser();
+  const usuario = await requireUser();
   const missao = await getMissaoAtiva();
   if (!missao) {
     return (
@@ -22,6 +22,7 @@ export default async function Home() {
     );
   }
 
+  const oneDriveConectado = Boolean(await db.integracaoOneDrive.findUnique({ where: { id: 1 }, select: { id: true } }));
   const [servos, disseramSim, recusaram, desistiram, fichas, comCerco, pagos] = await Promise.all([
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO" } }),
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO", confirmado: true } }),
@@ -109,7 +110,29 @@ export default async function Home() {
 
   return (
     <div>
-      <h1 className="page-title mb-1">{missao.nome}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+        <h1 className="page-title">{missao.nome}</h1>
+        {oneDriveConectado ? (
+          // abre numa aba nova a pasta da missão no OneDrive (fichas, tribos)
+          <a href="/pasta-missao" target="_blank" rel="noreferrer" className="btn-primary px-4 py-2 text-sm">
+            Abrir pasta da missão
+          </a>
+        ) : (
+          <span className="text-xs text-[var(--ink-soft)]/70">
+            Pasta da missão: OneDrive não conectado
+            {usuario.role === "SUPER" && (
+              <>
+                {" "}
+                (
+                <Link className="btn-link" href="/configuracoes#onedrive">
+                  conectar
+                </Link>
+                )
+              </>
+            )}
+          </span>
+        )}
+      </div>
       <p className="text-[var(--ink-soft)]/60 mb-6">
         Link público do Cerco:{" "}
         <Link className="btn-link" href={`/cerco/${missao.cercoSlug}`}>

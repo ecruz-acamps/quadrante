@@ -177,8 +177,18 @@ export function criarClienteGraph(db: Db, f: typeof fetch = fetch) {
 
   const cliente: Arquivos & {
     resolverLinkPasta(link: string): Promise<{ driveId: string; id: string; name: string; webUrl?: string }>;
+    urlDaPasta(ref: Ref): Promise<string>;
     esquecerPastas(): void;
   } = {
+    // endereço para abrir a pasta no navegador (OneDrive ou SharePoint)
+    async urlDaPasta(ref) {
+      const item = await json<{ webUrl?: string }>(
+        await chamar("GET", `/drives/${ref.driveId}/items/${ref.id}?$select=webUrl`),
+        "abrir a pasta",
+      );
+      if (!item.webUrl) throw new ErroOneDrive("OneDrive: a pasta não tem endereço para abrir.");
+      return item.webUrl;
+    },
     // uma pasta apagada ou movida à mão no OneDrive deixa o caminho guardado inválido
     esquecerPastas() {
       pastas.clear();
