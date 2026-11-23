@@ -1,0 +1,8 @@
+// Checagem de tipos do build feito pela atualização (QUADRANTE_DIST_DIR=.next-novo; ver next.config.ts e
+// scripts/atualizar.sh). Igual ao tsconfig.json, mas sem os tipos da .next: ali estão os da versão que está
+// no ar, que podem citar rotas que a versão nova removeu.
+{
+  "extends": "./tsconfig.json",
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next-novo/types/**/*.ts", ".next-novo/dev/types/**/*.ts", "**/*.mts"],
+  "exclude": ["node_modules", "scripts", ".next", ".next-antigo"]
+}
