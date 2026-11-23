@@ -5,6 +5,7 @@ import { atualizarFicha } from "@/lib/actions";
 import FichaForm from "../FichaForm";
 import ArquivoFicha from "../ArquivoFicha";
 import ComprovantePix from "../ComprovantePix";
+import { lerPartes } from "@/lib/fichaArquivos";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -21,7 +22,7 @@ export default async function EditarFichaPage({
   if (!(await acessoRegistros(usuario, ["ficha", Number(id)]))) notFound();
   const ficha = await db.neocampista.findUnique({
     where: { id: Number(id) },
-    include: { arquivos: { orderBy: { ordem: "asc" }, select: { id: true, nome: true, url: true } } },
+    include: { arquivos: { orderBy: [{ ordem: "asc" }, { id: "asc" }], select: { id: true, nome: true, url: true, partes: true } } },
   });
   if (!ficha) notFound();
 
@@ -39,9 +40,13 @@ export default async function EditarFichaPage({
         <h2 className="font-medium text-[var(--ink)]">Ficha preenchida</h2>
         <p className="text-xs text-[var(--ink-soft)]/70">
           Vai para o OneDrive (pasta da missão › Fichas) com o nome &quot;{String(ficha.numero).padStart(3, "0")} - {ficha.nome}&quot;; com mais de
-          um arquivo, cada um ganha (1), (2)… Depois do sorteio, as cópias vão para a pasta da cor da tribo.
+          uma foto, todas entram no mesmo PDF (uma por página). Depois do sorteio, uma cópia vai para a pasta da cor da tribo.
         </p>
-        <ArquivoFicha fichaId={ficha.id} arquivos={ficha.arquivos} erro={ficha.arquivoErro} />
+        <ArquivoFicha
+          fichaId={ficha.id}
+          arquivos={ficha.arquivos.map((a) => ({ ...a, partes: a.partes == null ? null : lerPartes(a.partes) }))}
+          erro={ficha.arquivoErro}
+        />
       </div>
       {(ficha.pagamento === "PIX" || ficha.comprovanteItemId) && (
         <ComprovantePix fichaId={ficha.id} nome={ficha.comprovanteNome} url={ficha.comprovanteUrl} situacao={ficha.situacao} />

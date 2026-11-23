@@ -1,12 +1,22 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Arquivos, Item, Ref } from "./oneDrive";
 import { nomeSeguro } from "./oneDrive";
 import { corDaTribo, extensaoDe, nomeArquivoFicha } from "./fichaArquivos";
+import { contarPaginas } from "./pdfFicha";
+import { PDFDocument } from "pdf-lib";
+
+// fotos de verdade (geradas por um canvas do Chromium, como o navegador faz no envio) e PDFs de N páginas
+const foto = (n: "retrato" | "paisagem") => readFileSync(join(__dirname, "__fixtures__", `foto-${n}.jpg`));
+async function pdfDe(paginas: number) {
+  const d = await PDFDocument.create();
+  for (let i = 0; i < paginas; i++) d.addPage();
+  return Buffer.from(await d.save());
+}
 
 // ---------- nomes ----------
 
@@ -90,6 +100,16 @@ class OneDriveFalso implements Arquivos {
   async baixar(ref: Ref) {
     return this.nos.get(ref.id)!.conteudo!;
   }
+  async substituir(ref: Ref, conteudo: Buffer) {
+    if (this.falharEnvio) throw new Error("OneDrive fora do ar");
+    this.nos.get(ref.id)!.conteudo = conteudo;
+    return this.item(ref.id);
+  }
+  // páginas do PDF guardado em um caminho
+  async paginas(caminho: string) {
+    const n = [...this.nos.values()].find((x) => !x.apagado && this.caminho(x.id) === caminho);
+    return n?.conteudo ? contarPaginas(n.conteudo) : -1;
+  }
   async apagar(ref: Ref) {
     const n = this.nos.get(ref.id);
     if (n) n.apagado = true;
@@ -122,70 +142,85 @@ async function novaFicha(numero: number, nome: string) {
   return (await db.neocampista.create({ data: { missaoId: t.missao, numero, nucleo: "N", nome } })).id;
 }
 
-test("upload: vai com o nome original e é renomeado para número + nome", async () => {
+const F = "Quadrante/23º Sênior/Fichas";
+const T = (cor: string) => `Quadrante/23º Sênior/Tribos/${cor}`;
+
+test("duas fotos viram um PDF único de 2 páginas, com o nome da ficha", async () => {
   const od = new OneDriveFalso();
   const id = await novaFicha(12, "Maria da Silva");
-  const nomes: string[] = [];
-  const espiao: Arquivos = { ...od, garantirPasta: od.garantirPasta.bind(od), listar: od.listar.bind(od), baixar: od.baixar.bind(od), apagar: od.apagar.bind(od),
-    enviar: (p, n, c, s) => { nomes.push(`enviar:${n}`); return od.enviar(p, n, c, s); },
-    renomear: (r, n) => { nomes.push(`renomear:${n}`); return od.renomear(r, n); } };
-  const r = await m.enviarFichaPreenchida(id, "Scan_0001.PDF", Buffer.from("pdf"), db, espiao);
-  assert.deepEqual(r, { ok: true });
-  assert.deepEqual(nomes, ["enviar:Scan_0001.PDF", "renomear:012 - Maria da Silva.pdf"]);
-  assert.deepEqual(od.arquivos(), ["Quadrante/23º Sênior/Fichas/012 - Maria da Silva.pdf"]);
-  const [a] = await db.fichaArquivo.findMany({ where: { neocampistaId: id } });
-  assert.equal(a.nome, "012 - Maria da Silva.pdf");
+  assert.deepEqual(await m.enviarFichaPreenchida(id, "IMG_frente.jpg", foto("retrato"), db, od), { ok: true });
+  assert.deepEqual(od.arquivos(), [`${F}/012 - Maria da Silva.pdf`]);
+  const [antes] = await db.fichaArquivo.findMany({ where: { neocampistaId: id } });
+
+  await m.enviarFichaPreenchida(id, "IMG_verso.jpg", foto("paisagem"), db, od);
+  assert.deepEqual(od.arquivos(), [`${F}/012 - Maria da Silva.pdf`]); // continua um arquivo só
+  assert.equal(await od.paginas(`${F}/012 - Maria da Silva.pdf`), 2);
+  const [depois] = await db.fichaArquivo.findMany({ where: { neocampistaId: id } });
+  assert.equal(depois.itemId, antes.itemId); // mesmo arquivo (e link) no OneDrive
+  assert.deepEqual(m.lerPartes(depois.partes), [
+    { nome: "IMG_frente.jpg", paginas: 1 },
+    { nome: "IMG_verso.jpg", paginas: 1 },
+  ]);
   assert.equal((await db.neocampista.findUniqueOrThrow({ where: { id } })).arquivoErro, null);
 });
 
-test("tribo: copia para a pasta da cor, troca de tribo move a cópia e renomeia", async () => {
+test("PDF enviado entra com todas as páginas; formato não aceito é recusado", async () => {
   const od = new OneDriveFalso();
-  const id = await novaFicha(7, "João");
-  await m.enviarFichaPreenchida(id, "foto.jpg", Buffer.from("jpg"), db, od);
-
-  // sorteio: entra na AZUL
-  await db.neocampista.update({ where: { id }, data: { triboId: t.azul } });
-  assert.deepEqual(await m.sincronizarFicha(id, db, od), { ok: true });
-  assert.deepEqual(od.arquivos(), [
-    "Quadrante/23º Sênior/Fichas/007 - João - AZUL.jpg",
-    "Quadrante/23º Sênior/Tribos/AZUL/007 - João - AZUL.jpg",
-  ]);
-
-  // rodar de novo não duplica nada
-  await m.sincronizarFicha(id, db, od);
-  assert.equal(od.arquivos().length, 2);
-
-  // mudou para a VERDE antes da missão: sai da AZUL e entra na VERDE
-  await db.neocampista.update({ where: { id }, data: { triboId: t.verde } });
-  await m.sincronizarFicha(id, db, od);
-  assert.deepEqual(od.arquivos(), [
-    "Quadrante/23º Sênior/Fichas/007 - João - VERDE.jpg",
-    "Quadrante/23º Sênior/Tribos/VERDE/007 - João - VERDE.jpg",
-  ]);
-
-  // ficou sem tribo: a cópia sai e o nome perde a cor
-  await db.neocampista.update({ where: { id }, data: { triboId: null } });
-  await m.sincronizarFicha(id, db, od);
-  assert.deepEqual(od.arquivos(), ["Quadrante/23º Sênior/Fichas/007 - João.jpg"]);
+  const id = await novaFicha(13, "Joana");
+  await m.enviarFichaPreenchida(id, "scan.pdf", await pdfDe(2), db, od);
+  await m.enviarFichaPreenchida(id, "foto.jpg", foto("retrato"), db, od);
+  assert.equal(await od.paginas(`${F}/013 - Joana.pdf`), 3);
+  await assert.rejects(m.enviarFichaPreenchida(id, "ficha.docx", Buffer.from("x"), db, od), /Formato não aceito/);
 });
 
-test("mudou o nome na ficha: original e cópia são renomeados", async () => {
+test("tribo: o PDF ganha cópia na pasta da cor; troca de tribo move a cópia e renomeia", async () => {
+  const od = new OneDriveFalso();
+  const id = await novaFicha(7, "João");
+  await m.enviarFichaPreenchida(id, "a.jpg", foto("retrato"), db, od);
+  await m.enviarFichaPreenchida(id, "b.jpg", foto("retrato"), db, od);
+
+  await db.neocampista.update({ where: { id }, data: { triboId: t.azul } });
+  assert.deepEqual(await m.sincronizarFicha(id, db, od), { ok: true });
+  assert.deepEqual(od.arquivos(), [`${F}/007 - João - AZUL.pdf`, `${T("AZUL")}/007 - João - AZUL.pdf`]);
+  assert.equal(await od.paginas(`${T("AZUL")}/007 - João - AZUL.pdf`), 2);
+
+  await m.sincronizarFicha(id, db, od); // de novo: nada duplica
+  assert.equal(od.arquivos().length, 2);
+
+  await db.neocampista.update({ where: { id }, data: { triboId: t.verde } });
+  await m.sincronizarFicha(id, db, od);
+  assert.deepEqual(od.arquivos(), [`${F}/007 - João - VERDE.pdf`, `${T("VERDE")}/007 - João - VERDE.pdf`]);
+
+  await db.neocampista.update({ where: { id }, data: { triboId: null } });
+  await m.sincronizarFicha(id, db, od);
+  assert.deepEqual(od.arquivos(), [`${F}/007 - João.pdf`]);
+});
+
+test("foto acrescentada depois do sorteio: a cópia da tribo é refeita com as páginas novas", async () => {
+  const od = new OneDriveFalso();
+  const id = await novaFicha(8, "Lia");
+  await db.neocampista.update({ where: { id }, data: { triboId: t.azul } });
+  await m.enviarFichaPreenchida(id, "frente.jpg", foto("retrato"), db, od);
+  assert.equal(await od.paginas(`${T("AZUL")}/008 - Lia - AZUL.pdf`), 1);
+  await m.enviarFichaPreenchida(id, "verso.jpg", foto("retrato"), db, od);
+  assert.deepEqual(od.arquivos(), [`${F}/008 - Lia - AZUL.pdf`, `${T("AZUL")}/008 - Lia - AZUL.pdf`]);
+  assert.equal(await od.paginas(`${T("AZUL")}/008 - Lia - AZUL.pdf`), 2);
+});
+
+test("mudou o nome na ficha: PDF e cópia são renomeados", async () => {
   const od = new OneDriveFalso();
   const id = await novaFicha(30, "Ana");
   await db.neocampista.update({ where: { id }, data: { triboId: t.azul } });
-  await m.enviarFichaPreenchida(id, "a.pdf", Buffer.from("x"), db, od);
+  await m.enviarFichaPreenchida(id, "a.jpg", foto("retrato"), db, od);
   await db.neocampista.update({ where: { id }, data: { nome: "Ana Paula" } });
   await m.sincronizarFicha(id, db, od);
-  assert.deepEqual(od.arquivos(), [
-    "Quadrante/23º Sênior/Fichas/030 - Ana Paula - AZUL.pdf",
-    "Quadrante/23º Sênior/Tribos/AZUL/030 - Ana Paula - AZUL.pdf",
-  ]);
+  assert.deepEqual(od.arquivos(), [`${F}/030 - Ana Paula - AZUL.pdf`, `${T("AZUL")}/030 - Ana Paula - AZUL.pdf`]);
 });
 
 test("falha no OneDrive: grava o erro na ficha e a próxima sincronização corrige", async () => {
   const od = new OneDriveFalso();
   const id = await novaFicha(40, "Beto");
-  await m.enviarFichaPreenchida(id, "b.pdf", Buffer.from("x"), db, od);
+  await m.enviarFichaPreenchida(id, "b.jpg", foto("retrato"), db, od);
   await db.neocampista.update({ where: { id }, data: { triboId: t.verde } });
   od.falharEnvio = true;
   const r = await m.sincronizarFicha(id, db, od);
@@ -195,67 +230,52 @@ test("falha no OneDrive: grava o erro na ficha e a próxima sincronização corr
   const resumo = await m.sincronizarMissao(t.missao, db, od);
   assert.equal(resumo.falhas.length, 0);
   assert.equal((await db.neocampista.findUniqueOrThrow({ where: { id } })).arquivoErro, null);
-  assert.ok(od.arquivos().includes("Quadrante/23º Sênior/Tribos/VERDE/040 - Beto - VERDE.pdf"));
+  assert.ok(od.arquivos().includes(`${T("VERDE")}/040 - Beto - VERDE.pdf`));
 });
 
-test("vários arquivos: numerados (1), (2)…; cada um ganha cópia na tribo; troca de tribo move todos", async () => {
-  const od = new OneDriveFalso();
-  const id = await novaFicha(50, "Caio");
-  await m.enviarFichaPreenchida(id, "pagina1.pdf", Buffer.from("1"), db, od);
-  assert.deepEqual(od.arquivos(), ["Quadrante/23º Sênior/Fichas/050 - Caio.pdf"]); // um só: sem número
-  await m.enviarFichaPreenchida(id, "foto.jpg", Buffer.from("22"), db, od);
-  await m.enviarFichaPreenchida(id, "verso.jpg", Buffer.from("333"), db, od);
-  assert.deepEqual(od.arquivos(), [
-    "Quadrante/23º Sênior/Fichas/050 - Caio (1).pdf",
-    "Quadrante/23º Sênior/Fichas/050 - Caio (2).jpg",
-    "Quadrante/23º Sênior/Fichas/050 - Caio (3).jpg",
-  ]);
-
-  await db.neocampista.update({ where: { id }, data: { triboId: t.azul } });
-  await m.sincronizarFicha(id, db, od);
-  await db.neocampista.update({ where: { id }, data: { triboId: t.verde } });
-  await m.sincronizarFicha(id, db, od);
-  assert.deepEqual(od.arquivos(), [
-    "Quadrante/23º Sênior/Fichas/050 - Caio - VERDE (1).pdf",
-    "Quadrante/23º Sênior/Fichas/050 - Caio - VERDE (2).jpg",
-    "Quadrante/23º Sênior/Fichas/050 - Caio - VERDE (3).jpg",
-    "Quadrante/23º Sênior/Tribos/VERDE/050 - Caio - VERDE (1).pdf",
-    "Quadrante/23º Sênior/Tribos/VERDE/050 - Caio - VERDE (2).jpg",
-    "Quadrante/23º Sênior/Tribos/VERDE/050 - Caio - VERDE (3).jpg",
-  ]);
-  // o conteúdo da cópia é o do arquivo certo
-  const copia2 = [...od.nos.values()].find((n) => !n.apagado && n.nome === "050 - Caio - VERDE (2).jpg" && od.caminho(n.id).includes("Tribos"));
-  assert.equal(copia2?.conteudo?.toString(), "22");
-});
-
-test("remover um arquivo: original e cópia vão para a lixeira e os outros são renumerados", async () => {
+test("remover uma parte tira só as páginas dela; a última parte leva o PDF para a lixeira", async () => {
   const od = new OneDriveFalso();
   const id = await novaFicha(60, "Dora");
   await db.neocampista.update({ where: { id }, data: { triboId: t.azul } });
-  for (const n of ["a.pdf", "b.pdf", "c.pdf"]) await m.enviarFichaPreenchida(id, n, Buffer.from(n), db, od);
-  const [primeiro] = await db.fichaArquivo.findMany({ where: { neocampistaId: id }, orderBy: { ordem: "asc" } });
-  assert.deepEqual(await m.removerArquivoFicha(primeiro.id, db, od), { ok: true });
-  assert.deepEqual(od.arquivos(), [
-    "Quadrante/23º Sênior/Fichas/060 - Dora - AZUL (1).pdf",
-    "Quadrante/23º Sênior/Fichas/060 - Dora - AZUL (2).pdf",
-    "Quadrante/23º Sênior/Tribos/AZUL/060 - Dora - AZUL (1).pdf",
-    "Quadrante/23º Sênior/Tribos/AZUL/060 - Dora - AZUL (2).pdf",
-  ]);
-  const restantes = await db.fichaArquivo.findMany({ where: { neocampistaId: id }, orderBy: { ordem: "asc" } });
-  assert.deepEqual(restantes.map((r) => r.ordem), [1, 2]);
-  assert.equal(od.nos.get(restantes[0].itemId)?.conteudo?.toString(), "b.pdf"); // o que era o 2º virou o 1º
+  await m.enviarFichaPreenchida(id, "frente.jpg", foto("retrato"), db, od);
+  await m.enviarFichaPreenchida(id, "anexo.pdf", await pdfDe(2), db, od);
+  await m.enviarFichaPreenchida(id, "verso.jpg", foto("paisagem"), db, od);
+  const [a] = await db.fichaArquivo.findMany({ where: { neocampistaId: id } });
+  assert.equal(await od.paginas(`${F}/060 - Dora - AZUL.pdf`), 4);
 
-  // sobrou um só: perde o número
-  await m.removerArquivoFicha(restantes[0].id, db, od);
-  assert.deepEqual(od.arquivos(), ["Quadrante/23º Sênior/Fichas/060 - Dora - AZUL.pdf", "Quadrante/23º Sênior/Tribos/AZUL/060 - Dora - AZUL.pdf"]);
+  assert.deepEqual(await m.removerParteFicha(a.id, 1, db, od), { ok: true }); // tira o anexo de 2 páginas
+  assert.equal(await od.paginas(`${F}/060 - Dora - AZUL.pdf`), 2);
+  assert.equal(await od.paginas(`${T("AZUL")}/060 - Dora - AZUL.pdf`), 2); // cópia refeita
+  const [b] = await db.fichaArquivo.findMany({ where: { neocampistaId: id } });
+  assert.deepEqual(m.lerPartes(b.partes).map((p) => p.nome), ["frente.jpg", "verso.jpg"]);
+
+  await m.removerParteFicha(b.id, 0, db, od);
+  await m.removerParteFicha(b.id, 0, db, od);
+  assert.deepEqual(od.arquivos(), []);
+  assert.equal(await db.fichaArquivo.count({ where: { neocampistaId: id } }), 0);
 });
 
-test("excluir a ficha: todos os arquivos e cópias vão para a lixeira", async () => {
+test("arquivos soltos de antes do PDF único: PDF/JPG entram no PDF no próximo envio; o resto fica separado", async () => {
   const od = new OneDriveFalso();
   const id = await novaFicha(70, "Eva");
+  const pasta = await od.garantirPasta(["23º Sênior", "Fichas"]);
+  const solto = async (nome: string, conteudo: Buffer, ext: string, ordem: number) => {
+    const it = await od.enviar(pasta, nome, conteudo, "rename");
+    await db.fichaArquivo.create({ data: { neocampistaId: id, ordem, ext, driveId: it.driveId, itemId: it.id, nome: it.name } });
+  };
+  await solto("070 - Eva (1).jpg", foto("retrato"), ".jpg", 1);
+  await solto("070 - Eva (2).docx", Buffer.from("word"), ".docx", 2);
+
+  await m.enviarFichaPreenchida(id, "verso.jpg", foto("retrato"), db, od);
+  assert.deepEqual(od.arquivos(), [`${F}/070 - Eva (1).pdf`, `${F}/070 - Eva (2).docx`]);
+  assert.equal(await od.paginas(`${F}/070 - Eva (1).pdf`), 2);
+});
+
+test("excluir a ficha: PDF e cópia vão para a lixeira", async () => {
+  const od = new OneDriveFalso();
+  const id = await novaFicha(71, "Ivo");
   await db.neocampista.update({ where: { id }, data: { triboId: t.azul } });
-  await m.enviarFichaPreenchida(id, "a.pdf", Buffer.from("a"), db, od);
-  await m.enviarFichaPreenchida(id, "b.pdf", Buffer.from("b"), db, od);
+  await m.enviarFichaPreenchida(id, "a.jpg", foto("retrato"), db, od);
   await m.apagarArquivosDaFicha(await db.fichaArquivo.findMany({ where: { neocampistaId: id } }), od);
   assert.deepEqual(od.arquivos(), []);
 });
