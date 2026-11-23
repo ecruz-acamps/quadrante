@@ -994,7 +994,8 @@ export async function atualizarFicha(formData: FormData) {
     if (dup) throw new Error(`Já existe a ficha número ${numero} nesta missão.`);
   }
   await db.neocampista.update({ where: { id }, data: { ...fichaData(formData), numero } });
-  if (atual.arquivoId) sincronizarDepois(id); // nome ou número mudou: renomeia no OneDrive
+  // nome ou número mudou: renomeia no OneDrive
+  if (await db.fichaArquivo.count({ where: { neocampistaId: id } })) sincronizarDepois(id);
   revalidatePath("/fichas");
   redirect("/fichas");
 }
@@ -1003,13 +1004,13 @@ export async function excluirFicha(formData: FormData) {
   const usuario = await requireUser();
   const id = Number(formData.get("id"));
   await exigirRegistros(usuario, ["ficha", id]);
-  const ficha = await db.neocampista.findUnique({ where: { id } });
+  const arquivos = await db.fichaArquivo.findMany({ where: { neocampistaId: id } });
   await db.fichaAlerta.deleteMany({ where: { OR: [{ origemId: id }, { alvoId: id }] } });
   await db.neocampista.delete({ where: { id } });
-  // a ficha preenchida e a cópia da tribo vão para a lixeira do OneDrive (dá para recuperar lá)
-  if (ficha?.arquivoId) {
+  // os arquivos da ficha preenchida e as cópias da tribo vão para a lixeira do OneDrive (dá para recuperar lá)
+  if (arquivos.length) {
     after(async () => {
-      if (await temOneDrive()) await apagarArquivosDaFicha(ficha, oneDrive(db)).catch(() => {});
+      if (await temOneDrive()) await apagarArquivosDaFicha(arquivos, oneDrive(db)).catch(() => {});
     });
   }
   revalidatePath("/fichas");
@@ -1064,9 +1065,9 @@ export async function alocarTribo(_prev: unknown, formData: FormData) {
       }
     }
   }
-  const atualizada = await db.neocampista.update({ where: { id: fichaId }, data: { triboId } });
-  // trocou de tribo: a cópia sai da pasta da cor antiga e entra na nova
-  if (atualizada.arquivoId) sincronizarDepois(fichaId);
+  await db.neocampista.update({ where: { id: fichaId }, data: { triboId } });
+  // trocou de tribo: as cópias saem da pasta da cor antiga e entram na nova
+  if (await db.fichaArquivo.count({ where: { neocampistaId: fichaId } })) sincronizarDepois(fichaId);
   revalidatePath("/tribos");
   return { ok: true };
 }

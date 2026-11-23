@@ -25,8 +25,8 @@ export default function SincronizarOneDrive({ missaoId, comArquivo, comErro }: {
   return (
     <div className="card p-4 mb-6 flex flex-wrap items-center gap-3 text-sm">
       <span className="flex-1 min-w-[12rem] text-[var(--ink-soft)]">
-        {comArquivo} {comArquivo === 1 ? "ficha preenchida" : "fichas preenchidas"} no OneDrive. Depois do sorteio e de cada troca, a cópia
-        vai para a pasta da cor da tribo.
+        {comArquivo} {comArquivo === 1 ? "ficha preenchida" : "fichas preenchidas"} no OneDrive. Depois do sorteio e de cada troca, as cópias
+        vão para a pasta da cor da tribo.
         {comErro > 0 && <strong className="text-[var(--signal)]"> {comErro} fora de ordem.</strong>}
       </span>
       <button type="button" onClick={sincronizar} disabled={rodando} className="rounded px-3 py-1.5 border border-[var(--line)] text-[var(--ink)]">

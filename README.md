@@ -59,7 +59,7 @@ Itens do menu lateral do painel administrativo:
 | **Cerco de Jericó** | Dashboard das vagas por horário e inscrição pública por link (`/cerco/<slug>`), com notificação no celular a cada inscrição. A página pública funciona como PWA (com tela offline). |
 | **Camisetas** | Contagem por tamanho para o pedido. |
 | **Por Setor / Por Cidade** | Visões agregadas da missão. |
-| **Fichas (Neocampistas)** | Cadastro dos campistas novos, com alertas de possíveis duplicatas entre fichas. Depois de cadastrar, **Fazer upload da ficha preenchida** envia o arquivo (PDF ou foto, até 10 MB) ao OneDrive e o renomeia para `012 - Nome`. |
+| **Fichas (Neocampistas)** | Cadastro dos campistas novos, com alertas de possíveis duplicatas entre fichas. Depois de cadastrar, **Fazer upload da ficha preenchida** envia os arquivos (vários de uma vez; PDF ou fotos, até 10 MB cada) ao OneDrive e os renomeia para `012 - Nome (1)`, `(2)`… |
 | **Tribos** | Divisão dos neocampistas em tribos e seus líderes. Depois do sorteio (e a cada troca), a ficha preenchida ganha uma cópia na pasta da cor da tribo no OneDrive e o nome passa a trazer a cor (`012 - Nome - AZUL`); quem muda de tribo sai da pasta antiga. Ver [Fichas no OneDrive](#fichas-no-onedrive). |
 | **Evangelização** (v1.2) | Equipes de 3 (com carro) formadas pelas cidades dos servos, sorteio de 3 a 4 casas de neocampistas por equipe sem nunca mandar a equipe à cidade de um membro, tela de cidades/vizinhança, fechar a distribuição (só o SUPER reabre) e folhas de impressão por equipe. |
 | **Financeiro** | Valores por categoria (interna, externa, campista), pagos e pendentes. |
@@ -237,9 +237,10 @@ Um único registro de aplicativo no Entra serve para o login e para o OneDrive.
    quando vencer, gere outro e troque no `.env`.
 4. Em **Permissões de API › Microsoft Graph › Permissões delegadas**, adicione `openid`, `profile`, `email`,
    `offline_access`, `User.Read` e `Files.ReadWrite.All`.
-5. Copie da **Visão geral** o *ID do aplicativo (cliente)* e o *ID do diretório (locatário)* e grave no `.env`
-   (`ENTRA_CLIENT_ID`, `ENTRA_TENANT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_REDIRECT_URI`, `ONEDRIVE_REDIRECT_URI`);
-   depois `pm2 restart quadrante`.
+5. Em **Configurações › Microsoft**, cole o *ID do diretório (locatário)* e o *ID do aplicativo (cliente)* (da
+   **Visão geral**) e o *Valor* do segredo, confira os dois URIs de retorno e clique em **Testar e salvar**: o sistema
+   confere tudo com a Microsoft antes de gravar no `.env` e passa a valer na hora, sem reiniciar. (Também dá para
+   escrever as variáveis `ENTRA_*` direto no `.env` e rodar `pm2 restart quadrante`.)
 6. Em **Configurações › OneDrive**, clique em **Conectar OneDrive** com a conta Microsoft que vai guardar os arquivos.
 
 O login com Microsoft só funciona pelo endereço `https://` (a Microsoft não aceita retorno em HTTP fora de `localhost`);
@@ -252,13 +253,17 @@ Dentro da pasta do Quadrante (por padrão `Quadrante`, no OneDrive da conta cone
 link de outra pasta, inclusive de um site do SharePoint):
 
 ```
-<Missão>/Fichas/012 - Maria da Silva - AZUL.pdf         todas as fichas preenchidas
-<Missão>/Tribos/AZUL/012 - Maria da Silva - AZUL.pdf    cópia de quem está na tribo azul
+<Missão>/Fichas/012 - Maria da Silva - AZUL (1).pdf         todos os arquivos das fichas preenchidas
+<Missão>/Fichas/012 - Maria da Silva - AZUL (2).jpg
+<Missão>/Tribos/AZUL/012 - Maria da Silva - AZUL (1).pdf    cópias de quem está na tribo azul
+<Missão>/Tribos/AZUL/012 - Maria da Silva - AZUL (2).jpg
 Backups/quadrante-backup-AAAA-MM-DD-HHMM.tar.gz.gpg     backup diário
 ```
 
-- O upload vai com o nome original do arquivo e logo em seguida é renomeado para `número - nome` (com a cor, se já houver tribo).
-- Sorteio e troca de tribo: a cópia vai para a pasta da cor nova e sai da antiga; os dois nomes passam a trazer a cor nova.
+- A ficha aceita vários arquivos (frente, verso, fotos). Cada um vai com o nome original e logo em seguida é renomeado para
+  `número - nome` (com a cor, se já houver tribo); com mais de um arquivo, cada um ganha `(1)`, `(2)`… na ordem de envio.
+  Remover um arquivo (lixeira do OneDrive) renumera os outros.
+- Sorteio e troca de tribo: as cópias vão para a pasta da cor nova e saem da antiga; os dois nomes passam a trazer a cor nova.
   Isso roda em segundo plano logo depois da ação.
 - Mudou o nome ou o número na ficha: os arquivos são renomeados. Excluiu a ficha: os arquivos vão para a lixeira do OneDrive.
 - Se o OneDrive falhar, a ficha mostra **⚠ Fora de ordem no OneDrive** com **Tentar de novo**; em Tribos,
