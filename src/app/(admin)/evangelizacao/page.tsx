@@ -57,11 +57,13 @@ export default async function EvangelizacaoPage() {
       <BarraAcoes missaoId={missao.id} fechada={travada} souSuper={user.role === "SUPER"} />
       <div className="card p-3 mb-4 flex flex-wrap items-center gap-3 text-sm">
         <span className="flex-1 min-w-[14rem] text-[var(--ink-soft)]">
-          {fichasComArquivo > 0
+          {!missao.fichasEvangelizacaoLiberadasEm
+            ? "Fichas por tribo: aguardando a secretaria liberar (em Tribos, botão \"QUADRANTE OK - Liberar Evangelização\")."
+            : fichasComArquivo > 0
             ? `${fichasComArquivo} ${fichasComArquivo === 1 ? "ficha preenchida" : "fichas preenchidas"} (${arquivosFichas} ${arquivosFichas === 1 ? "arquivo" : "arquivos"}) no OneDrive. O zip traz uma pasta por cor de tribo e "SEM TRIBO".`
             : "Nenhuma ficha preenchida foi enviada ainda (envie em Fichas › Fazer upload da ficha preenchida)."}
         </span>
-        {fichasComArquivo > 0 && (
+        {missao.fichasEvangelizacaoLiberadasEm && fichasComArquivo > 0 && (
           <a href="/evangelizacao/fichas-por-tribo" className="qd-btn qd-btn-ghost">
             Baixar fichas por tribo (.zip)
           </a>

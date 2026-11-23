@@ -9,6 +9,13 @@ import { entradasFichasPorTribo, nomeZip } from "@/lib/fichasPorTribo";
 export async function GET() {
   const { missao } = await requireEvangelizacao();
   if (!missao) return new Response("Nenhuma missão ativa.", { status: 400 });
+  // só depois que a secretaria clicar em "QUADRANTE OK - Liberar Evangelização" (em Tribos)
+  if (!missao.fichasEvangelizacaoLiberadasEm) {
+    return new Response("Aguardando a secretaria liberar: em Tribos, botão \"QUADRANTE OK - Liberar Evangelização\".", {
+      status: 403,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
   if (!(await db.integracaoOneDrive.findUnique({ where: { id: 1 } }))) {
     return new Response("O OneDrive não está conectado (Configurações).", { status: 409 });
   }
