@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { PAGAMENTOS, CAMISETAS } from "@/lib/constants";
 import { formatarCep, situacaoCep, type ResultadoCep } from "@/lib/cep";
+import { NUCLEOS } from "@/lib/nucleos";
 import type { Neocampista } from "@prisma/client";
 
 export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
@@ -47,7 +48,20 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
       </label>
       <label className="text-sm">
         Núcleo
-        <input name="nucleo" required defaultValue={ficha?.nucleo} className={sel} />
+        <select name="nucleo" required defaultValue={ficha?.nucleo ?? ""} className={sel}>
+          <option value="" disabled>
+            Selecione o núcleo…
+          </option>
+          {/* ficha antiga com núcleo escrito de outro jeito: mantém o valor até alguém escolher um da lista */}
+          {ficha?.nucleo && !(NUCLEOS as readonly string[]).includes(ficha.nucleo) && (
+            <option value={ficha.nucleo}>{ficha.nucleo} (atual)</option>
+          )}
+          {NUCLEOS.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="text-sm col-span-2">
         Nome

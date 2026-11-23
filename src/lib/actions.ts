@@ -9,6 +9,7 @@ import { createSession, destroySession, requireUser, requireRole, requireCoorden
 import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaValida } from "./coordenador";
 import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
 import { ehSetorLideres } from "./setorLideres";
+import { nucleoAceito } from "./nucleos";
 import { oneDrive } from "./oneDrive";
 import { apagarArquivosDaFicha, sincronizarFicha, sincronizarMissao } from "./fichaArquivos";
 
@@ -943,7 +944,7 @@ function fichaData(formData: FormData) {
   };
   const n = (k: string) => (formData.get(k) ? Number(String(formData.get(k)).replace(",", ".")) : null);
   return {
-    nucleo: String(formData.get("nucleo")),
+    nucleo: String(formData.get("nucleo") ?? "").trim(),
     nome: normalizarNome(String(formData.get("nome"))),
     endereco: s("endereco"),
     bairro: s("bairro"),
@@ -964,6 +965,7 @@ function fichaData(formData: FormData) {
 export async function criarFicha(formData: FormData) {
   const usuario = await requireUser();
   if (!String(formData.get("cpf") ?? "").trim()) throw new Error("CPF é obrigatório.");
+  if (!nucleoAceito(String(formData.get("nucleo") ?? ""))) throw new Error("Escolha o núcleo na lista.");
   const missaoId = Number(formData.get("missaoId"));
   await exigirMissao(usuario, missaoId);
   let numero = Math.round(Number(formData.get("numero")));
@@ -989,6 +991,7 @@ export async function atualizarFicha(formData: FormData) {
   const numero = Math.round(Number(formData.get("numero")));
   if (!(numero > 0)) throw new Error("Número da ficha inválido.");
   const atual = await db.neocampista.findUniqueOrThrow({ where: { id } });
+  if (!nucleoAceito(String(formData.get("nucleo") ?? ""), atual.nucleo)) throw new Error("Escolha o núcleo na lista.");
   if (numero !== atual.numero) {
     const dup = await db.neocampista.findUnique({ where: { missaoId_numero: { missaoId: atual.missaoId, numero } } });
     if (dup) throw new Error(`Já existe a ficha número ${numero} nesta missão.`);
