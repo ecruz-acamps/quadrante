@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { PAGAMENTOS, CAMISETAS } from "@/lib/constants";
-import { formatarCep, interpretarViaCep, situacaoCep } from "@/lib/cep";
+import { formatarCep, situacaoCep, type ResultadoCep } from "@/lib/cep";
 import type { Neocampista } from "@prisma/client";
 
 export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
@@ -20,13 +20,15 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
     consultaRef.current = controle;
     setCepMsg("Buscando CEP...");
     try {
-      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: controle.signal });
-      if (!r.ok) throw new Error("falha");
-      const dados = interpretarViaCep(await r.json());
-      if (!dados) {
+      // o servidor consulta o ViaCEP e, se preciso, a BrasilAPI
+      const r = await fetch(`/api/cep/${cep}`, { signal: controle.signal });
+      const resp = (await r.json().catch(() => null)) as ResultadoCep | null;
+      if (!resp || resp.tipo === "falhou" || !r.ok) throw new Error("falha");
+      if (resp.tipo !== "encontrado") {
         setCepMsg(`CEP ${formatarCep(cep)} não encontrado. Confira os números.`);
         return;
       }
+      const dados = resp.dados;
       if (dados.endereco && enderecoRef.current) enderecoRef.current.value = dados.endereco;
       if (dados.bairro && bairroRef.current) bairroRef.current.value = dados.bairro;
       if (cidadeRef.current) cidadeRef.current.value = dados.cidade;
