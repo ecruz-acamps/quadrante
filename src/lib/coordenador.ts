@@ -55,7 +55,11 @@ export const ROTAS_SERVO_SECRETARIA = [
   ["/fichas", "Fichas (Neocampistas)"],
 ] as const;
 
+// endereços internos que as telas acima usam (envio da ficha e do comprovante, busca de CEP): sem eles, a secretaria
+// recebia um redirecionamento no lugar da resposta ("resposta inesperada do servidor")
+const APIS_SERVO_SECRETARIA = ["/api/fichas", "/api/cep"];
+
 export function rotaPermitidaServoSecretaria(caminho: string | null | undefined): boolean {
   if (!caminho) return false;
-  return ROTAS_SERVO_SECRETARIA.some(([r]) => caminho === r || caminho.startsWith(`${r}/`));
+  return [...ROTAS_SERVO_SECRETARIA.map(([r]) => r), ...APIS_SERVO_SECRETARIA].some((r) => caminho === r || caminho.startsWith(`${r}/`));
 }

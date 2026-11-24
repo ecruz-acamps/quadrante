@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { removerComprovanteAction } from "@/lib/actionsFichaArquivo";
+import { lerResposta } from "./respostaServidor";
 
 const ACEITOS = ".pdf,.jpg,.jpeg,.png,.heic,.webp";
 
@@ -20,7 +21,7 @@ export default function ComprovantePix({ fichaId, nome, url, situacao }: { ficha
       const corpo = new FormData();
       corpo.append("arquivo", arquivo);
       const res = await fetch(`/api/fichas/${fichaId}/comprovante`, { method: "POST", body: corpo });
-      const r = (await res.json().catch(() => ({ erro: "Resposta inesperada do servidor." }))) as { erro?: string };
+      const r = await lerResposta<{ erro?: string }>(res);
       setMsg(r.erro ? { texto: r.erro, ruim: true } : { texto: "Comprovante enviado. Agora a ficha pode ser marcada como OK - PAGO (abaixo) e salva.", ruim: false });
     } catch {
       setMsg({ texto: "Falha na conexão. Tente de novo.", ruim: true });

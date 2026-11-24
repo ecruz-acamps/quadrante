@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { removerArquivoFichaAction, removerParteFichaAction, sincronizarFichaAction } from "@/lib/actionsFichaArquivo";
 import { prepararParaEnvio } from "./converterFoto";
+import { lerResposta } from "./respostaServidor";
 
 const ACEITOS = ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,image/*";
 
@@ -45,7 +46,7 @@ export default function ArquivoFicha({ fichaId, arquivos, erro, compacto }: Prop
         const corpo = new FormData();
         corpo.append("arquivo", arquivo);
         const res = await fetch(`/api/fichas/${fichaId}/arquivo`, { method: "POST", body: corpo });
-        const r = (await res.json().catch(() => ({ erro: "resposta inesperada do servidor" }))) as { erro?: string; aviso?: string };
+        const r = await lerResposta<{ erro?: string; aviso?: string }>(res);
         if (r.erro) falhas.push(`${original.name}: ${r.erro}`);
         else {
           enviados++;
