@@ -4,7 +4,6 @@ import { acessoRegistros } from "@/lib/autorizacao";
 import { atualizarFicha } from "@/lib/actions";
 import FichaForm from "../FichaForm";
 import ArquivoFicha from "../ArquivoFicha";
-import ComprovantePix from "../ComprovantePix";
 import { lerPartes } from "@/lib/fichaArquivos";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -48,14 +47,9 @@ export default async function EditarFichaPage({
           erro={ficha.arquivoErro}
         />
       </div>
-      {(ficha.pagamento === "PIX" || ficha.comprovanteItemId) && (
-        <ComprovantePix fichaId={ficha.id} nome={ficha.comprovanteNome} url={ficha.comprovanteUrl} situacao={ficha.situacao} />
-      )}
-
       <form action={atualizarFicha} className="card p-6 space-y-4">
         <input type="hidden" name="id" value={ficha.id} />
-        {/* remonta quando o comprovante chega ou sai, para liberar/bloquear o "OK - PAGO" */}
-        <FichaForm key={ficha.comprovanteItemId ?? "sem-comprovante"} ficha={ficha} />
+        <FichaForm ficha={ficha} />
         <button className="btn-primary px-6 py-2">Salvar</button>
       </form>
     </div>
