@@ -70,7 +70,8 @@ async function obterToken(db: Db, f: typeof fetch): Promise<string> {
     try {
       t = await renovarTokenOneDrive(integ.refreshToken, f);
     } catch (e) {
-      throw new ErroOneDrive(`Não foi possível renovar o acesso ao OneDrive; reconecte em Configurações. (${(e as Error).message})`);
+      console.error("OneDrive: a Microsoft recusou renovar o acesso:", (e as Error).message);
+      throw new ErroOneDrive(motivoRenovacao((e as Error).message));
     }
     // a Microsoft costuma devolver um refresh token novo: guarda para a próxima vez
     if (t.refresh_token && t.refresh_token !== integ.refreshToken) {
@@ -82,6 +83,22 @@ async function obterToken(db: Db, f: typeof fetch): Promise<string> {
     renovando = null;
   });
   return renovando;
+}
+
+// Recusa da Microsoft ao renovar o acesso -> o que a pessoa precisa fazer (o texto técnico vai para o registro)
+export function motivoRenovacao(textoMicrosoft: string): string {
+  const codigo = /AADSTS(\d+)/.exec(textoMicrosoft)?.[1];
+  if (codigo === "7000222") {
+    return "O segredo do aplicativo no Microsoft Entra venceu. Gere um novo em Entra › Registros de aplicativo › Quadrante › Certificados e segredos e cole o Valor em Configurações › Microsoft. (AADSTS7000222)";
+  }
+  if (codigo === "7000215") {
+    return "O segredo do aplicativo no Microsoft Entra está errado. Cole o Valor do segredo (não o ID) em Configurações › Microsoft. (AADSTS7000215)";
+  }
+  if (codigo === "700016") return "O aplicativo do Microsoft Entra não foi encontrado. Confira os IDs em Configurações › Microsoft. (AADSTS700016)";
+  if (codigo === "70008" || codigo === "700082" || codigo === "50173" || codigo === "65001" || /invalid_grant/.test(textoMicrosoft)) {
+    return `O acesso ao OneDrive expirou ou foi revogado. Em Configurações › OneDrive, clique em Reconectar OneDrive.${codigo ? ` (AADSTS${codigo})` : ""}`;
+  }
+  return `Não foi possível renovar o acesso ao OneDrive; reconecte em Configurações.${codigo ? ` (AADSTS${codigo})` : ""}`;
 }
 
 // ---------- chamadas ----------

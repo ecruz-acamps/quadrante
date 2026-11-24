@@ -53,7 +53,13 @@ const filas = new Map<number, Promise<unknown>>();
 function emFila<T>(fichaId: number, tarefa: () => Promise<T>): Promise<T> {
   const anterior = filas.get(fichaId) ?? Promise.resolve();
   const atual = anterior.catch(() => {}).then(tarefa);
-  const fim = atual.finally(() => {
+  // o que fica guardado na fila nunca falha: se guardasse `atual.finally(...)`, uma falha da tarefa (ex.: OneDrive
+  // recusando) virava um erro solto ("unhandledRejection") que derrubava o servidor no meio do envio. Quem chamou
+  // recebe a falha por `atual`, normalmente.
+  const fim: Promise<void> = atual.then(
+    () => undefined,
+    () => undefined,
+  ).finally(() => {
     if (filas.get(fichaId) === fim) filas.delete(fichaId);
   });
   filas.set(fichaId, fim);
