@@ -1298,8 +1298,6 @@ export async function adicionarLiderTribo(formData: FormData) {
     // líder de tribo precisa estar ativo no setor LÍDERES
     const servo = await db.servo.findUnique({ where: { id: servoId }, select: { setor: true, status: true } });
     if (!servo || servo.status !== "ATIVO" || !ehSetorLideres(servo.setor)) return;
-    // conhece alguém desta tribo (alerta): não pode ser líder dela (a tela já mostra a opção desabilitada)
-    if (await db.fichaAlertaLider.findFirst({ where: { servoId, ficha: { triboId } } })) return;
     await db.triboLider.upsert({
       where: { triboId_servoId: { triboId, servoId } },
       update: {},

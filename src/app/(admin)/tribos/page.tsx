@@ -47,13 +47,6 @@ export default async function TribosPage() {
   ]);
   // só quem está no setor LÍDERES pode ser escolhido como líder de tribo
   const servos = servosAtivos.filter((s) => ehSetorLideres(s.setor));
-  // líder que conhece um neocampista (alerta) não pode liderar a tribo dele: servoId -> triboId -> fichas que conhece lá
-  const alertasLider = await db.fichaAlertaLider.findMany({
-    where: { ficha: { missaoId: missao.id, NOT: { triboId: null } } },
-    select: { servoId: true, ficha: { select: { numero: true, nome: true, triboId: true } } },
-  });
-  const conheceNaTribo = (servoId: number, triboId: number) =>
-    alertasLider.filter((a) => a.servoId === servoId && a.ficha.triboId === triboId).map((a) => `#${a.ficha.numero} ${a.ficha.nome}`);
 
   return (
     <div>
@@ -135,15 +128,11 @@ export default async function TribosPage() {
                     <option value="">
                       {servos.length ? "Adicionar líder..." : "Nenhum servo no setor LÍDERES"}
                     </option>
-                    {servos.filter((s) => !t.lideres.some((l) => l.servoId === s.id)).map((s) => {
-                      const conhece = conheceNaTribo(s.id, t.id);
-                      return (
-                        <option key={s.id} value={s.id} disabled={conhece.length > 0}>
-                          {s.pessoa.nome}
-                          {conhece.length > 0 ? ` (conhece ${conhece.join(", ")})` : ""}
-                        </option>
-                      );
-                    })}
+                    {servos.filter((s) => !t.lideres.some((l) => l.servoId === s.id)).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.pessoa.nome}
+                      </option>
+                    ))}
                   </select>
                   <button className="btn-primary text-xs px-3">+</button>
                 </form>
