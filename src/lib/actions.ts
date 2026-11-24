@@ -10,6 +10,7 @@ import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaV
 import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
 import { ehSetorLideres } from "./setorLideres";
 import { nucleoAceito } from "./nucleos";
+import { lerAlvoAlerta, tribosProibidasPorLideres } from "./alertasTribo";
 import { renomearComprovante, situacaoPermitida } from "./comprovante";
 import { oneDrive } from "./oneDrive";
 import { apagarArquivosDaFicha, sincronizarFicha, sincronizarMissao } from "./fichaArquivos";
@@ -1040,7 +1041,23 @@ export async function excluirFicha(formData: FormData) {
 export async function adicionarAlerta(formData: FormData) {
   const usuario = await requireUser();
   const origemId = Number(formData.get("origemId"));
-  const alvoId = Number(formData.get("alvoId"));
+  const alvo = lerAlvoAlerta(String(formData.get("alvoId") ?? ""));
+  if (!alvo) return;
+  if (alvo.tipo === "lider") {
+    // líder que conhece o neocampista: a ficha não pode ficar na tribo que ele lidera
+    await exigirRegistros(usuario, ["ficha", origemId], ["servo", alvo.id]);
+    const servo = await db.servo.findUnique({ where: { id: alvo.id }, select: { setor: true } });
+    if (!servo || !ehSetorLideres(servo.setor)) throw new Error("Só servos do setor LÍDERES podem ter este alerta.");
+    await db.fichaAlertaLider.upsert({
+      where: { fichaId_servoId: { fichaId: origemId, servoId: alvo.id } },
+      update: {},
+      create: { fichaId: origemId, servoId: alvo.id },
+    });
+    revalidatePath("/fichas");
+    revalidatePath("/tribos");
+    return;
+  }
+  const alvoId = alvo.id;
   // as duas fichas precisam ser da mesma missão a que o usuário tem acesso
   await exigirRegistros(usuario, ["ficha", origemId], ["ficha", alvoId]);
   if (origemId && alvoId && origemId !== alvoId) {
@@ -1050,6 +1067,15 @@ export async function adicionarAlerta(formData: FormData) {
       create: { origemId, alvoId },
     });
   }
+  revalidatePath("/fichas");
+  revalidatePath("/tribos");
+}
+
+export async function removerAlertaLider(formData: FormData) {
+  const usuario = await requireUser();
+  const id = Number(formData.get("id"));
+  await exigirRegistros(usuario, ["alertaLider", id]);
+  await db.fichaAlertaLider.delete({ where: { id } });
   revalidatePath("/fichas");
   revalidatePath("/tribos");
 }
@@ -1084,6 +1110,14 @@ export async function alocarTribo(_prev: unknown, formData: FormData) {
       if (outro.triboId === triboId) {
         return { error: `TRAVA: ficha ${outro.numero} (${outro.nome}) já está nesta tribo (alerta de parentesco/amizade).` };
       }
+    }
+    // trava: um líder desta tribo conhece a ficha
+    const liderQueConhece = await db.fichaAlertaLider.findFirst({
+      where: { fichaId, servo: { tribosLideradas: { some: { triboId } } } },
+      include: { servo: { include: { pessoa: { select: { nome: true } } } } },
+    });
+    if (liderQueConhece) {
+      return { error: `TRAVA: o líder ${liderQueConhece.servo.pessoa.nome} desta tribo conhece esta ficha (alerta de parentesco/amizade).` };
     }
   }
   await db.neocampista.update({ where: { id: fichaId }, data: { triboId } });
@@ -1134,6 +1168,13 @@ export async function sortearTribos(_prev: unknown, formData: FormData) {
     addProibido(a.origemId, a.alvoId);
     addProibido(a.alvoId, a.origemId);
   }
+  // líder que conhece a ficha: a ficha não entra na tribo dele
+  const [alertasLider, lideresTribos] = await Promise.all([
+    db.fichaAlertaLider.findMany({ where: { ficha: { missaoId } }, select: { fichaId: true, servoId: true } }),
+    db.triboLider.findMany({ where: { tribo: { missaoId } }, select: { triboId: true, servoId: true } }),
+  ]);
+  const conhecidosPorFicha = new Map<number, number[]>();
+  for (const a of alertasLider) conhecidosPorFicha.set(a.fichaId, [...(conhecidosPorFicha.get(a.fichaId) ?? []), a.servoId]);
 
   // estado mutável de cada tribo (membros já alocados, manual + os que forem entrando no sorteio)
   type EstadoTribo = {
@@ -1186,7 +1227,9 @@ export async function sortearTribos(_prev: unknown, formData: FormData) {
 
   for (const ficha of ordemSorteio) {
     const proibidosDaFicha = proibidos.get(ficha.id);
+    const tribosDoLider = tribosProibidasPorLideres(conhecidosPorFicha.get(ficha.id) ?? [], lideresTribos);
     const elegiveis = estados.filter((e) => {
+      if (tribosDoLider.has(e.id)) return false;
       if (!proibidosDaFicha || proibidosDaFicha.size === 0) return true;
       for (const membroId of e.membros) {
         if (proibidosDaFicha.has(membroId)) return false;

@@ -14,7 +14,7 @@ export async function podeAcessarMissao(user: Usuario, missaoId: number) {
   return Boolean(vinculo);
 }
 
-export type TipoRegistro = "servo" | "ficha" | "tribo" | "alerta" | "liderTribo";
+export type TipoRegistro = "servo" | "ficha" | "tribo" | "alerta" | "alertaLider" | "liderTribo";
 export type RefRegistro = readonly [TipoRegistro, number];
 
 // missão a que o registro pertence (null se não existir ou se o id for inválido)
@@ -30,6 +30,11 @@ async function missaoDe([tipo, id]: RefRegistro): Promise<number | null> {
     case "alerta":
       return (
         (await db.fichaAlerta.findUnique({ where: { id }, select: { origem: { select: { missaoId: true } } } }))?.origem
+          .missaoId ?? null
+      );
+    case "alertaLider":
+      return (
+        (await db.fichaAlertaLider.findUnique({ where: { id }, select: { ficha: { select: { missaoId: true } } } }))?.ficha
           .missaoId ?? null
       );
     case "liderTribo":
