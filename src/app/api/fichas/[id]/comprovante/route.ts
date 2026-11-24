@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { usuarioDaApi } from "@/lib/apiAuth";
 import { acessoRegistros } from "@/lib/autorizacao";
 import { db } from "@/lib/db";
 import { oneDrive } from "@/lib/oneDrive";
@@ -8,8 +8,20 @@ import { extensaoDe, TAMANHO_MAXIMO } from "@/lib/fichaArquivos";
 import { enviarComprovante, EXTENSOES_COMPROVANTE } from "@/lib/comprovante";
 
 // Comprovante do PIX da ficha: vai para o OneDrive (<Missão>/Comprovantes PIX) e libera o "OK - PAGO".
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const usuario = await requireUser();
+export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  // a tela lê sempre JSON: um erro não previsto também volta como mensagem (e fica no registro do servidor)
+  try {
+    return await enviar(req, ctx);
+  } catch (e) {
+    console.error("Erro no envio da ficha:", e);
+    return Response.json({ erro: `Erro no servidor: ${(e as Error).message ?? "desconhecido"}` }, { status: 500 });
+  }
+}
+
+async function enviar(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await usuarioDaApi();
+  if ("resposta" in auth) return auth.resposta;
+  const { usuario } = auth;
   const id = Number((await params).id);
   if (!Number.isInteger(id) || !(await acessoRegistros(usuario, ["ficha", id]))) {
     return Response.json({ erro: "Sem acesso a esta ficha." }, { status: 403 });

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { criarClienteGraph, reiniciarOneDrive } from "./oneDrive";
+import { criarClienteGraph, reiniciarOneDrive, motivoRenovacao } from "./oneDrive";
 
 process.env.ENTRA_TENANT_ID = "t1";
 process.env.ENTRA_CLIENT_ID = "c1";
@@ -112,4 +112,11 @@ test("urlDaPasta: devolve o endereço web da pasta", async () => {
   const od = criarClienteGraph(db as never, f);
   assert.equal(await od.urlDaPasta({ driveId: "D", id: "M" }), "https://contoso-my.sharepoint.com/personal/x/Documents/Quadrante/23");
   assert.equal(chamadas.length, 2);
+});
+
+test("motivoRenovacao: segredo vencido, segredo errado e acesso revogado viram instrução direta", () => {
+  assert.match(motivoRenovacao('(401): {"error":"invalid_client","error_description":"AADSTS7000222: The provided client secret keys for app are expired."}'), /segredo do aplicativo no Microsoft Entra venceu.*Configurações › Microsoft.*AADSTS7000222/);
+  assert.match(motivoRenovacao("AADSTS7000215: Invalid client secret provided."), /segredo .* está errado/);
+  assert.match(motivoRenovacao('{"error":"invalid_grant","error_description":"AADSTS70008: expired"}'), /Reconectar OneDrive/);
+  assert.match(motivoRenovacao("falha de rede"), /reconecte em Configurações/);
 });

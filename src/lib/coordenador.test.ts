@@ -70,11 +70,11 @@ test("podeUsarEvangelizacao: SUPER e ADMIN sempre; coordenador só do setor EVAN
   assert.equal(podeUsarEvangelizacao({ role: "COORDENADOR", setor: "Evangelização" }), false);
 });
 
-test("rotaPermitidaServoSecretaria: só servos, formação, tribos e fichas (e subrotas)", () => {
-  for (const ok of ["/servos", "/servos/12", "/formacao", "/tribos/3", "/fichas", "/fichas/novo"]) {
+test("rotaPermitidaServoSecretaria: só servos, formação, tribos e fichas (e subrotas), mais o envio da ficha e o CEP", () => {
+  for (const ok of ["/servos", "/servos/12", "/formacao", "/tribos/3", "/fichas", "/fichas/novo", "/api/fichas/12/arquivo", "/api/fichas/12/comprovante", "/api/cep/88130625"]) {
     assert.equal(rotaPermitidaServoSecretaria(ok), true, ok);
   }
-  for (const no of ["/", "/financeiro", "/usuarios", "/servosx", "/fichas-x", "/gerador-fichas", "/pessoas/1", "", null, undefined]) {
+  for (const no of ["/", "/financeiro", "/usuarios", "/servosx", "/fichas-x", "/gerador-fichas", "/pessoas/1", "/api/backup", "/api/versao", "/api/fichasx", "", null, undefined]) {
     assert.equal(rotaPermitidaServoSecretaria(no), false, String(no));
   }
 });

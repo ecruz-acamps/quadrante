@@ -280,6 +280,25 @@ test("excluir a ficha: PDF e cópia vão para a lixeira", async () => {
   assert.deepEqual(od.arquivos(), []);
 });
 
+test("OneDrive recusando (ex.: segredo vencido): o envio falha com o motivo e NÃO deixa erro solto que derruba o servidor", async () => {
+  const soltos: unknown[] = [];
+  const pegar = (e: unknown) => soltos.push(e);
+  process.on("unhandledRejection", pegar);
+  try {
+    const od = new OneDriveFalso();
+    od.falharEnvio = true;
+    const id = await novaFicha(90, "Claudoir");
+    await assert.rejects(m.enviarFichaPreenchida(id, "Claudoir 1.jpg", foto("retrato"), db, od), /fora do ar/);
+    await new Promise((r) => setTimeout(r, 50)); // dá tempo de um erro solto aparecer
+    assert.equal(soltos.length, 0, `erro solto: ${String(soltos[0])}`);
+    // a fila da ficha continua funcionando depois da falha
+    od.falharEnvio = false;
+    assert.deepEqual(await m.enviarFichaPreenchida(id, "Claudoir 1.jpg", foto("retrato"), db, od), { ok: true });
+  } finally {
+    process.off("unhandledRejection", pegar);
+  }
+});
+
 // ---------- comprovante do PIX ----------
 
 test("regra do PIX: sem comprovante, OK vira PENDENTE; com comprovante ou outro pagamento, fica como está", async () => {
