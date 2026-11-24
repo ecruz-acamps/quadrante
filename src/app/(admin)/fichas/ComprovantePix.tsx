@@ -7,8 +7,17 @@ import { lerResposta } from "./respostaServidor";
 
 const ACEITOS = ".pdf,.jpg,.jpeg,.png,.heic,.webp";
 
-// Quadro "Comprovante do PIX" na página da ficha: enviar, abrir, trocar ou remover.
-export default function ComprovantePix({ fichaId, nome, url, situacao }: { fichaId: number; nome: string | null; url: string | null; situacao: string }) {
+// "Comprovante do PIX" dentro do formulário da ficha (aparece ao escolher PIX): enviar, abrir, trocar ou remover.
+// `aoMudar` libera ou bloqueia o "OK - PAGO" no formulário na hora, sem recarregar (e sem perder o que foi preenchido).
+type Props = {
+  fichaId: number;
+  nome: string | null;
+  url: string | null;
+  situacao: string;
+  aoMudar?: (temComprovante: boolean) => void;
+};
+
+export default function ComprovantePix({ fichaId, nome, url, situacao, aoMudar }: Props) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
@@ -22,7 +31,8 @@ export default function ComprovantePix({ fichaId, nome, url, situacao }: { ficha
       corpo.append("arquivo", arquivo);
       const res = await fetch(`/api/fichas/${fichaId}/comprovante`, { method: "POST", body: corpo });
       const r = await lerResposta<{ erro?: string }>(res);
-      setMsg(r.erro ? { texto: r.erro, ruim: true } : { texto: "Comprovante enviado. Agora a ficha pode ser marcada como OK - PAGO (abaixo) e salva.", ruim: false });
+      setMsg(r.erro ? { texto: r.erro, ruim: true } : { texto: "Comprovante enviado. Agora a ficha pode ser marcada como OK - PAGO e salva.", ruim: false });
+      if (!r.erro) aoMudar?.(true);
     } catch {
       setMsg({ texto: "Falha na conexão. Tente de novo.", ruim: true });
     }
@@ -36,13 +46,14 @@ export default function ComprovantePix({ fichaId, nome, url, situacao }: { ficha
     setOcupado("Removendo…");
     const r = await removerComprovanteAction(fichaId).catch(() => ({ erro: "Falha na conexão." }));
     setMsg(r.erro ? { texto: r.erro, ruim: true } : { texto: "Comprovante removido; a ficha voltou para PENDENTE.", ruim: false });
+    if (!r.erro) aoMudar?.(false);
     setOcupado(null);
     router.refresh();
   }
 
   return (
-    <div id="comprovante" className="card p-4 mb-6 space-y-2 scroll-mt-4">
-      <h2 className="font-medium text-[var(--ink)]">Comprovante do PIX</h2>
+    <div id="comprovante" className="rounded border border-[var(--brass)]/40 bg-[var(--brass)]/10 p-3 space-y-2 scroll-mt-4">
+      <p className="text-sm font-medium text-[var(--ink)]">Comprovante do PIX</p>
       <input
         ref={input}
         type="file"
@@ -80,7 +91,7 @@ export default function ComprovantePix({ fichaId, nome, url, situacao }: { ficha
         </>
       )}
       {nome && situacao !== "OK" && !msg && (
-        <p className="text-xs text-[var(--ink-soft)]/80">Comprovante enviado: a ficha já pode ser marcada como OK - PAGO (abaixo) e salva.</p>
+        <p className="text-xs text-[var(--ink-soft)]/80">Comprovante enviado: a ficha já pode ser marcada como OK - PAGO e salva.</p>
       )}
       {msg && <p className={`text-xs ${msg.ruim ? "text-[var(--signal)]" : "text-green-700"}`}>{msg.texto}</p>}
     </div>

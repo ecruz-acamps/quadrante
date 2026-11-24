@@ -5,6 +5,7 @@ import { PAGAMENTOS, CAMISETAS } from "@/lib/constants";
 import { formatarCep, situacaoCep, type ResultadoCep } from "@/lib/cep";
 import { NUCLEOS } from "@/lib/nucleos";
 import { situacaoPermitida, exigeComprovante } from "@/lib/comprovante";
+import ComprovantePix from "./ComprovantePix";
 import type { Neocampista } from "@prisma/client";
 
 export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
@@ -15,7 +16,8 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
   const consultaRef = useRef<AbortController | null>(null);
   const [cepMsg, setCepMsg] = useState<string | null>(null);
   // PIX sem comprovante não pode ficar "OK - PAGO" (a mesma regra é conferida no servidor)
-  const temComprovante = Boolean(ficha?.comprovanteItemId);
+  // estado: muda na hora quando o comprovante é enviado ou removido aqui mesmo, sem salvar a ficha antes
+  const [temComprovante, setTemComprovante] = useState(Boolean(ficha?.comprovanteItemId));
   const [pagamento, setPagamento] = useState(ficha?.pagamento ?? "");
   const [situacao, setSituacao] = useState(situacaoPermitida(ficha?.pagamento, ficha?.situacao ?? "OK", temComprovante));
   const bloqueiaOk = exigeComprovante(pagamento) && !temComprovante;
@@ -172,16 +174,25 @@ export default function FichaForm({ ficha }: { ficha?: Neocampista }) {
           <option value="CANCELADO">CANCELADO</option>
         </select>
       </label>
-      {bloqueiaOk && (
+      {/* PIX: o envio do comprovante aparece aqui mesmo, ao escolher PIX (ficha nova: depois de salvar) */}
+      {ficha && (exigeComprovante(pagamento) || temComprovante) && (
+        <div className="col-span-2 md:col-span-3">
+          <ComprovantePix
+            fichaId={ficha.id}
+            nome={temComprovante ? ficha.comprovanteNome : null}
+            url={temComprovante ? ficha.comprovanteUrl : null}
+            situacao={situacao}
+            aoMudar={(tem) => {
+              setTemComprovante(tem);
+              if (!tem) setSituacao((atual) => situacaoPermitida(pagamento, atual, false));
+            }}
+          />
+        </div>
+      )}
+      {!ficha && bloqueiaOk && (
         <p className="col-span-2 md:col-span-3 rounded border border-[var(--brass)]/40 bg-[var(--brass)]/10 px-3 py-2 text-xs text-[var(--ink)]">
-          Pagamento por <strong>PIX</strong>: a ficha fica <strong>PENDENTE</strong> até o comprovante ser enviado.{" "}
-          {ficha ? (
-            <a href={`/fichas/${ficha.id}#comprovante`} className="underline">
-              Enviar o comprovante
-            </a>
-          ) : (
-            "Salve a ficha e envie o comprovante na tela seguinte."
-          )}
+          Pagamento por <strong>PIX</strong>: a ficha fica <strong>PENDENTE</strong> até o comprovante ser enviado. Salve a ficha e
+          o envio do comprovante aparece na tela seguinte.
         </p>
       )}
       <label className="text-sm col-span-2 md:col-span-3">
