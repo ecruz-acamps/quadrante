@@ -136,6 +136,7 @@ model Servo {
   equipeEvangelizacao EquipeEvangelizacao? @relation("servosEquipe", fields: [equipeEvangelizacaoId], references: [id], onDelete: SetNull)
 
   tribosLideradas TriboLider[]
+  alertasFicha    FichaAlertaLider[] // fichas que este líder conhece
 
   @@unique([missaoId, pessoaId])
   @@index([missaoId, setor])
@@ -181,6 +182,7 @@ model Neocampista {
   equipeEvangelizacao EquipeEvangelizacao? @relation("casasEquipe", fields: [equipeEvangelizacaoId], references: [id], onDelete: SetNull)
   alertas FichaAlerta[] @relation("alertaOrigem")
   alvos   FichaAlerta[] @relation("alertaAlvo")
+  alertasLider FichaAlertaLider[]
 
   @@unique([missaoId, numero])
   @@index([triboId])
@@ -188,6 +190,19 @@ model Neocampista {
 }
 
 // par de fichas que não podem ficar na mesma tribo (parentesco/amizade)
+// ficha que não pode ficar na tribo liderada por este servo (o líder conhece o neocampista)
+model FichaAlertaLider {
+  id      Int @id @default(autoincrement())
+  fichaId Int
+  servoId Int
+
+  ficha Neocampista @relation(fields: [fichaId], references: [id], onDelete: Cascade)
+  servo Servo       @relation(fields: [servoId], references: [id], onDelete: Cascade)
+
+  @@unique([fichaId, servoId])
+  @@index([servoId])
+}
+
 model FichaAlerta {
   id       Int @id @default(autoincrement())
   origemId Int

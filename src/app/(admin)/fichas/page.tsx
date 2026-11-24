@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { adicionarAlerta, removerAlerta } from "@/lib/actions";
+import { adicionarAlerta, removerAlerta, removerAlertaLider } from "@/lib/actions";
+import { ehSetorLideres } from "@/lib/setorLideres";
 import ExcluirFichaButton from "./ExcluirFichaButton";
 import VerEditarFichaButton from "./VerEditarFichaButton";
 import ArquivoFicha from "./ArquivoFicha";
@@ -19,9 +20,18 @@ export default async function FichasPage() {
       arquivos: { orderBy: [{ ordem: "asc" }, { id: "asc" }], select: { id: true, nome: true, url: true, partes: true } },
       alertas: { include: { alvo: true } },
       alvos: { include: { origem: true } },
+      alertasLider: { include: { servo: { select: { pessoa: { select: { nome: true } } } } } },
     },
     orderBy: { numero: "asc" },
   });
+  // líderes (setor LÍDERES) também podem conhecer neocampistas: a ficha não fica na tribo que eles lideram
+  const lideres = (
+    await db.servo.findMany({
+      where: { missaoId: missao.id, status: "ATIVO" },
+      select: { id: true, setor: true, pessoa: { select: { nome: true } } },
+      orderBy: { pessoa: { nome: "asc" } },
+    })
+  ).filter((s) => ehSetorLideres(s.setor));
 
   return (
     <div>
@@ -52,6 +62,7 @@ export default async function FichasPage() {
               const alertas = [
                 ...f.alertas.map((a) => a.alvo.nome),
                 ...f.alvos.map((a) => a.origem.nome),
+                ...f.alertasLider.map((a) => `Líder: ${a.servo.pessoa.nome}`),
               ];
               return (
                 <tr key={f.id}>
@@ -104,11 +115,20 @@ export default async function FichasPage() {
         <label className="text-sm flex-1">
           Não pode ficar na mesma tribo que
           <select name="alvoId" required className="w-full input mt-1">
-            {fichas.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.numero} — {f.nome}
-              </option>
-            ))}
+            <optgroup label="Fichas (neocampistas)">
+              {fichas.map((f) => (
+                <option key={f.id} value={`ficha:${f.id}`}>
+                  {f.numero} — {f.nome}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label={lideres.length ? "Líderes (servos do setor LÍDERES)" : "Líderes: nenhum servo no setor LÍDERES"}>
+              {lideres.map((l) => (
+                <option key={l.id} value={`lider:${l.id}`}>
+                  Líder: {l.pessoa.nome}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </label>
         <button className="btn-primary px-4 py-2 text-sm">Adicionar</button>
@@ -131,6 +151,25 @@ export default async function FichasPage() {
                   </td>
                   <td className="px-4 py-2 text-right">
                     <form action={removerAlerta}>
+                      <input type="hidden" name="id" value={a.id} />
+                      <button className="btn-danger-link">Remover</button>
+                    </form>
+                  </td>
+                </tr>
+              ))
+            )}
+            {fichas.flatMap((f) =>
+              f.alertasLider.map((a) => (
+                <tr key={`l${a.id}`}>
+                  <td className="px-4 py-2">
+                    {f.numero} — {f.nome}
+                  </td>
+                  <td className="px-4 py-2">↔</td>
+                  <td className="px-4 py-2">
+                    <span className="text-[var(--brass)] font-medium">Líder:</span> {a.servo.pessoa.nome}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <form action={removerAlertaLider}>
                       <input type="hidden" name="id" value={a.id} />
                       <button className="btn-danger-link">Remover</button>
                     </form>
