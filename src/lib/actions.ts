@@ -9,7 +9,7 @@ import { createSession, destroySession, requireUser, requireRole, requireCoorden
 import { statusValido, podeMarcarServo, dadosDoStatus, normalizarRole, camisetaValida } from "./coordenador";
 import { podeAcessarMissao, acessoRegistros, exigirMissao, exigirRegistros } from "./autorizacao";
 import { ehSetorLideres } from "./setorLideres";
-import { nucleoAceito } from "./nucleos";
+import { nucleoAceito, NUCLEOS } from "./nucleos";
 import { lerAlvoAlerta, tribosProibidasPorLideres } from "./alertasTribo";
 import { renomearComprovante, situacaoPermitida } from "./comprovante";
 import { oneDrive } from "./oneDrive";
@@ -156,6 +156,7 @@ export async function excluirMissao(formData: FormData) {
     db.candidato.deleteMany({ where: { missaoId: id } }),
     db.servo.deleteMany({ where: { missaoId: id } }),
     db.liberacaoConflitoServo.deleteMany({ where: { missaoId: id } }),
+    db.nucleoFichas.deleteMany({ where: { missaoId: id } }),
     db.missao.delete({ where: { id } }),
   ]);
 
@@ -1578,4 +1579,25 @@ export async function excluirWebPush(formData: FormData) {
 export async function testarWebPush() {
   await requireRole("SUPER");
   await enviarWebPush(null, "Quadrante", "Teste de notificação nativa ✅");
+}
+
+// ---------- controle por núcleo ----------
+// quantas fichas o núcleo recebeu nesta missão (Fichas › Controle por núcleo)
+export async function salvarRecebidasNucleo(_prev: unknown, formData: FormData): Promise<{ ok?: boolean; erro?: string }> {
+  const usuario = await requireUser();
+  const missaoId = Number(formData.get("missaoId"));
+  const nucleo = String(formData.get("nucleo") ?? "").trim();
+  const bruto = String(formData.get("recebidas") ?? "").trim();
+  const recebidas = bruto === "" ? 0 : Number(bruto);
+  if (!(await podeAcessarMissao(usuario, missaoId))) return { erro: "Sem acesso a esta missão." };
+  const existe = (NUCLEOS as readonly string[]).includes(nucleo) || (await db.neocampista.count({ where: { missaoId, nucleo } })) > 0;
+  if (!existe) return { erro: "Núcleo desconhecido." };
+  if (!Number.isInteger(recebidas) || recebidas < 0 || recebidas > 9999) return { erro: "Informe um número inteiro de 0 a 9999." };
+  await db.nucleoFichas.upsert({
+    where: { missaoId_nucleo: { missaoId, nucleo } },
+    update: { recebidas },
+    create: { missaoId, nucleo, recebidas },
+  });
+  revalidatePath("/fichas/nucleos");
+  return { ok: true };
 }
