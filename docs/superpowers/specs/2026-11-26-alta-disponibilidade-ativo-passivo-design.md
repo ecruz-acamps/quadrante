@@ -1,6 +1,7 @@
 # Alta disponibilidade ativo-passivo (etapa 1: troca manual assistida)
 
-Data: 2026-11-26 · Situação: **proposta para revisão do dono** (nada implementado).
+Data: 2026-11-26 · Situação: **melhoria planejada, para executar depois** (registrada no Roteiro do README; nada
+implementado). Antes de começar, responder as "Decisões em aberto" no fim deste documento.
 
 ## Por que
 
