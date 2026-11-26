@@ -5,6 +5,7 @@ import { CORES_TRIBO, COR_TRIBO_HEX as SWATCH } from "@/lib/constants";
 import { adicionarLiderTribo, removerLiderTribo } from "@/lib/actions";
 import { ehSetorLideres } from "@/lib/setorLideres";
 import AlocarFichaForm from "./AlocarFichaForm";
+import MoverCampista, { type OpcaoTribo } from "./MoverCampista";
 import SortearTribosButton from "./SortearTribosButton";
 import SincronizarOneDrive from "./SincronizarOneDrive";
 import LiberarEvangelizacao from "./LiberarEvangelizacao";
@@ -47,6 +48,38 @@ export default async function TribosPage() {
   ]);
   // só quem está no setor LÍDERES pode ser escolhido como líder de tribo
   const servos = servosAtivos.filter((s) => ehSetorLideres(s.setor));
+
+  // travas para mover um campista: tribos com alguém com quem ele tem alerta, ou com líder que o conhece
+  const [alertasFichas, alertasLider] = await Promise.all([
+    db.fichaAlerta.findMany({ where: { origem: { missaoId: missao.id } }, select: { origemId: true, alvoId: true } }),
+    db.fichaAlertaLider.findMany({ where: { ficha: { missaoId: missao.id } }, select: { fichaId: true, servoId: true } }),
+  ]);
+  const triboDaFicha = new Map<number, number>();
+  const nomeDaFicha = new Map<number, string>();
+  for (const t of tribos) for (const n of t.neocampistas) {
+    triboDaFicha.set(n.id, t.id);
+    nomeDaFicha.set(n.id, `#${n.numero} ${n.nome}`);
+  }
+  function opcoesPara(fichaId: number, triboAtual: number): OpcaoTribo[] {
+    const motivos = new Map<number, string[]>();
+    const anotar = (triboId: number | undefined, motivo: string) => {
+      if (triboId == null) return;
+      motivos.set(triboId, [...(motivos.get(triboId) ?? []), motivo]);
+    };
+    for (const a of alertasFichas) {
+      const outro = a.origemId === fichaId ? a.alvoId : a.alvoId === fichaId ? a.origemId : null;
+      if (outro != null) anotar(triboDaFicha.get(outro), nomeDaFicha.get(outro) ?? "alerta");
+    }
+    for (const a of alertasLider.filter((x) => x.fichaId === fichaId)) {
+      for (const t of tribos) {
+        const l = t.lideres.find((x) => x.servoId === a.servoId);
+        if (l) anotar(t.id, `líder ${l.servo.pessoa.nome}`);
+      }
+    }
+    return tribos
+      .filter((t) => t.id !== triboAtual)
+      .map((t) => ({ id: t.id, nome: t.nome, trava: motivos.get(t.id)?.join("; ") ?? null }));
+  }
 
   return (
     <div>
@@ -141,13 +174,14 @@ export default async function TribosPage() {
                 {t.neocampistas
                   .sort((a, b) => a.numero - b.numero)
                   .map((n) => (
-                    <li key={n.id} className="px-4 py-2 flex justify-between border-t border-[var(--line)] first:border-t-0">
+                    <li key={n.id} className="px-4 py-2 flex items-start justify-between gap-3 border-t border-[var(--line)] first:border-t-0">
                       <span>
                         #{n.numero} {n.nome}
+                        <span className="ml-2 text-[var(--ink-soft)]/60 font-mono text-xs">
+                          {n.sexo === "MASCULINO" ? "M" : n.sexo === "FEMININO" ? "F" : ""}
+                        </span>
                       </span>
-                      <span className="text-[var(--ink-soft)]/60 font-mono">
-                        {n.sexo === "MASCULINO" ? "M" : n.sexo === "FEMININO" ? "F" : ""}
-                      </span>
+                      <MoverCampista fichaId={n.id} opcoes={opcoesPara(n.id, t.id)} />
                     </li>
                   ))}
                 {t.neocampistas.length === 0 && (
