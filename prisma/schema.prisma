@@ -62,6 +62,7 @@ model Missao {
   servos       Servo[]
   neocampistas Neocampista[]
   tribos       Tribo[]
+  nucleosFichas NucleoFichas[]
   usuarios     UsuarioMissao[]
   liberacoesConflito LiberacaoConflitoServo[]
   evangelizacaoFechada Boolean @default(false) // distribuição das casas fechada (só SUPER reabre)
@@ -403,4 +404,18 @@ model FichaArquivo {
   neocampista Neocampista @relation(fields: [neocampistaId], references: [id], onDelete: Cascade)
 
   @@index([neocampistaId])
+}
+
+// Controle por núcleo (Fichas › Controle por núcleo): quantas fichas cada núcleo recebeu nesta missão.
+// As cadastradas são contadas das fichas; "faltam" = recebidas - cadastradas.
+model NucleoFichas {
+  id           Int      @id @default(autoincrement())
+  missaoId     Int
+  nucleo       String
+  recebidas    Int      @default(0)
+  atualizadoEm DateTime @updatedAt
+
+  missao Missao @relation(fields: [missaoId], references: [id])
+
+  @@unique([missaoId, nucleo])
 }

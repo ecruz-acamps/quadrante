@@ -8,6 +8,7 @@ import VerEditarFichaButton from "./VerEditarFichaButton";
 import ArquivoFicha from "./ArquivoFicha";
 import { lerPartes } from "@/lib/fichaArquivos";
 import { telefone } from "@/lib/format";
+import { linkWhatsapp } from "@/lib/chamado";
 
 export default async function FichasPage() {
   await requireUser();
@@ -38,9 +39,14 @@ export default async function FichasPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="page-title">Fichas dos Núcleos (Neocampistas)</h1>
-        <Link href="/fichas/novo" className="btn-primary px-4 py-2 text-sm">
-          + Nova ficha
-        </Link>
+        <span className="flex gap-2">
+          <Link href="/fichas/nucleos" className="qd-btn qd-btn-ghost text-sm">
+            Controle por núcleo
+          </Link>
+          <Link href="/fichas/novo" className="btn-primary px-4 py-2 text-sm">
+            + Nova ficha
+          </Link>
+        </span>
       </div>
 
       <div className="card overflow-hidden mb-8">
@@ -72,10 +78,18 @@ export default async function FichasPage() {
                   <td className="px-4 py-2">{f.nucleo}</td>
                   <td className="px-4 py-2">{f.nome}</td>
                   <td className="px-4 py-2 whitespace-nowrap">
-                    {f.celular ? (
-                      <a href={`tel:${f.celular.replace(/[^\d+]/g, "")}`} className="text-[var(--ink)] hover:underline">
+                    {linkWhatsapp(f.celular) ? (
+                      <a
+                        href={linkWhatsapp(f.celular)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Enviar mensagem no WhatsApp"
+                        className="text-[var(--ink)] hover:underline"
+                      >
                         {telefone(f.celular)}
                       </a>
+                    ) : f.celular ? (
+                      telefone(f.celular)
                     ) : (
                       <span className="text-[var(--ink-soft)]/50">—</span>
                     )}

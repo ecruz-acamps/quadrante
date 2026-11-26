@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getMissaoAtiva, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { HORARIOS_CERCO } from "@/lib/constants";
+import { resumoNucleos } from "@/lib/controleNucleos";
 import { IconUsers, IconClipboard, IconClock, IconAlert, IconCoin } from "./DashboardIcons";
 
 export default async function Home() {
@@ -32,6 +33,17 @@ export default async function Home() {
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO", cercoHorario: { not: null } } }),
     db.servo.count({ where: { missaoId: missao.id, status: "ATIVO", pago: true } }),
   ]);
+  // fichas que faltam por núcleo (o que cada núcleo recebeu é digitado em Fichas › Controle por núcleo)
+  const [recebidasNucleos, fichasPorNucleo] = await Promise.all([
+    db.nucleoFichas.findMany({ where: { missaoId: missao.id } }),
+    db.neocampista.groupBy({ by: ["nucleo"], where: { missaoId: missao.id }, _count: true }),
+  ]);
+  const nucleos = resumoNucleos(
+    new Map(recebidasNucleos.map((r) => [r.nucleo, r.recebidas])),
+    new Map(fichasPorNucleo.map((c) => [c.nucleo, c._count])),
+  );
+  const nucleosPendentes = nucleos.linhas.filter((l) => l.faltam > 0 || l.aMais > 0);
+
   const horariosOcupados = await db.servo.groupBy({
     by: ["cercoHorario"],
     where: { missaoId: missao.id, status: "ATIVO", cercoHorario: { not: null } },
@@ -176,30 +188,78 @@ export default async function Home() {
         })}
       </div>
 
-      {horariosCriticos.length > 0 && (
-        <div className="kpi-card mt-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="kpi-icon" style={{ background: "var(--amber-soft)", color: "var(--amber)" }}>
-              <IconClock className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="kpi-value text-2xl" style={{ color: "var(--amber)" }}>
-                {horariosCriticos.length}
-              </div>
-              <div className="kpi-label">Horários com 2 ou menos pessoas no Cerco</div>
-            </div>
+      {/* quadros compactos: uma linha de título e etiquetas pequenas */}
+      <div className="card mt-6 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <IconClipboard className="w-4 h-4 text-[var(--brass)] shrink-0" />
+          <span className="text-sm font-medium text-[var(--ink)]">
+            {nucleos.total.recebidas > 0 ? (
+              <>
+                Fichas que faltam chegar: <strong>{nucleos.total.faltam}</strong>
+                <span className="font-normal text-[var(--ink-soft)]/70">
+                  {" "}
+                  ({nucleos.total.cadastradas} de {nucleos.total.recebidas} cadastradas)
+                </span>
+              </>
+            ) : (
+              "Fichas por núcleo: informe quantas cada núcleo recebeu"
+            )}
+          </span>
+          <Link className="btn-link text-xs ml-auto" href="/fichas/nucleos">
+            Controle por núcleo →
+          </Link>
+        </div>
+        {nucleos.total.recebidas > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {nucleosPendentes.length === 0 ? (
+              <span className="text-xs text-green-700">Todos os núcleos completos.</span>
+            ) : (
+              nucleosPendentes.map((l) =>
+                l.aMais > 0 ? (
+                  <span
+                    key={l.nucleo}
+                    title="Mais fichas cadastradas do que recebidas"
+                    className="text-xs rounded-full px-2 py-0.5 border border-[var(--signal)]/30 bg-[var(--signal-soft)] text-[var(--signal)]"
+                  >
+                    {l.nucleo} · +{l.aMais}
+                  </span>
+                ) : (
+                  <span
+                    key={l.nucleo}
+                    title={`faltam ${l.faltam} de ${l.recebidas}`}
+                    className="text-xs rounded-full px-2 py-0.5 border border-[var(--line)] bg-[var(--paper)] text-[var(--ink-soft)]"
+                  >
+                    {l.nucleo} · <strong className="text-[var(--ink)]">{l.faltam}</strong>
+                  </span>
+                ),
+              )
+            )}
           </div>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        )}
+      </div>
+
+      {horariosCriticos.length > 0 && (
+        <div className="card mt-3 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="shrink-0" style={{ color: "var(--amber)" }}><IconClock className="w-4 h-4" /></span>
+            <span className="text-sm font-medium text-[var(--ink)]">
+              <strong style={{ color: "var(--amber)" }}>{horariosCriticos.length}</strong>{" "}
+              {horariosCriticos.length === 1 ? "horário" : "horários"} com 2 ou menos pessoas no Cerco
+            </span>
+            <Link className="btn-link text-xs ml-auto" href="/cerco-dashboard">
+              Cerco de Jericó →
+            </Link>
+          </div>
+          <div className="flex flex-wrap gap-1.5 mt-2">
             {horariosCriticos.map((h) => (
-              <li
+              <span
                 key={h.horario}
-                className="flex items-center justify-between gap-2 text-sm bg-[var(--amber-soft)] border border-[var(--amber)]/20 rounded-lg px-3 py-2"
+                className="text-xs rounded-full px-2 py-0.5 border border-[var(--amber)]/25 bg-[var(--amber-soft)] text-[var(--ink-soft)]"
               >
-                <span className="font-medium text-[var(--ink-soft)]">{h.horario}</span>
-                <span className="text-[var(--amber)] font-semibold">{h.qtd} pessoa(s)</span>
-              </li>
+                {h.horario.replace(" - ", "–")} · <strong style={{ color: "var(--amber)" }}>{h.qtd}</strong>
+              </span>
             ))}
-          </ul>
+          </div>
         </div>
       )}
     </div>
