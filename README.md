@@ -94,6 +94,7 @@ Nada desta lista está em produção. Cada item tem spec e/ou plano em `docs/sup
 |---|---|
 | **v1.2: Evangelização** (equipes de visita e sorteio das casas dos neocampistas por cidade) | Implementada e testada, **ainda não publicada em produção** (a migração do banco já foi aplicada, é só acréscimo). Falta conferir a tabela de vizinhança entre cidades (rascunho em `scripts/seed-cidades.ts`). Equipes de 3 pessoas (com carro), 3 a 4 casas por equipe, e uma equipe nunca visita a cidade de um dos seus membros. |
 | **Coordenador em `/meu-setor`** (login que só enxerga o próprio setor) | Adiado; spec e plano prontos. |
+| **Alta disponibilidade ativo-passivo** (servidor 2 em outro local assume se o servidor 1 cair: réplica contínua do banco com Litestream pela VPN, troca em ~5 min com ~1 s de perda, aviso no celular, nunca dois ativos) | **Melhoria planejada, para executar depois.** Desenho da etapa 1 (troca manual assistida) em `docs/superpowers/specs/2026-11-26-alta-disponibilidade-ativo-passivo-design.md`; a etapa 2 (troca automática com uma testemunha) vem depois. Antes de começar: confirmar os IPs fixos pela VPN e se ela reconecta sozinha. |
 | **Agenda de servir em app Android** (CPF + lista de quem já fez o acampamento, agenda das próximas missões, Capacitor) e **inscrição para fazer o acampamento** integrada ao sistema de pré-fichas por API | Adiado; desenho guardado em `docs/superpowers/specs/2026-10-24-agenda-servir-app-ADIADO-design.md`. |
 
 ## Tecnologias

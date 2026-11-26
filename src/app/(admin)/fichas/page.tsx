@@ -7,6 +7,7 @@ import ExcluirFichaButton from "./ExcluirFichaButton";
 import VerEditarFichaButton from "./VerEditarFichaButton";
 import ArquivoFicha from "./ArquivoFicha";
 import { lerPartes } from "@/lib/fichaArquivos";
+import { telefone } from "@/lib/format";
 
 export default async function FichasPage() {
   await requireUser();
@@ -50,6 +51,7 @@ export default async function FichasPage() {
               <th className="text-left px-4 py-2">Nº</th>
               <th className="text-left px-4 py-2">Núcleo</th>
               <th className="text-left px-4 py-2">Nome</th>
+              <th className="text-left px-4 py-2">Telefone</th>
               <th className="text-left px-4 py-2">Situação</th>
               <th className="text-left px-4 py-2">Tribo</th>
               <th className="text-left px-4 py-2">Alertas</th>
@@ -69,6 +71,15 @@ export default async function FichasPage() {
                   <td className="px-4 py-2">{f.numero}</td>
                   <td className="px-4 py-2">{f.nucleo}</td>
                   <td className="px-4 py-2">{f.nome}</td>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {f.celular ? (
+                      <a href={`tel:${f.celular.replace(/[^\d+]/g, "")}`} className="text-[var(--ink)] hover:underline">
+                        {telefone(f.celular)}
+                      </a>
+                    ) : (
+                      <span className="text-[var(--ink-soft)]/50">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2">
                     {f.situacao === "OK" ? "OK - PAGO" : f.situacao}
                     {f.pagamento === "PIX" && !f.comprovanteItemId && (
