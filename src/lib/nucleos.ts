@@ -1,6 +1,7 @@
 // Núcleos que aparecem para escolher na ficha do neocampista (Fichas › Nova ficha / Ver/Editar).
 // Para acrescentar ou mudar um núcleo, edite esta lista.
 export const NUCLEOS = [
+  "AGUAS MORNAS",
   "ALFREDO WAGNER",
   "ANGELINA",
   "ANITAPOLIS",

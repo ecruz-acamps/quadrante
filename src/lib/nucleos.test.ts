@@ -2,9 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { NUCLEOS, nucleoAceito } from "./nucleos";
 
-test("lista com os 15 núcleos, sem repetição", () => {
-  assert.equal(NUCLEOS.length, 15);
-  assert.equal(new Set(NUCLEOS).size, 15);
+test("lista com os 16 núcleos, sem repetição", () => {
+  assert.equal(NUCLEOS.length, 16);
+  assert.equal(new Set(NUCLEOS).size, 16);
+  assert.ok(NUCLEOS.includes("AGUAS MORNAS"));
   assert.ok(NUCLEOS.includes("EMERGENCIAS") && NUCLEOS.includes("EMERGENCIAS - PADRES"));
   assert.ok(NUCLEOS.includes("PALHOÇA - PONTE DO IMARUIM"));
 });
