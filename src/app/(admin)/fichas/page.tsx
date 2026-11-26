@@ -8,6 +8,7 @@ import VerEditarFichaButton from "./VerEditarFichaButton";
 import ArquivoFicha from "./ArquivoFicha";
 import { lerPartes } from "@/lib/fichaArquivos";
 import { telefone } from "@/lib/format";
+import { linkWhatsapp } from "@/lib/chamado";
 
 export default async function FichasPage() {
   await requireUser();
@@ -77,10 +78,18 @@ export default async function FichasPage() {
                   <td className="px-4 py-2">{f.nucleo}</td>
                   <td className="px-4 py-2">{f.nome}</td>
                   <td className="px-4 py-2 whitespace-nowrap">
-                    {f.celular ? (
-                      <a href={`tel:${f.celular.replace(/[^\d+]/g, "")}`} className="text-[var(--ink)] hover:underline">
+                    {linkWhatsapp(f.celular) ? (
+                      <a
+                        href={linkWhatsapp(f.celular)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Enviar mensagem no WhatsApp"
+                        className="text-[var(--ink)] hover:underline"
+                      >
                         {telefone(f.celular)}
                       </a>
+                    ) : f.celular ? (
+                      telefone(f.celular)
                     ) : (
                       <span className="text-[var(--ink-soft)]/50">—</span>
                     )}
