@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import {
   apagarEquipe,
   criarEquipe,
+  desfazerEquipes,
   fecharDistribuicao,
   limparFixacoes,
   marcarTemCarro,
@@ -76,7 +77,7 @@ export function BarraAcoes({
         rotulo="Sugerir equipes"
         ocupado="Montando..."
         desabilitado={fechada}
-        confirmar="Montar as equipes de novo? As equipes automáticas serão refeitas e as casas fixadas nelas, soltas. Equipes criadas ou editadas à mão (marcadas “manual”) ficam como estão."
+        confirmar="Montar as equipes de novo? Coordenadores, auxiliares e apoio não entram na sugestão. As equipes automáticas serão refeitas e as casas fixadas nelas, soltas. Equipes criadas ou editadas à mão (marcadas “manual”) ficam como estão."
         acao={() => sugerirEquipes(missaoId)}
       />
       <BotaoAcao
@@ -93,6 +94,13 @@ export function BarraAcoes({
         ocupado="Limpando..."
         desabilitado={fechada}
         acao={() => limparFixacoes(missaoId)}
+      />
+      <BotaoAcao
+        rotulo="Desfazer todas as equipes"
+        ocupado="Desfazendo..."
+        desabilitado={fechada}
+        confirmar="Desfazer TODAS as equipes, inclusive as manuais? Servos e casas ficam sem equipe e as fixações são perdidas. Não há como desfazer."
+        acao={() => desfazerEquipes(missaoId)}
       />
       {fechada ? (
         souSuper && (

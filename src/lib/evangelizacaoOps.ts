@@ -3,7 +3,7 @@
 import { db } from "./db";
 import { exigirMissao, exigirRegistros } from "./autorizacao";
 import { normalizarCidade } from "./cidades";
-import { aplicarSorteio, aplicarSugestaoEquipes, exigirDistribuicaoAberta } from "./evangelizacaoDados";
+import { aplicarSorteio, aplicarSugestaoEquipes, desfazerTodasEquipes, exigirDistribuicaoAberta } from "./evangelizacaoDados";
 
 type Usuario = { id: number; role: string };
 
@@ -45,6 +45,11 @@ export async function marcarTemCarro(user: Usuario, servoId: number, temCarro: b
 export async function sugerirEquipes(user: Usuario, missaoId: number) {
   await abrir(user, missaoId);
   return aplicarSugestaoEquipes(missaoId);
+}
+
+export async function desfazerEquipes(user: Usuario, missaoId: number) {
+  await abrir(user, missaoId);
+  await desfazerTodasEquipes(missaoId);
 }
 
 export async function criarEquipe(user: Usuario, missaoId: number) {

@@ -13,6 +13,8 @@ import {
 } from "./sorteioCasas";
 
 const SETOR = "EVANGELIZAÇÃO";
+// quem tem uma destas funções no setor não entra no "Sugerir equipes" (ainda pode ser posto numa equipe à mão)
+const FUNCOES_FORA_DA_SUGESTAO = ["COORDENADOR", "AUXILIAR", "APOIO"];
 
 export async function carregarMapaCidades(): Promise<{ mapa: MapaApelidos; viz: Vizinhanca }> {
   const [apelidos, pares] = await Promise.all([db.cidadeApelido.findMany(), db.cidadeVizinha.findMany()]);
@@ -41,7 +43,11 @@ export async function aplicarSugestaoEquipes(missaoId: number): Promise<{ equipe
   const idsManuais = manuais.map((e) => e.id);
   const [{ mapa, viz }, todos] = await Promise.all([carregarMapaCidades(), servosElegiveis(missaoId)]);
   // equipes criadas ou editadas à mão ficam como estão, com seus membros
-  const servos = todos.filter((s) => s.equipeEvangelizacaoId === null || !idsManuais.includes(s.equipeEvangelizacaoId));
+  const servos = todos.filter(
+    (s) =>
+      !FUNCOES_FORA_DA_SUGESTAO.includes(s.funcao) &&
+      (s.equipeEvangelizacaoId === null || !idsManuais.includes(s.equipeEvangelizacaoId))
+  );
   const entrada: ServoEv[] = servos.map((s) => ({
     id: s.id,
     cidadeId: resolverCidade(s.pessoa.cidade, mapa),
@@ -63,6 +69,16 @@ export async function aplicarSugestaoEquipes(missaoId: number): Promise<{ equipe
     }
   });
   return { equipes: equipes.length };
+}
+
+// apaga todas as equipes da missão, inclusive as manuais; servos e casas ficam sem equipe
+export async function desfazerTodasEquipes(missaoId: number): Promise<void> {
+  await exigirDistribuicaoAberta(missaoId);
+  await db.$transaction([
+    db.neocampista.updateMany({ where: { missaoId }, data: { equipeEvangelizacaoId: null, casaFixada: false } }),
+    db.servo.updateMany({ where: { missaoId }, data: { equipeEvangelizacaoId: null } }),
+    db.equipeEvangelizacao.deleteMany({ where: { missaoId } }),
+  ]);
 }
 
 async function equipesParaSorteio(missaoId: number, mapa: MapaApelidos): Promise<EquipeSorteio[]> {
