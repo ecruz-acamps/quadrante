@@ -207,6 +207,7 @@ test("usuário sem acesso à missão é recusado em toda operação", async () =
   await assert.rejects(o.marcarTemCarro(x, a.servo.id, true), /Sem permissão/);
   await assert.rejects(o.sugerirEquipes(x, a.missao.id), /Sem permissão/);
   await assert.rejects(o.criarEquipe(x, a.missao.id), /Sem permissão/);
+  await assert.rejects(o.desfazerEquipes(x, a.missao.id), /Sem permissão/);
   await assert.rejects(o.apagarEquipe(x, a.equipes[0].id), /Sem permissão/);
   await assert.rejects(o.moverServoEquipe(x, a.servo.id, a.equipes[0].id), /Sem permissão/);
   await assert.rejects(o.rodarSorteio(x, a.missao.id), /Sem permissão/);
@@ -224,6 +225,7 @@ test("fechada a distribuição, toda escrita é recusada; só SUPER reabre", asy
   await assert.rejects(o.marcarTemCarro(a.admin, a.servo.id, true), fechada);
   await assert.rejects(o.sugerirEquipes(a.admin, a.missao.id), fechada);
   await assert.rejects(o.criarEquipe(a.admin, a.missao.id), fechada);
+  await assert.rejects(o.desfazerEquipes(a.admin, a.missao.id), fechada);
   await assert.rejects(o.apagarEquipe(a.admin, a.equipes[0].id), fechada);
   await assert.rejects(o.moverServoEquipe(a.admin, a.servo.id, a.equipes[1].id), fechada);
   await assert.rejects(o.rodarSorteio(a.admin, a.missao.id), fechada);
@@ -368,4 +370,29 @@ test("coordenador vinculado à missão opera; coordenador de outra missão é re
   await o.criarEquipe(coord, a.missao.id);
   await assert.rejects(o.criarEquipe(coord, b.missao.id), /Sem permissão/);
   await assert.rejects(o.marcarTemCarro(coord, b.servo.id, true), /Sem permissão/);
+});
+
+test("'Sugerir equipes' deixa de fora coordenador, auxiliar e apoio", async () => {
+  const { missao } = await cenario("funcoes");
+  const [a, b, c] = await db.servo.findMany({ where: { missaoId: missao.id }, orderBy: { id: "asc" } });
+  for (const [id, funcao] of [[a.id, "COORDENADOR"], [b.id, "AUXILIAR"], [c.id, "APOIO"]] as const) {
+    await db.servo.update({ where: { id }, data: { funcao } });
+  }
+  await m.aplicarSugestaoEquipes(missao.id);
+  const semEquipe = await db.servo.findMany({ where: { missaoId: missao.id, equipeEvangelizacaoId: null }, orderBy: { id: "asc" } });
+  assert.deepEqual(semEquipe.map((s) => s.id), [a.id, b.id, c.id]);
+});
+
+test("desfazer todas apaga inclusive as manuais, solta casas e não toca em outra missão", async () => {
+  const o = await ops();
+  const a = await cenarioOps("desfazer-a");
+  const b = await cenarioOps("desfazer-b");
+  await o.criarEquipe(a.admin, a.missao.id);
+  await o.moverCasa(a.admin, a.ficha.id, a.equipes[0].id);
+  await o.desfazerEquipes(a.admin, a.missao.id);
+  assert.equal(await db.equipeEvangelizacao.count({ where: { missaoId: a.missao.id } }), 0);
+  assert.equal(await db.servo.count({ where: { missaoId: a.missao.id, equipeEvangelizacaoId: { not: null } } }), 0);
+  const f = await db.neocampista.findUnique({ where: { id: a.ficha.id } });
+  assert.deepEqual([f!.equipeEvangelizacaoId, f!.casaFixada], [null, false]);
+  assert.equal(await db.equipeEvangelizacao.count({ where: { missaoId: b.missao.id } }), 2);
 });

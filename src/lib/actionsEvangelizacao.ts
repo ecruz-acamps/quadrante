@@ -24,6 +24,9 @@ export async function marcarTemCarro(servoId: number, temCarro: boolean) {
 export async function sugerirEquipes(missaoId: number) {
   return executar((u) => ops.sugerirEquipes(u, missaoId));
 }
+export async function desfazerEquipes(missaoId: number) {
+  return executar((u) => ops.desfazerEquipes(u, missaoId));
+}
 export async function criarEquipe(missaoId: number) {
   return executar((u) => ops.criarEquipe(u, missaoId));
 }
