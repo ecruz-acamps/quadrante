@@ -40,7 +40,19 @@ export default async function EvangelizacaoPage() {
 
   return (
     <div>
-      <h1 className="page-title mb-2">Evangelização: equipes e casas</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+        <h1 className="page-title">Evangelização: equipes e casas</h1>
+        {p.equipes.length > 0 && (
+          <span className="flex gap-2">
+            <Link href="/evangelizacao/imprimir/equipes" className="qd-btn qd-btn-ghost text-sm">
+              Imprimir lista das equipes
+            </Link>
+            <a href="/evangelizacao/exportar" className="qd-btn qd-btn-ghost text-sm">
+              Exportar equipes (.xlsx)
+            </a>
+          </span>
+        )}
+      </div>
       <p className="text-sm text-[var(--ink-soft)]/70 mb-4">
         Equipes de 3 com carro; as casas são repartidas na proporção dos carros de cada equipe (decisão da coordenação) e nenhuma equipe visita a cidade de um dos seus membros.
       </p>
